@@ -14,6 +14,7 @@ import {
     AppBar,
     ListItemButton,
     Stack,
+    Paper,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
@@ -52,6 +53,10 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
 
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
+
+    React.useEffect(() => {
+        document.title = `${pageTitle} - KhajaPOS Admin`;
+    }, [pageTitle]);
 
     const drawer = (
         <Box sx={{ px: 2, py: 15 }}>
@@ -97,8 +102,8 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                         disableTouchRipple={false}
                         TouchRippleProps={{ center: false }}
                         onClick={() => {
+                            setMobileOpen(false);
                             router.push(item.href);
-                            router.refresh();
                         }}
                         onMouseEnter={() => {
                             setHoveredItem(item.text);
@@ -231,6 +236,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                     </Stack>
                     <Stack direction="row" spacing={2} alignItems="center">
                         <ThemeToggle />
+                        {/* <ProfileComponent />  profile component can be added here in the future for account settings, logout, etc. */}
                     </Stack>
                 </Toolbar>
             </AppBar>
@@ -275,7 +281,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 </Drawer>
             </Box>
 
-            <Box
+            <Paper
                 component="main"
                 sx={{
                     flexGrow: 1,
@@ -289,7 +295,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 }}
             >
                 {children}
-            </Box>
+            </Paper>
         </Box>
     );
 }
