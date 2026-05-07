@@ -103,6 +103,20 @@ export function createAppTheme(mode: ThemeMode = "light") {
           },
         },
       },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            overflow: "visible",
+          },
+        },
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            overflow: "visible",
+          },
+        },
+      },
       MuiToolbar: {
         styleOverrides: {
           root: {

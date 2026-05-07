@@ -31,7 +31,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { getMenus, resolveMenuImageUrl, type MenuRow, updateMenuAvailability, deleteMenu } from "@/lib/api";
+import { deleteMenu, getFoodTypeLabel, getMenus, resolveMenuImageUrl, type MenuRow, updateMenuAvailability } from "@/lib/api";
 import AddEditMenuDialog from "./addEdit";
 import MenuViewDialog from "./view";
 
@@ -67,6 +67,9 @@ const MenuThumb = ({ item }: { item: MenuItemType }) => {
 
 export default function MenuManagementPage() {
   const searchId = React.useId();
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const deferredSearchTerm = React.useDeferredValue(searchTerm);
+  const [availabilityFilter, setAvailabilityFilter] = React.useState<"all" | "available" | "unavailable">("all");
   const [editorItem, setEditorItem] = React.useState<MenuItemType | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [viewItem, setViewItem] = React.useState<MenuItemType | null>(null);
@@ -74,12 +77,16 @@ export default function MenuManagementPage() {
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [menus, setMenus] = React.useState<MenuItemType[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [categoryFilter, setCategoryFilter] = React.useState("All Categories");
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
-  const fetchMenus = React.useCallback(async () => {
+  const fetchMenus = React.useCallback(async (options?: {
+    search?: string;
+    availability?: "all" | "available" | "unavailable";
+  }) => {
     setLoading(true);
     try {
-      const data = await getMenus();
+      const data = await getMenus(options);
       setMenus(data);
     } catch (error) {
       console.error("Error fetching menus:", error);
@@ -89,8 +96,74 @@ export default function MenuManagementPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchMenus();
-  }, [fetchMenus]);
+    const timeoutId = window.setTimeout(() => {
+      fetchMenus({
+        search: deferredSearchTerm,
+        availability: availabilityFilter,
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [availabilityFilter, deferredSearchTerm, fetchMenus]);
+
+  React.useEffect(() => {
+    if (categoryFilter === "All Categories") return;
+
+    const hasSelectedCategory = menus.some((item) => String(item.categoryId) === categoryFilter);
+    if (!hasSelectedCategory) {
+      setCategoryFilter("All Categories");
+    }
+  }, [categoryFilter, menus]);
+
+  const categoryOptions = React.useMemo(() => {
+    const seen = new Map<number, string>();
+
+    menus.forEach((item) => {
+      if (!seen.has(item.categoryId)) {
+        seen.set(item.categoryId, item.category);
+      }
+    });
+
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [menus]);
+
+  const filteredMenus = React.useMemo(() => {
+    if (categoryFilter === "All Categories") return menus;
+    return menus.filter((item) => String(item.categoryId) === categoryFilter);
+  }, [categoryFilter, menus]);
+
+  const handleExport = () => {
+    const rows = filteredMenus.map((item) => ({
+      "Menu Name": item.name,
+      Category: item.category,
+      Availability: getAvailabilityLabel(item.isAvailable),
+      "Food Type": getFoodTypeLabel(item.foodType),
+      Price: item.price,
+      Description: item.description,
+      "Created At": new Date(item.createdAt).toLocaleString(),
+    }));
+
+    const headers = ["Menu Name", "Category", "Availability", "Food Type", "Price", "Description", "Created At"];
+    const csvLines = [
+      headers.join(","),
+      ...rows.map((row) =>
+        headers
+          .map((header) => `"${String(row[header as keyof typeof row] ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ];
+
+    const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `menu-management-${stamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleStatusChange = async (nextAvailability: boolean) => {
     if (!statusItem) return;
@@ -98,8 +171,10 @@ export default function MenuManagementPage() {
     setStatusSaving(true);
     try {
       await updateMenuAvailability(statusItem, nextAvailability);
-      const refreshedMenus = await getMenus();
-      setMenus(refreshedMenus);
+      await fetchMenus({
+        search: deferredSearchTerm,
+        availability: availabilityFilter,
+      });
       setStatusItem(null);
     } catch (error) {
       console.error("Error updating menu availability:", error);
@@ -121,12 +196,16 @@ export default function MenuManagementPage() {
   const handleDelete = async (item: MenuItemType) => {
     try {
       await deleteMenu(item.id);
-      const refreshedMenus = await getMenus();
-      setMenus(refreshedMenus);
+      await fetchMenus({
+        search: deferredSearchTerm,
+        availability: availabilityFilter,
+      });
     } catch (error) {
       console.error("Error deleting menu:", error);
     }
   };
+
+
 
   return (
     <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
@@ -143,6 +222,7 @@ export default function MenuManagementPage() {
           <Button
             variant="outlined"
             startIcon={<FileDownloadOutlinedIcon />}
+            onClick={handleExport}
             sx={{
               borderRadius: "14px",
               borderColor: "var(--border)",
@@ -177,11 +257,13 @@ export default function MenuManagementPage() {
         }}
       >
         <Box sx={{ display: "grid", gap: 2, p: 2.5, borderBottom: "1px solid var(--border)" }}>
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.6fr 1fr 1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.8fr 1fr 1fr" } }}>
             <TextField
               id={searchId}
               placeholder="Search menu items..."
               size="small"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -196,14 +278,28 @@ export default function MenuManagementPage() {
                 },
               }}
             />
-            <Select size="small" defaultValue="All Categories" sx={{ borderRadius: "12px" }}>
+            <Select
+              size="small"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              sx={{ borderRadius: "12px" }}
+            >
               <MenuItem value="All Categories">All Categories</MenuItem>
+              {categoryOptions.map((category) => (
+                <MenuItem key={category.id} value={String(category.id)}>
+                  {category.name}
+                </MenuItem>
+              ))}
             </Select>
-            <Select size="small" defaultValue="All Status" sx={{ borderRadius: "12px" }}>
-              <MenuItem value="All Status">All Status</MenuItem>
-            </Select>
-            <Select size="small" defaultValue="All Availability" sx={{ borderRadius: "12px" }}>
-              <MenuItem value="All Availability">All Availability</MenuItem>
+            <Select
+              size="small"
+              value={availabilityFilter}
+              onChange={(event) => setAvailabilityFilter(event.target.value as "all" | "available" | "unavailable")}
+              sx={{ borderRadius: "12px" }}
+            >
+              <MenuItem value="all">All Availability</MenuItem>
+              <MenuItem value="available">Available Items</MenuItem>
+              <MenuItem value="unavailable">Unavailable Items</MenuItem>
             </Select>
           </Box>
         </Box>
@@ -231,8 +327,8 @@ export default function MenuManagementPage() {
                 <Skeleton variant="circular" width={32} height={32} />
               </Paper>
             ))
-          ) : menus.length !== 0 ? (
-            menus.map((item) => (
+          ) : filteredMenus.length !== 0 ? (
+            filteredMenus.map((item) => (
               <Paper
                 key={item.name}
                 onClick={() => openEditDialog(item)}
@@ -310,8 +406,15 @@ export default function MenuManagementPage() {
           open={editorOpen}
           initialData={editorItem}
           onClose={() => setEditorOpen(false)}
-          onSaved={fetchMenus}
+          onSaved={() =>
+            fetchMenus({
+              search: deferredSearchTerm,
+              availability: availabilityFilter,
+            })
+          }
         />
+
+
 
         <MenuViewDialog
           open={Boolean(viewItem)}
@@ -404,7 +507,7 @@ export default function MenuManagementPage() {
                   </Box>
                 </TableCell>
               </TableRow>
-            )) : menus.length != 0 ? menus.map((item) => (
+            )) : filteredMenus.length !== 0 ? filteredMenus.map((item) => (
               <TableRow key={capitalize(item.name)}>
                 <TableCell padding="checkbox" />
                 <TableCell>
@@ -429,7 +532,7 @@ export default function MenuManagementPage() {
                 <TableCell>
                   <Typography sx={{ fontWeight: 600 }}>{capitalize(item.name)}</Typography>
                   <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                    {item.veg ? "Veg" : "Non-Veg"}
+                    {getFoodTypeLabel(item.foodType)}
                   </Typography>
                   {item.tag && (
                     <Chip
@@ -496,3 +599,4 @@ export default function MenuManagementPage() {
     </Box>
   );
 }
+

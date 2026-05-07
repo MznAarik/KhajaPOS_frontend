@@ -23,6 +23,7 @@ import { ShoppingCartIcon, type ShoppingCartIconHandle } from "@/components/ui/s
 import { LayoutListIcon, LayoutListIconHandle } from "@/components/ui/layout-list-icon";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import ProfileComponent from "@/components/common/ProfileComponent";
 
 const drawerWidth = 260;
 
@@ -34,19 +35,19 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
     const dashboardIconRef = React.useRef<DashboardIconHandle | null>(null);
-    const ordersIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
+    const categoryIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
 
     const navItems = [
         { text: "Dashboard", href: "/admin/dashboard", icon: DashboardIcon, ref: dashboardIconRef },
-        { text: "Menu Management", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-        { text: "Orders", href: "/admin/orders", icon: ShoppingCartIcon, ref: ordersIconRef },
+        { text: "Category", href: "/admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+        { text: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
     ];
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Dashboard",
-        menu: "Menu Management",
-        orders: "Orders",
+        menu: "Menu",
+        category: "Category",
         products: "Products",
         items: "Items",
     };
@@ -236,7 +237,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                     </Stack>
                     <Stack direction="row" spacing={2} alignItems="center">
                         <ThemeToggle />
-                        {/* <ProfileComponent />  profile component can be added here in the future for account settings, logout, etc. */}
+                        <ProfileComponent />
                     </Stack>
                 </Toolbar>
             </AppBar>
