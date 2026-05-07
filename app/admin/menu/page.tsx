@@ -10,6 +10,7 @@ import {
   InputAdornment,
   Select,
   MenuItem,
+  TablePagination,
   Table,
   TableBody,
   TableCell,
@@ -31,7 +32,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { deleteMenu, getFoodTypeLabel, getMenus, resolveMenuImageUrl, type MenuRow, updateMenuAvailability } from "@/lib/api";
+import { deleteMenu, getCategories, getFoodTypeLabel, getMenus, resolveMenuImageUrl, type CategoryOption, type MenuRow, updateMenuAvailability } from "@/lib/api";
 import AddEditMenuDialog from "./addEdit";
 import MenuViewDialog from "./view";
 
@@ -76,18 +77,26 @@ export default function MenuManagementPage() {
   const [statusItem, setStatusItem] = React.useState<MenuItemType | null>(null);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [menus, setMenus] = React.useState<MenuItemType[]>([]);
+  const [categories, setCategories] = React.useState<CategoryOption[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [categoryFilter, setCategoryFilter] = React.useState("All Categories");
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [totalRows, setTotalRows] = React.useState(0);
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
   const fetchMenus = React.useCallback(async (options?: {
     search?: string;
+    categoryId?: number;
     availability?: "all" | "available" | "unavailable";
+    page?: number;
+    perPage?: number;
   }) => {
     setLoading(true);
     try {
       const data = await getMenus(options);
-      setMenus(data);
+      setMenus(data.items);
+      setTotalRows(data.total);
     } catch (error) {
       console.error("Error fetching menus:", error);
     } finally {
@@ -96,44 +105,38 @@ export default function MenuManagementPage() {
   }, []);
 
   React.useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  React.useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       fetchMenus({
         search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
         availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
       });
     }, 350);
 
     return () => window.clearTimeout(timeoutId);
-  }, [availabilityFilter, deferredSearchTerm, fetchMenus]);
+  }, [availabilityFilter, categoryFilter, deferredSearchTerm, fetchMenus, page, rowsPerPage]);
 
   React.useEffect(() => {
-    if (categoryFilter === "All Categories") return;
-
-    const hasSelectedCategory = menus.some((item) => String(item.categoryId) === categoryFilter);
-    if (!hasSelectedCategory) {
-      setCategoryFilter("All Categories");
-    }
-  }, [categoryFilter, menus]);
-
-  const categoryOptions = React.useMemo(() => {
-    const seen = new Map<number, string>();
-
-    menus.forEach((item) => {
-      if (!seen.has(item.categoryId)) {
-        seen.set(item.categoryId, item.category);
-      }
-    });
-
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [menus]);
-
-  const filteredMenus = React.useMemo(() => {
-    if (categoryFilter === "All Categories") return menus;
-    return menus.filter((item) => String(item.categoryId) === categoryFilter);
-  }, [categoryFilter, menus]);
+    setPage(0);
+  }, [availabilityFilter, categoryFilter, deferredSearchTerm]);
 
   const handleExport = () => {
-    const rows = filteredMenus.map((item) => ({
+    const rows = menus.map((item) => ({
       "Menu Name": item.name,
       Category: item.category,
       Availability: getAvailabilityLabel(item.isAvailable),
@@ -173,7 +176,10 @@ export default function MenuManagementPage() {
       await updateMenuAvailability(statusItem, nextAvailability);
       await fetchMenus({
         search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
         availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
       });
       setStatusItem(null);
     } catch (error) {
@@ -198,7 +204,10 @@ export default function MenuManagementPage() {
       await deleteMenu(item.id);
       await fetchMenus({
         search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
         availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
       });
     } catch (error) {
       console.error("Error deleting menu:", error);
@@ -285,7 +294,7 @@ export default function MenuManagementPage() {
               sx={{ borderRadius: "12px" }}
             >
               <MenuItem value="All Categories">All Categories</MenuItem>
-              {categoryOptions.map((category) => (
+              {categories.map((category) => (
                 <MenuItem key={category.id} value={String(category.id)}>
                   {category.name}
                 </MenuItem>
@@ -327,8 +336,8 @@ export default function MenuManagementPage() {
                 <Skeleton variant="circular" width={32} height={32} />
               </Paper>
             ))
-          ) : filteredMenus.length !== 0 ? (
-            filteredMenus.map((item) => (
+          ) : menus.length !== 0 ? (
+            menus.map((item) => (
               <Paper
                 key={item.name}
                 onClick={() => openEditDialog(item)}
@@ -507,7 +516,7 @@ export default function MenuManagementPage() {
                   </Box>
                 </TableCell>
               </TableRow>
-            )) : filteredMenus.length !== 0 ? filteredMenus.map((item) => (
+            )) : menus.length !== 0 ? menus.map((item) => (
               <TableRow key={capitalize(item.name)}>
                 <TableCell padding="checkbox" />
                 <TableCell>
@@ -595,6 +604,23 @@ export default function MenuManagementPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalRows}
+          page={page}
+          onPageChange={(_event, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 15]}
+          labelRowsPerPage="Rows per page"
+          sx={{
+            borderTop: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          }}
+        />
       </Paper>
     </Box>
   );

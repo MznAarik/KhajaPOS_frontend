@@ -18,6 +18,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -49,6 +50,8 @@ export default function CategoryManagementPage() {
   const [deleting, setDeleting] = React.useState(false);
   const [availabilityUpdatingId, setAvailabilityUpdatingId] = React.useState<number | null>(null);
   const [error, setError] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
   const fetchCategories = React.useCallback(async () => {
@@ -66,6 +69,11 @@ export default function CategoryManagementPage() {
   React.useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  const paginatedCategories = React.useMemo(() => {
+    const start = page * rowsPerPage;
+    return categories.slice(start, start + rowsPerPage);
+  }, [categories, page, rowsPerPage]);
 
   const openCreateDialog = () => {
     setDialogState(createInitialDialogState());
@@ -118,6 +126,7 @@ export default function CategoryManagementPage() {
       }
 
       await fetchCategories();
+      setPage(0);
       setDialogOpen(false);
       setDialogState(createInitialDialogState());
     } catch (saveError) {
@@ -137,6 +146,11 @@ export default function CategoryManagementPage() {
     try {
       await deleteCategory(selectedCategory.id);
       await fetchCategories();
+      setPage((currentPage) => {
+        const nextCount = Math.max(categories.length - 1, 0);
+        const nextLastPage = Math.max(Math.ceil(nextCount / rowsPerPage) - 1, 0);
+        return Math.min(currentPage, nextLastPage);
+      });
       setDeleteDialogOpen(false);
       setSelectedCategory(null);
     } catch (deleteError) {
@@ -169,7 +183,7 @@ export default function CategoryManagementPage() {
   return (
     <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        <Box>
+        <Box sx={{ maxWidth: 760 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: "1.25rem", md: "2.125rem" } }}>
             Category Management
           </Typography>
@@ -201,10 +215,39 @@ export default function CategoryManagementPage() {
         }}
       >
         <Box sx={{ p: 2.5, borderBottom: "1px solid var(--border)" }}>
-          <Typography sx={{ fontWeight: 600 }}>Categories</Typography>
-          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem", mt: 0.5 }}>
-            Menu availability is managed at the item level. Categories are just structure, so this screen keeps them intentionally simple.
-          </Typography>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
+          >
+            <Box sx={{ maxWidth: 760 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>Categories</Typography>
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.92rem", mt: 0.75, lineHeight: 1.7 }}>
+                Menu availability is managed at the item level. Categories stay focused on structure, naming, and quick availability control.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                label={`${categories.length} Total`}
+                sx={{
+                  borderRadius: "999px",
+                  backgroundColor: "color-mix(in srgb, var(--accent) 36%, transparent)",
+                  color: "var(--foreground)",
+                  fontWeight: 700,
+                }}
+              />
+              <Chip
+                label={`${categories.filter((category) => category.isActive).length} Active`}
+                sx={{
+                  borderRadius: "999px",
+                  backgroundColor: "rgba(46, 230, 166, 0.12)",
+                  color: "#2EE6A6",
+                  fontWeight: 700,
+                }}
+              />
+            </Stack>
+          </Stack>
         </Box>
 
         <Box sx={{ display: { xs: "grid", md: "none" }, gap: 2, p: 2.5 }}>
@@ -220,8 +263,8 @@ export default function CategoryManagementPage() {
                 </Box>
               </Paper>
             ))
-          ) : categories.length ? (
-            categories.map((category) => (
+          ) : paginatedCategories.length ? (
+            paginatedCategories.map((category) => (
               <Paper key={category.id} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
                 <Stack spacing={1.5}>
                   <Box>
@@ -293,8 +336,8 @@ export default function CategoryManagementPage() {
                   </TableCell>
                 </TableRow>
               ))
-            ) : categories.length ? (
-              categories.map((category) => (
+            ) : paginatedCategories.length ? (
+              paginatedCategories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell>
                     <Typography sx={{ fontWeight: 600 }}>{capitalize(category.name)}</Typography>
@@ -336,6 +379,23 @@ export default function CategoryManagementPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={categories.length}
+          page={page}
+          onPageChange={(_event, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 15]}
+          labelRowsPerPage="Rows per page"
+          sx={{
+            borderTop: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          }}
+        />
       </Paper>
 
       <Dialog

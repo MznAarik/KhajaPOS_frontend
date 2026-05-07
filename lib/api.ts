@@ -89,6 +89,12 @@ type MenuCategoryResponse = {
 type GetMenusResponse = {
   status: number;
   data: MenuCategoryResponse[];
+  meta?: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
 };
 
 type MenuCategoryDetailResponse = {
@@ -181,23 +187,39 @@ export const getCategories = async (): Promise<CategoryOption[]> => {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
-export const getMenus = async (params?: {
+export type GetMenusParams = {
   search?: string;
-  status?: "all" | "active" | "inactive";
+  categoryId?: number;
   availability?: "all" | "available" | "unavailable";
-}): Promise<MenuRow[]> => {
+  page?: number;
+  perPage?: number;
+};
+
+export type PaginatedMenusResult = {
+  items: MenuRow[];
+  total: number;
+  currentPage: number;
+  perPage: number;
+  lastPage: number;
+};
+
+export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusResult> => {
   const search = params?.search?.trim() ?? "";
-  const status = params?.status ?? "all";
   const availability = params?.availability ?? "all";
+  const categoryId = params?.categoryId;
+  const page = params?.page ?? 1;
+  const perPage = params?.perPage ?? 10;
   const res = await api.get<GetMenusResponse>("/admin/menus", {
     params: {
       ...(search ? { search } : {}),
-      ...(status !== "all" ? { status } : {}),
+      ...(categoryId ? { category_id: categoryId } : {}),
       ...(availability !== "all" ? { availability } : {}),
+      page,
+      per_page: perPage,
     },
   });
 
-  return res.data.data
+  const items = res.data.data
     .flatMap((category) =>
       category.items.map((item) => {
         const categoryIsActive = parseAvailability(category.is_active ?? true);
@@ -230,6 +252,14 @@ export const getMenus = async (params?: {
       })
     )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return {
+    items,
+    total: res.data.meta?.total ?? items.length,
+    currentPage: res.data.meta?.current_page ?? page,
+    perPage: res.data.meta?.per_page ?? perPage,
+    lastPage: res.data.meta?.last_page ?? 1,
+  };
 };
 
 export const updateMenuAvailability = async (
