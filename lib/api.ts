@@ -8,7 +8,7 @@ export const api = axios.create({
   },
 });
 
-const getAuthTokenFromStorage = (): { token: string | null; type: string } => {
+const getAuthTokenFromStorage = (): { token: string | null; type: string } | null => {
   if (typeof document === "undefined") return null;
   const fromStorage = window.localStorage.getItem("authToken");
   const type = window.localStorage.getItem("authTokenType") ?? "Bearer";
@@ -30,6 +30,7 @@ api.interceptors.request.use((config) => {
 export type MenuRow = {
   id: number;
   categoryId: number;
+  categoryIsActive: boolean;
   name: string;
   description: string;
   category: string;
@@ -37,8 +38,31 @@ export type MenuRow = {
   prep: string;
   veg: boolean;
   isAvailable: boolean;
-  foodType: "veg" | "non-veg";
+  foodType: "veg" | "non-veg" | "egg" | "vegan";
   imageUrl: string | null;
+  createdAt: string;
+};
+
+export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
+  switch (foodType) {
+    case "veg":
+      return "Veg";
+    case "non-veg":
+      return "Non-Veg";
+    case "egg":
+      return "Egg";
+    case "vegan":
+      return "Vegan";
+    default:
+      return foodType;
+  }
+};
+
+export type CategoryOption = {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
   createdAt: string;
 };
 
@@ -46,6 +70,8 @@ type MenuCategoryResponse = {
   id: number;
   name: string;
   description: string | null;
+  is_active?: boolean | null;
+  created_at: string;
   items: Array<{
     id: number;
     category_id: number;
@@ -63,6 +89,12 @@ type MenuCategoryResponse = {
 type GetMenusResponse = {
   status: number;
   data: MenuCategoryResponse[];
+  meta?: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
 };
 
 type MenuCategoryDetailResponse = {
@@ -108,7 +140,7 @@ export type MenuEditorPayload = {
   name: string;
   description: string;
   price: string;
-  foodType: "veg" | "non-veg";
+  foodType: "veg" | "non-veg" | "egg" | "vegan";
   isAvailable: boolean;
   imageFile?: File | null;
   imageUrl?: string | null;
@@ -141,29 +173,93 @@ const buildMenuFormData = (payload: MenuEditorPayload) => {
   return formData;
 };
 
-export const getMenus = async (): Promise<MenuRow[]> => {
+export const getCategories = async (): Promise<CategoryOption[]> => {
   const res = await api.get<GetMenusResponse>("/admin/menus");
 
-  return res.data.data.flatMap((category) =>
-    category.items.map((item) => {
-      const isAvailable = parseAvailability(item.is_available ?? item.is_active ?? false);
+  return res.data.data
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description ?? "",
+      isActive: parseAvailability(category.is_active ?? true),
+      createdAt: category.created_at,
+    }))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+};
 
-      return {
-        id: item.id,
-        categoryId: category.id,
-        name: item.name,
-        description: item.description ?? category.description ?? "",
-        category: category.name,
-        price: item.price,
-        prep: "N/A",
-        veg: item.food_type === "veg",
-        isAvailable,
-        foodType: item.food_type === "veg" ? "veg" : "non-veg",
-        imageUrl: item.image_url ?? null,
-        createdAt: item.created_at,
-      };
-    })
-  );
+export type GetMenusParams = {
+  search?: string;
+  categoryId?: number;
+  availability?: "all" | "available" | "unavailable";
+  page?: number;
+  perPage?: number;
+};
+
+export type PaginatedMenusResult = {
+  items: MenuRow[];
+  total: number;
+  currentPage: number;
+  perPage: number;
+  lastPage: number;
+};
+
+export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusResult> => {
+  const search = params?.search?.trim() ?? "";
+  const availability = params?.availability ?? "all";
+  const categoryId = params?.categoryId;
+  const page = params?.page ?? 1;
+  const perPage = params?.perPage ?? 10;
+  const res = await api.get<GetMenusResponse>("/admin/menus", {
+    params: {
+      ...(search ? { search } : {}),
+      ...(categoryId ? { category_id: categoryId } : {}),
+      ...(availability !== "all" ? { availability } : {}),
+      page,
+      per_page: perPage,
+    },
+  });
+
+  const items = res.data.data
+    .flatMap((category) =>
+      category.items.map((item) => {
+        const categoryIsActive = parseAvailability(category.is_active ?? true);
+        const itemIsAvailable = parseAvailability(item.is_available ?? item.is_active ?? false);
+        const isAvailable = categoryIsActive && itemIsAvailable;
+        const normalizedFoodType = item.food_type?.toLowerCase();
+        const foodType: MenuRow["foodType"] =
+          normalizedFoodType === "veg" ||
+          normalizedFoodType === "non-veg" ||
+          normalizedFoodType === "egg" ||
+          normalizedFoodType === "vegan"
+            ? normalizedFoodType
+            : "non-veg";
+
+        return {
+          id: item.id,
+          categoryId: category.id,
+          categoryIsActive,
+          name: item.name,
+          description: item.description ?? category.description ?? "",
+          category: category.name,
+          price: item.price,
+          prep: "N/A",
+          veg: foodType === "veg",
+          isAvailable,
+          foodType,
+          imageUrl: item.image_url ?? null,
+          createdAt: item.created_at,
+        };
+      })
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return {
+    items,
+    total: res.data.meta?.total ?? items.length,
+    currentPage: res.data.meta?.current_page ?? page,
+    perPage: res.data.meta?.per_page ?? perPage,
+    lastPage: res.data.meta?.last_page ?? 1,
+  };
 };
 
 export const updateMenuAvailability = async (
@@ -203,6 +299,65 @@ export const createMenu = async (payload: MenuEditorPayload) => {
   return res.data;
 };
 
+export const createCategory = async (payload: { name: string; description?: string; isActive?: boolean }) => {
+  const res = await api.post("/admin/menus", {
+    name: payload.name.trim(),
+    description: payload.description?.trim() ?? "",
+    is_active: payload.isActive ?? true,
+  });
+
+  return res.data as {
+    status: number;
+    category?: {
+      id: number;
+      name: string;
+      description?: string | null;
+      is_active?: boolean | null;
+      created_at?: string;
+    };
+  };
+};
+
+export const updateCategory = async (payload: {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}) => {
+  const detail = await api.get<MenuCategoryDetailResponse>(`/admin/menus/${payload.id}`);
+  const category = detail.data.data;
+
+  const res = await api.put(`/admin/menus/${payload.id}`, {
+    name: payload.name.trim(),
+    description: payload.description.trim(),
+    is_active: payload.isActive,
+    items: category.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      food_type: item.food_type,
+      image_url: item.image_url ?? null,
+      is_available: item.is_available ?? item.is_active ?? false,
+    })),
+  });
+
+  return res.data;
+};
+
+export const updateCategoryAvailability = async (category: CategoryOption, isActive: boolean) => {
+  return updateCategory({
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    isActive,
+  });
+};
+
+export const deleteCategory = async (id: number) => {
+  await api.delete(`/admin/menus/${id}`);
+};
+
 export const updateMenu = async (payload: MenuEditorPayload) => {
   if (!payload.categoryId) {
     throw new Error("Category id is required for update.");
@@ -220,3 +375,6 @@ export const updateMenu = async (payload: MenuEditorPayload) => {
 export const deleteMenu = async (categoryId: number) => {
   await api.delete(`/admin/menus/${categoryId}`);
 };
+
+
+

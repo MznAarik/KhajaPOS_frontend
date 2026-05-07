@@ -10,6 +10,7 @@ import {
   InputAdornment,
   Select,
   MenuItem,
+  TablePagination,
   Table,
   TableBody,
   TableCell,
@@ -31,7 +32,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { getMenus, resolveMenuImageUrl, type MenuRow, updateMenuAvailability, deleteMenu } from "@/lib/api";
+import { deleteMenu, getCategories, getFoodTypeLabel, getMenus, resolveMenuImageUrl, type CategoryOption, type MenuRow, updateMenuAvailability } from "@/lib/api";
 import AddEditMenuDialog from "./addEdit";
 import MenuViewDialog from "./view";
 
@@ -67,20 +68,35 @@ const MenuThumb = ({ item }: { item: MenuItemType }) => {
 
 export default function MenuManagementPage() {
   const searchId = React.useId();
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const deferredSearchTerm = React.useDeferredValue(searchTerm);
+  const [availabilityFilter, setAvailabilityFilter] = React.useState<"all" | "available" | "unavailable">("all");
   const [editorItem, setEditorItem] = React.useState<MenuItemType | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [viewItem, setViewItem] = React.useState<MenuItemType | null>(null);
   const [statusItem, setStatusItem] = React.useState<MenuItemType | null>(null);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [menus, setMenus] = React.useState<MenuItemType[]>([]);
+  const [categories, setCategories] = React.useState<CategoryOption[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [categoryFilter, setCategoryFilter] = React.useState("All Categories");
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [totalRows, setTotalRows] = React.useState(0);
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
-  const fetchMenus = React.useCallback(async () => {
+  const fetchMenus = React.useCallback(async (options?: {
+    search?: string;
+    categoryId?: number;
+    availability?: "all" | "available" | "unavailable";
+    page?: number;
+    perPage?: number;
+  }) => {
     setLoading(true);
     try {
-      const data = await getMenus();
-      setMenus(data);
+      const data = await getMenus(options);
+      setMenus(data.items);
+      setTotalRows(data.total);
     } catch (error) {
       console.error("Error fetching menus:", error);
     } finally {
@@ -89,8 +105,68 @@ export default function MenuManagementPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchMenus();
-  }, [fetchMenus]);
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      fetchMenus({
+        search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
+        availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [availabilityFilter, categoryFilter, deferredSearchTerm, fetchMenus, page, rowsPerPage]);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [availabilityFilter, categoryFilter, deferredSearchTerm]);
+
+  const handleExport = () => {
+    const rows = menus.map((item) => ({
+      "Menu Name": item.name,
+      Category: item.category,
+      Availability: getAvailabilityLabel(item.isAvailable),
+      "Food Type": getFoodTypeLabel(item.foodType),
+      Price: item.price,
+      Description: item.description,
+      "Created At": new Date(item.createdAt).toLocaleString(),
+    }));
+
+    const headers = ["Menu Name", "Category", "Availability", "Food Type", "Price", "Description", "Created At"];
+    const csvLines = [
+      headers.join(","),
+      ...rows.map((row) =>
+        headers
+          .map((header) => `"${String(row[header as keyof typeof row] ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ];
+
+    const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `menu-management-${stamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleStatusChange = async (nextAvailability: boolean) => {
     if (!statusItem) return;
@@ -98,8 +174,13 @@ export default function MenuManagementPage() {
     setStatusSaving(true);
     try {
       await updateMenuAvailability(statusItem, nextAvailability);
-      const refreshedMenus = await getMenus();
-      setMenus(refreshedMenus);
+      await fetchMenus({
+        search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
+        availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
+      });
       setStatusItem(null);
     } catch (error) {
       console.error("Error updating menu availability:", error);
@@ -121,12 +202,19 @@ export default function MenuManagementPage() {
   const handleDelete = async (item: MenuItemType) => {
     try {
       await deleteMenu(item.id);
-      const refreshedMenus = await getMenus();
-      setMenus(refreshedMenus);
+      await fetchMenus({
+        search: deferredSearchTerm,
+        categoryId: categoryFilter === "All Categories" ? undefined : Number(categoryFilter),
+        availability: availabilityFilter,
+        page: page + 1,
+        perPage: rowsPerPage,
+      });
     } catch (error) {
       console.error("Error deleting menu:", error);
     }
   };
+
+
 
   return (
     <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
@@ -143,6 +231,7 @@ export default function MenuManagementPage() {
           <Button
             variant="outlined"
             startIcon={<FileDownloadOutlinedIcon />}
+            onClick={handleExport}
             sx={{
               borderRadius: "14px",
               borderColor: "var(--border)",
@@ -177,11 +266,13 @@ export default function MenuManagementPage() {
         }}
       >
         <Box sx={{ display: "grid", gap: 2, p: 2.5, borderBottom: "1px solid var(--border)" }}>
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.6fr 1fr 1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.8fr 1fr 1fr" } }}>
             <TextField
               id={searchId}
               placeholder="Search menu items..."
               size="small"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -196,14 +287,28 @@ export default function MenuManagementPage() {
                 },
               }}
             />
-            <Select size="small" defaultValue="All Categories" sx={{ borderRadius: "12px" }}>
+            <Select
+              size="small"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              sx={{ borderRadius: "12px" }}
+            >
               <MenuItem value="All Categories">All Categories</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={String(category.id)}>
+                  {category.name}
+                </MenuItem>
+              ))}
             </Select>
-            <Select size="small" defaultValue="All Status" sx={{ borderRadius: "12px" }}>
-              <MenuItem value="All Status">All Status</MenuItem>
-            </Select>
-            <Select size="small" defaultValue="All Availability" sx={{ borderRadius: "12px" }}>
-              <MenuItem value="All Availability">All Availability</MenuItem>
+            <Select
+              size="small"
+              value={availabilityFilter}
+              onChange={(event) => setAvailabilityFilter(event.target.value as "all" | "available" | "unavailable")}
+              sx={{ borderRadius: "12px" }}
+            >
+              <MenuItem value="all">All Availability</MenuItem>
+              <MenuItem value="available">Available Items</MenuItem>
+              <MenuItem value="unavailable">Unavailable Items</MenuItem>
             </Select>
           </Box>
         </Box>
@@ -310,8 +415,15 @@ export default function MenuManagementPage() {
           open={editorOpen}
           initialData={editorItem}
           onClose={() => setEditorOpen(false)}
-          onSaved={fetchMenus}
+          onSaved={() =>
+            fetchMenus({
+              search: deferredSearchTerm,
+              availability: availabilityFilter,
+            })
+          }
         />
+
+
 
         <MenuViewDialog
           open={Boolean(viewItem)}
@@ -404,7 +516,7 @@ export default function MenuManagementPage() {
                   </Box>
                 </TableCell>
               </TableRow>
-            )) : menus.length != 0 ? menus.map((item) => (
+            )) : menus.length !== 0 ? menus.map((item) => (
               <TableRow key={capitalize(item.name)}>
                 <TableCell padding="checkbox" />
                 <TableCell>
@@ -429,7 +541,7 @@ export default function MenuManagementPage() {
                 <TableCell>
                   <Typography sx={{ fontWeight: 600 }}>{capitalize(item.name)}</Typography>
                   <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                    {item.veg ? "Veg" : "Non-Veg"}
+                    {getFoodTypeLabel(item.foodType)}
                   </Typography>
                   {item.tag && (
                     <Chip
@@ -492,7 +604,25 @@ export default function MenuManagementPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalRows}
+          page={page}
+          onPageChange={(_event, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 15]}
+          labelRowsPerPage="Rows per page"
+          sx={{
+            borderTop: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          }}
+        />
       </Paper>
     </Box>
   );
 }
+

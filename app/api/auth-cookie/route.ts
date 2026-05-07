@@ -18,3 +18,14 @@ export async function POST(req: Request) {
 
   return res;
 }
+
+export async function DELETE() {
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set("authToken", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  return res;
+}
