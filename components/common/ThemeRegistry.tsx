@@ -21,36 +21,34 @@ export function useThemeToggle() {
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const [mode, setMode] = React.useState<"light" | "dark">("light");
 
-    // Load saved mode
+    // Load saved theme
     React.useEffect(() => {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light" || saved === "dark") setMode(saved);
+        const saved = localStorage.getItem("theme") as "light" | "dark" | null;
+        if (saved) {
+            setMode(saved);
+        } else {
+            // Optional: respect system preference
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            setMode(prefersDark ? "dark" : "light");
+        }
     }, []);
 
-    // Sync CSS variables and theme class
+    // Apply theme changes
     React.useEffect(() => {
         const root = document.documentElement;
+
+        root.classList.remove("light", "dark");
+        root.classList.add(mode);
         root.setAttribute("data-theme", mode);
 
-        if (mode === "dark") {
-            root.classList.add("dark");
-        } else {
-            root.classList.remove("dark");
-        }
+        localStorage.setItem("theme", mode);
     }, [mode]);
 
     const toggleMode = () => {
-        setMode((prev) => {
-            const next = prev === "light" ? "dark" : "light";
-            localStorage.setItem("theme", next);
-            return next;
-        });
+        setMode((prev) => (prev === "light" ? "dark" : "light"));
     };
 
-    const theme = React.useMemo(
-        () => createAppTheme(mode),
-        [mode]
-    );
+    const theme = React.useMemo(() => createAppTheme(mode), [mode]);
 
     return (
         <ThemeContext.Provider value={{ toggleMode, mode }}>

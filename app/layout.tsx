@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import { poppins } from "./src/fonts";
 import RootThemeProvider from "@/components/common/RootThemeProvider";
+import ThemeRegistry from "@/components/common/ThemeRegistry";
 
 export const metadata: Metadata = {
   title: "KhajaPOS",
@@ -19,7 +20,9 @@ export default function RootLayout({
       <body className={poppins.className}>
         <AppRouterCacheProvider>
           <RootThemeProvider>
-            {children}
+            <ThemeRegistry>
+              {children}
+            </ThemeRegistry>
           </RootThemeProvider>
         </AppRouterCacheProvider>
       </body>

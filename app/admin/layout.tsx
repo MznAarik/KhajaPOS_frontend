@@ -9,13 +9,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const token = await getTokenFromCookies();
 
     if (!token) {
-        redirect("/auth");
+        redirect("/auth/login");
     }
     return (
-        <ThemeRegistry>
-            <SideNavLayout>
-                {children}
-            </SideNavLayout>
-        </ThemeRegistry>
+        <SideNavLayout>
+            {children}
+        </SideNavLayout>
     );
 }

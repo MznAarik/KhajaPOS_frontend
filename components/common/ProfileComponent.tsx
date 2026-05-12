@@ -65,7 +65,7 @@ export default function ProfileComponent() {
             setIsAuthenticated(false);
             handleClose();
             setIsLoggingOut(false);
-            router.push("/auth");
+            router.push("/auth/login");
             router.refresh();
         }
     };
