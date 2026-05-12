@@ -8,7 +8,10 @@ export const api = axios.create({
   },
 });
 
-const getAuthTokenFromStorage = (): { token: string | null; type: string } | null => {
+const getAuthTokenFromStorage = (): {
+  token: string | null;
+  type: string;
+} | null => {
   if (typeof document === "undefined") return null;
   const fromStorage = window.localStorage.getItem("authToken");
   const type = window.localStorage.getItem("authTokenType") ?? "Bearer";
@@ -66,6 +69,60 @@ export type CategoryOption = {
   createdAt: string;
 };
 
+export type AdminTable = {
+  id: number;
+  tableNo: string;
+  qrCode: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type OrderStatus =
+  | "pending"
+  | "preparing"
+  | "ready"
+  | "served"
+  | "cancelled";
+
+export type KitchenOrder = {
+  id: number;
+  tableId: number;
+  tableNo: string;
+  sessionToken: string;
+  status: OrderStatus;
+  totalAmount: string;
+  remarks: string;
+  createdAt: string;
+  items: Array<{
+    id: number;
+    menuItemId: number;
+    name: string;
+    quantity: number;
+    price: string;
+  }>;
+};
+
+export type PublicMenuItem = {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  foodType: MenuRow["foodType"];
+  imageUrl: string | null;
+};
+
+export type PublicMenuCategory = {
+  id: number;
+  name: string;
+  description: string;
+  items: PublicMenuItem[];
+};
+
+export type PublicTableMenu = {
+  table: AdminTable;
+  categories: PublicMenuCategory[];
+};
+
 type MenuCategoryResponse = {
   id: number;
   name: string;
@@ -86,6 +143,14 @@ type MenuCategoryResponse = {
   }>;
 };
 
+type AdminTableResponse = {
+  id: number;
+  table_no: string;
+  qr_code: string;
+  is_active?: boolean | null;
+  created_at: string;
+};
+
 type GetMenusResponse = {
   status: number;
   data: MenuCategoryResponse[];
@@ -100,6 +165,51 @@ type GetMenusResponse = {
 type MenuCategoryDetailResponse = {
   status: number;
   data: MenuCategoryResponse;
+};
+
+type AdminTableListResponse = {
+  status: number;
+  data: AdminTableResponse[];
+};
+
+type AdminOrderResponse = {
+  id: number;
+  table_id: number;
+  session_token: string;
+  order_status: OrderStatus;
+  total_amount: string;
+  remarks: string | null;
+  created_at: string;
+  table: AdminTableResponse | null;
+  items: Array<{
+    id: number;
+    menu_item_id: number;
+    quantity: number;
+    price: string;
+    menu_item: {
+      id: number;
+      name: string;
+    } | null;
+  }>;
+};
+
+type AdminOrderListResponse = {
+  status: number;
+  data: AdminOrderResponse[];
+};
+
+type PublicMenuResponse = {
+  status: number;
+  data: {
+    table: AdminTableResponse;
+    categories: MenuCategoryResponse[];
+  };
+};
+
+type PlaceOrderResponse = {
+  status: number;
+  message: string;
+  data: AdminOrderResponse;
 };
 
 const parseAvailability = (value: unknown): boolean => {
@@ -122,15 +232,35 @@ export const resolveMenuImageUrl = (imageUrl: string | null) => {
     apiBase.replace(/\/api\/?$/i, "").replace(/\/+$/, "") ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
-  if (!siteBase) return normalizedPath.startsWith("storage/")
-    ? `/${normalizedPath}`
-    : `/storage/${normalizedPath}`;
+  if (!siteBase)
+    return normalizedPath.startsWith("storage/")
+      ? `/${normalizedPath}`
+      : `/storage/${normalizedPath}`;
 
   if (normalizedPath.startsWith("storage/")) {
     return `${siteBase}/${normalizedPath}`;
   }
 
   return `${siteBase}/storage/${normalizedPath}`;
+};
+
+const getSiteBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
+};
+
+const normalizeFoodType = (foodType: string): MenuRow["foodType"] => {
+  const normalizedFoodType = foodType?.toLowerCase();
+
+  return normalizedFoodType === "veg" ||
+    normalizedFoodType === "non-veg" ||
+    normalizedFoodType === "egg" ||
+    normalizedFoodType === "vegan"
+    ? normalizedFoodType
+    : "non-veg";
 };
 
 export type MenuEditorPayload = {
@@ -184,7 +314,148 @@ export const getCategories = async (): Promise<CategoryOption[]> => {
       isActive: parseAvailability(category.is_active ?? true),
       createdAt: category.created_at,
     }))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+};
+
+export const buildTableOrderUrl = (qrCode: string) => {
+  return `${getSiteBaseUrl()}/order/${encodeURIComponent(qrCode)}`;
+};
+
+export const buildTableQrPreviewUrl = (qrCode: string) => {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(buildTableOrderUrl(qrCode))}`;
+};
+
+export const getAdminTables = async (): Promise<AdminTable[]> => {
+  const res = await api.get<AdminTableListResponse>("/admin/tables");
+
+  return res.data.data.map((table) => ({
+    id: table.id,
+    tableNo: table.table_no,
+    qrCode: table.qr_code,
+    isActive: parseAvailability(table.is_active ?? true),
+    createdAt: table.created_at,
+  }));
+};
+
+export const createAdminTable = async (payload: {
+  tableNo: string;
+  qrCode?: string;
+  isActive?: boolean;
+}) => {
+  const res = await api.post("/admin/tables", {
+    table_no: payload.tableNo.trim(),
+    qr_code: payload.qrCode?.trim() || undefined,
+    is_active: payload.isActive ?? true,
+  });
+
+  return res.data;
+};
+
+export const updateAdminTable = async (payload: {
+  id: number;
+  tableNo: string;
+  qrCode: string;
+  isActive: boolean;
+}) => {
+  const res = await api.put(`/admin/tables/${payload.id}`, {
+    table_no: payload.tableNo.trim(),
+    qr_code: payload.qrCode.trim(),
+    is_active: payload.isActive,
+  });
+
+  return res.data;
+};
+
+export const deleteAdminTable = async (id: number) => {
+  await api.delete(`/admin/tables/${id}`);
+};
+
+const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
+  id: order.id,
+  tableId: order.table_id,
+  tableNo: order.table?.table_no ?? `Table ${order.table_id}`,
+  sessionToken: order.session_token,
+  status: order.order_status,
+  totalAmount: order.total_amount,
+  remarks: order.remarks ?? "",
+  createdAt: order.created_at,
+  items: order.items.map((item) => ({
+    id: item.id,
+    menuItemId: item.menu_item_id,
+    name: item.menu_item?.name ?? "Menu Item",
+    quantity: item.quantity,
+    price: item.price,
+  })),
+});
+
+export const getAdminOrders = async (): Promise<KitchenOrder[]> => {
+  const res = await api.get<AdminOrderListResponse>("/admin/orders");
+  return res.data.data.map(normalizeOrder);
+};
+
+export const updateAdminOrderStatus = async (
+  id: number,
+  status: OrderStatus,
+) => {
+  const res = await api.patch<{ status: number; data: AdminOrderResponse }>(
+    `/admin/orders/${id}/status`,
+    {
+      order_status: status,
+    },
+  );
+
+  return normalizeOrder(res.data.data);
+};
+
+export const getPublicMenu = async (
+  tableCode: string,
+): Promise<PublicTableMenu> => {
+  const res = await api.get<PublicMenuResponse>(
+    `/public/menu/${encodeURIComponent(tableCode)}`,
+  );
+
+  return {
+    table: {
+      id: res.data.data.table.id,
+      tableNo: res.data.data.table.table_no,
+      qrCode: res.data.data.table.qr_code,
+      isActive: parseAvailability(res.data.data.table.is_active ?? true),
+      createdAt: res.data.data.table.created_at,
+    },
+    categories: res.data.data.categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description ?? "",
+      items: category.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description ?? "",
+        price: item.price,
+        foodType: normalizeFoodType(item.food_type),
+        imageUrl: item.image_url ?? null,
+      })),
+    })),
+  };
+};
+
+export const placePublicOrder = async (payload: {
+  tableId: number;
+  remarks?: string;
+  items: Array<{ menuItemId: number; quantity: number }>;
+}) => {
+  const res = await api.post<PlaceOrderResponse>("/public/orders", {
+    table_id: payload.tableId,
+    remarks: payload.remarks?.trim() ?? "",
+    items: payload.items.map((item) => ({
+      menu_item_id: item.menuItemId,
+      quantity: item.quantity,
+    })),
+  });
+
+  return normalizeOrder(res.data.data);
 };
 
 export type GetMenusParams = {
@@ -203,7 +474,9 @@ export type PaginatedMenusResult = {
   lastPage: number;
 };
 
-export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusResult> => {
+export const getMenus = async (
+  params?: GetMenusParams,
+): Promise<PaginatedMenusResult> => {
   const search = params?.search?.trim() ?? "";
   const availability = params?.availability ?? "all";
   const categoryId = params?.categoryId;
@@ -223,16 +496,11 @@ export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusR
     .flatMap((category) =>
       category.items.map((item) => {
         const categoryIsActive = parseAvailability(category.is_active ?? true);
-        const itemIsAvailable = parseAvailability(item.is_available ?? item.is_active ?? false);
+        const itemIsAvailable = parseAvailability(
+          item.is_available ?? item.is_active ?? false,
+        );
         const isAvailable = categoryIsActive && itemIsAvailable;
-        const normalizedFoodType = item.food_type?.toLowerCase();
-        const foodType: MenuRow["foodType"] =
-          normalizedFoodType === "veg" ||
-          normalizedFoodType === "non-veg" ||
-          normalizedFoodType === "egg" ||
-          normalizedFoodType === "vegan"
-            ? normalizedFoodType
-            : "non-veg";
+        const foodType = normalizeFoodType(item.food_type);
 
         return {
           id: item.id,
@@ -249,9 +517,12 @@ export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusR
           imageUrl: item.image_url ?? null,
           createdAt: item.created_at,
         };
-      })
+      }),
     )
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 
   return {
     items,
@@ -264,9 +535,11 @@ export const getMenus = async (params?: GetMenusParams): Promise<PaginatedMenusR
 
 export const updateMenuAvailability = async (
   row: MenuRow,
-  isAvailable: boolean
+  isAvailable: boolean,
 ): Promise<MenuRow> => {
-  const detail = await api.get<MenuCategoryDetailResponse>(`/admin/menus/${row.categoryId}`);
+  const detail = await api.get<MenuCategoryDetailResponse>(
+    `/admin/menus/${row.categoryId}`,
+  );
   const category = detail.data.data;
 
   await api.put(`/admin/menus/${row.categoryId}`, {
@@ -299,7 +572,11 @@ export const createMenu = async (payload: MenuEditorPayload) => {
   return res.data;
 };
 
-export const createCategory = async (payload: { name: string; description?: string; isActive?: boolean }) => {
+export const createCategory = async (payload: {
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}) => {
   const res = await api.post("/admin/menus", {
     name: payload.name.trim(),
     description: payload.description?.trim() ?? "",
@@ -324,7 +601,9 @@ export const updateCategory = async (payload: {
   description: string;
   isActive: boolean;
 }) => {
-  const detail = await api.get<MenuCategoryDetailResponse>(`/admin/menus/${payload.id}`);
+  const detail = await api.get<MenuCategoryDetailResponse>(
+    `/admin/menus/${payload.id}`,
+  );
   const category = detail.data.data;
 
   const res = await api.put(`/admin/menus/${payload.id}`, {
@@ -345,7 +624,10 @@ export const updateCategory = async (payload: {
   return res.data;
 };
 
-export const updateCategoryAvailability = async (category: CategoryOption, isActive: boolean) => {
+export const updateCategoryAvailability = async (
+  category: CategoryOption,
+  isActive: boolean,
+) => {
   return updateCategory({
     id: category.id,
     name: category.name,
@@ -364,17 +646,18 @@ export const updateMenu = async (payload: MenuEditorPayload) => {
   }
 
   const formData = buildMenuFormData(payload);
-  const res = await api.post(`/admin/menus/${payload.categoryId}?_method=PUT`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
+  const res = await api.post(
+    `/admin/menus/${payload.categoryId}?_method=PUT`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     },
-  });
+  );
   return res.data;
 };
 
 export const deleteMenu = async (categoryId: number) => {
   await api.delete(`/admin/menus/${categoryId}`);
 };
-
-
-

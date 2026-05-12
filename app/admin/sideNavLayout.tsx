@@ -24,6 +24,8 @@ import { LayoutListIcon, LayoutListIconHandle } from "@/components/ui/layout-lis
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import ProfileComponent from "@/components/common/ProfileComponent";
+import { CoffeeIcon, CoffeeIconHandle } from "@/components/ui/coffee-icon";
+import { HouseIcon } from "@/components/ui/house-icon";
 
 const drawerWidth = 260;
 
@@ -33,27 +35,33 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     const [mobileOpen, setMobileOpen] = React.useState(false);
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
-
     const dashboardIconRef = React.useRef<DashboardIconHandle | null>(null);
     const categoryIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
+    const tablesIconRef = React.useRef<LayoutListIconHandle | null>(null);
+    const ordersIconRef = React.useRef<CoffeeIconHandle | null>(null);
 
     const navItems = [
-        { text: "Dashboard", href: "/admin/dashboard", icon: DashboardIcon, ref: dashboardIconRef },
+        { text: "Dashboard", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
         { text: "Category", href: "/admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
         { text: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+        { text: "Tables", href: "/admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+        { text: "Orders", href: "/admin/orders", icon: DashboardIcon, ref: ordersIconRef },
     ];
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Dashboard",
         menu: "Menu",
         category: "Category",
+        tables: "Tables",
         products: "Products",
         items: "Items",
+        orders: "Orders",
     };
 
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
+    const isActive = (href: string) => pathname.startsWith(href);
 
     React.useEffect(() => {
         document.title = `${pageTitle} - KhajaPOS Admin`;
@@ -96,88 +104,68 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 </Box>
             </Link>
             <List sx={{ display: "grid", gap: 1 }}>
-                {navItems.map((item) => (
-                    <ListItemButton
-                        key={item.text}
-                        disableRipple={false}
-                        disableTouchRipple={false}
-                        TouchRippleProps={{ center: false }}
-                        onClick={() => {
-                            setMobileOpen(false);
-                            router.push(item.href);
-                        }}
-                        onMouseEnter={() => {
-                            setHoveredItem(item.text);
-                            item.ref.current?.startAnimation();
-                        }}
-                        onMouseLeave={() => {
-                            setHoveredItem((current) => (current === item.text ? null : current));
-                            item.ref.current?.stopAnimation();
-                        }}
-                        sx={{
-                            border: "2px solid var(--sidebar-border)",
-                            color: "var(--sidebar-foreground)",
-                            borderRadius: "16px",
-                            cursor: "pointer",
-                            outline: "none",
-                            position: "relative",
-                            overflow: "hidden",
-                            backgroundColor:
-                                hoveredItem === item.text
-                                    ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
-                                    : "transparent ",
-                            boxShadow:
-                                hoveredItem === item.text
-                                    ? "0 14px 28px rgba(56, 75, 78, 0.14)"
-                                    : "none",
-                            transition: "all 200ms ease",
-                            "& .nav-icon": {
-                                display: "flex",
-                                alignItems: "center",
-                                transformOrigin: "center",
-                            },
-                            "& .nav-icon svg": {
-                                transition: "color 220ms ease, transform 220ms ease, filter 220ms ease",
-                            },
-                            "&:hover .nav-icon": {
-                                transform: "translateX(2px) scale(1.05)",
-                            },
-                            "&:hover .nav-icon svg": {
-                                color: "var(--sidebar-primary)",
-                                filter: "drop-shadow(0 0 10px rgba(80, 104, 107, 0.35))",
-                            },
-                            "& .MuiListItemText-primary": {
-                                transition: "color 200ms ease, transform 200ms ease",
-                            },
-                            "&:hover .MuiListItemText-primary": {
-                                color: "var(--sidebar-primary)",
-                                transform: "translateX(4px)",
-                            },
-                            "&:active": {
-                                transform: "scale(0.98)",
-                            },
-                            "&:active .nav-icon": {
-                                transform: "translateX(1px) scale(1.02)",
-                            },
-                            "&.Mui-focusVisible": {
-                                outline: "none",
-                                boxShadow: "0 0 0 2px var(--ring)",
-                            },
-                            "& *": {
+                {navItems.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                        <ListItemButton
+                            key={item.text}
+                            disableRipple={false}
+                            disableTouchRipple={false}
+                            TouchRippleProps={{ center: false }}
+                            onClick={() => {
+                                setMobileOpen(false);
+                                router.push(item.href);
+                            }}
+                            onMouseEnter={() => {
+                                setHoveredItem(item.text);
+                                item.ref.current?.startAnimation();
+                            }}
+                            onMouseLeave={() => {
+                                setHoveredItem((current) => (current === item.text ? null : current));
+                                item.ref.current?.stopAnimation();
+                            }}
+                            sx={{
+                                border: "2px solid var(--sidebar-border)",
+                                color: "var(--sidebar-foreground)",
+                                borderRadius: "16px",
                                 cursor: "pointer",
-                            },
-                        }}
-                    >
-                        <Box className="nav-icon">
-                            <item.icon
-                                ref={item.ref}
-                                size={20}
-                                className={hoveredItem === item.text ? "text--primary" : ""}
-                            />
-                        </Box>
-                        <ListItemText primary={item.text} sx={{ pl: 1.5 }} />
-                    </ListItemButton>
-                ))}
+                                position: "relative",
+                                overflow: "hidden",
+
+                                backgroundColor: active
+                                    ? "color-mix(in srgb, var(--sidebar-primary) 18%, transparent)"
+                                    : hoveredItem === item.text
+                                        ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
+                                        : "transparent",
+
+                                boxShadow: active
+                                    ? "0 14px 28px rgba(56, 75, 78, 0.25)"
+                                    : hoveredItem === item.text
+                                        ? "0 14px 28px rgba(56, 75, 78, 0.14)"
+                                        : "none",
+
+                                "& .MuiListItemText-primary": {
+                                    color: active ? "var(--sidebar-primary)" : "inherit",
+                                    fontWeight: active ? 700 : 400,
+                                    transition: "all 200ms ease",
+                                },
+
+                                "& .nav-icon svg": {
+                                    color: active ? "var(--sidebar-primary)" : "inherit",
+                                },
+                            }}
+                        >
+                            <Box className="nav-icon">
+                                <item.icon
+                                    ref={item.ref}
+                                    size={20}
+                                    className={hoveredItem === item.text ? "text--primary" : ""}
+                                />
+                            </Box>
+                            <ListItemText primary={item.text} sx={{ pl: 1.5 }} />
+                        </ListItemButton>
+                    );
+                })}
             </List>
         </Box>
     );

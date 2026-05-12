@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Box, Button, Paper, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Link, Paper, TextField, Typography } from "@mui/material";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -13,11 +13,11 @@ export default function AuthPage() {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
-  const [hasSession, setHasSession] = React.useState(false);
+    const [hasSession, setHasSession] = React.useState(false);
 
-  React.useEffect(() => {
-    setHasSession(document.cookie.includes("authToken="));
-  }, []);
+    React.useEffect(() => {
+        setHasSession(document.cookie.includes("authToken="));
+    }, []);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -109,10 +109,10 @@ export default function AuthPage() {
                     </Typography>
                 </Box>
 
-        {hasSession && !error && (
-          <Alert severity="success">Session detected. You can continue to the dashboard.</Alert>
-        )}
-        {error && <Alert severity="error">{error}</Alert>}
+                {hasSession && !error && (
+                    <Alert severity="success">Session detected. You can continue to the dashboard.</Alert>
+                )}
+                {error && <Alert severity="error">{error}</Alert>}
 
                 <TextField
                     label="Email"
@@ -131,10 +131,10 @@ export default function AuthPage() {
                     fullWidth
                 />
 
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={loading}
+                <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={loading}
                     sx={{
                         borderRadius: "12px",
                         backgroundColor: "var(--primary)",
@@ -142,19 +142,23 @@ export default function AuthPage() {
                         py: 1.2,
                     }}
                 >
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
-        {hasSession && (
-          <Button
-            variant="outlined"
-            type="button"
-            onClick={() => (window.location.href = "/admin/dashboard")}
-            sx={{ borderRadius: "12px", borderColor: "var(--border)", color: "var(--foreground)" }}
-          >
-            Go to Dashboard
-          </Button>
-        )}
-      </Paper>
+                    {loading ? "Signing in..." : "Sign in"}
+                </Button>
+                {hasSession && (
+                    <Button
+                        variant="outlined"
+                        type="button"
+                        onClick={() => (window.location.href = "/admin/dashboard")}
+                        sx={{ borderRadius: "12px", borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                        Go to Dashboard
+                    </Button>
+                )}
+                <Typography>
+                    Don't have an account?
+                    <Link href="/auth/register"><b> Sign up here!</b></Link>
+                </Typography>
+            </Paper>
         </Box>
     );
 }

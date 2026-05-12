@@ -338,7 +338,7 @@ export default function CategoryManagementPage() {
               ))
             ) : paginatedCategories.length ? (
               paginatedCategories.map((category) => (
-                <TableRow key={category.id}>
+                <TableRow sx={{ m: "500px" }} key={category.id}>
                   <TableCell>
                     <Typography sx={{ fontWeight: 600 }}>{capitalize(category.name)}</Typography>
                   </TableCell>
