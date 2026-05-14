@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   getFoodTypeLabel,
   getPublicMenu,
@@ -28,6 +28,7 @@ const getCartStorageKey = (tableCode: string) => `khajapos-cart:${tableCode}`;
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
+  const router = useRouter();
   const tableCode = params.tableCode;
 
   const [menu, setMenu] = React.useState<PublicTableMenu | null>(null);
@@ -123,7 +124,8 @@ export default function TableOrderPage() {
       setCart({});
       setRemarks("");
       window.localStorage.removeItem(getCartStorageKey(tableCode));
-      setMessage(`Order #${order.id} placed successfully. Current status: ${order.status}.`);
+      router.push(`/order/track/${order.sessionToken}`);
+      return;
     } catch (error) {
       console.error("Failed to place order:", error);
       setMessage("We couldn't place your order. Please try again.");
