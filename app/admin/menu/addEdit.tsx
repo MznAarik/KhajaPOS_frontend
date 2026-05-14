@@ -142,7 +142,7 @@ export default function AddEditMenuDialog({
         };
 
         try {
-            if (initialData || categoryId) {
+            if (initialData) {
                 await updateMenu(payload);
             } else {
                 await createMenu(payload);

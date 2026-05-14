@@ -3,8 +3,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export const api = axios.create({
   baseURL: API_BASE,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
 });
 
@@ -21,12 +23,15 @@ const getAuthTokenFromStorage = (): {
 };
 
 api.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {};
+  config.headers.Accept = "application/json";
+
   const auth = getAuthTokenFromStorage();
+
   if (auth?.token) {
-    config.headers = config.headers ?? {};
     config.headers.Authorization = `${auth.type} ${auth.token}`;
-    config.headers.Accept = "application/json";
   }
+
   return config;
 });
 
@@ -64,9 +69,26 @@ export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
 export type CategoryOption = {
   id: number;
   name: string;
-  description: string;
   isActive: boolean;
   createdAt: string;
+};
+
+type CategoryResponse = {
+  id: number;
+  name: string;
+  is_active?: boolean | null;
+  created_at: string;
+};
+
+type CategoryListResponse = {
+  status: number;
+  data: CategoryResponse[];
+};
+
+type CategoryDetailResponse = {
+  status: number;
+  data?: CategoryResponse;
+  category?: CategoryResponse;
 };
 
 export type AdminTable = {
@@ -79,10 +101,20 @@ export type AdminTable = {
 
 export type OrderStatus =
   | "pending"
+  | "confirmed"
   | "preparing"
   | "ready"
   | "served"
   | "cancelled";
+
+export const isOrderLocked = (status: OrderStatus) =>
+  status === "served" || status === "cancelled";
+
+export const canCustomerConfirmOrder = (status: OrderStatus) =>
+  status === "pending";
+
+export const canCustomerCancelOrder = (status: OrderStatus) =>
+  status === "pending";
 
 export type KitchenOrder = {
   id: number;
@@ -126,7 +158,7 @@ export type PublicTableMenu = {
 type MenuCategoryResponse = {
   id: number;
   name: string;
-  description: string | null;
+  description?: string | null;
   is_active?: boolean | null;
   created_at: string;
   items: Array<{
@@ -212,6 +244,12 @@ type PlaceOrderResponse = {
   data: AdminOrderResponse;
 };
 
+type PublicOrderResponse = {
+  status: number;
+  message?: string;
+  data: AdminOrderResponse;
+};
+
 const parseAvailability = (value: unknown): boolean => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
@@ -278,46 +316,37 @@ export type MenuEditorPayload = {
 
 const buildMenuFormData = (payload: MenuEditorPayload) => {
   const formData = new FormData();
-  formData.append("name", payload.categoryName);
-  formData.append("description", "");
-  formData.append("is_active", "1");
 
-  if (payload.itemId) {
-    formData.append("items[0][id]", String(payload.itemId));
+  if (payload.categoryId) {
+    formData.append("category_id", String(payload.categoryId));
   }
 
-  formData.append("items[0][name]", payload.name);
-  formData.append("items[0][description]", payload.description);
-  formData.append("items[0][price]", payload.price);
-  formData.append("items[0][food_type]", payload.foodType);
-  formData.append("items[0][is_available]", payload.isAvailable ? "1" : "0");
+  formData.append("name", payload.name);
+  formData.append("description", payload.description);
+  formData.append("price", payload.price);
+  formData.append("food_type", payload.foodType);
+  formData.append("is_available", payload.isAvailable ? "1" : "0");
 
   if (payload.imageUrl) {
-    formData.append("items[0][image_url]", payload.imageUrl);
+    formData.append("image_url", payload.imageUrl);
   }
 
   if (payload.imageFile) {
-    formData.append("items[0][image]", payload.imageFile);
+    formData.append("image", payload.imageFile);
   }
 
   return formData;
 };
 
 export const getCategories = async (): Promise<CategoryOption[]> => {
-  const res = await api.get<GetMenusResponse>("/admin/menus");
+  const res = await api.get<CategoryListResponse>("/admin/categories");
 
-  return res.data.data
-    .map((category) => ({
-      id: category.id,
-      name: category.name,
-      description: category.description ?? "",
-      isActive: parseAvailability(category.is_active ?? true),
-      createdAt: category.created_at,
-    }))
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  return res.data.data.map((category) => ({
+    id: category.id,
+    name: category.name,
+    isActive: parseAvailability(category.is_active ?? true),
+    createdAt: category.created_at,
+  }));
 };
 
 export const buildTableOrderUrl = (qrCode: string) => {
@@ -458,6 +487,21 @@ export const placePublicOrder = async (payload: {
   return normalizeOrder(res.data.data);
 };
 
+export const getPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
+  const res = await api.get<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}`);
+  return normalizeOrder(res.data.data);
+};
+
+export const confirmPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
+  const res = await api.patch<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}/confirm`);
+  return normalizeOrder(res.data.data);
+};
+
+export const cancelPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
+  const res = await api.patch<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}/cancel`);
+  return normalizeOrder(res.data.data);
+};
+
 export type GetMenusParams = {
   search?: string;
   categoryId?: number;
@@ -564,7 +608,7 @@ export const updateMenuAvailability = async (
 
 export const createMenu = async (payload: MenuEditorPayload) => {
   const formData = buildMenuFormData(payload);
-  const res = await api.post("/admin/menus", formData, {
+  const res = await api.post("/admin/menus/items", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -574,51 +618,24 @@ export const createMenu = async (payload: MenuEditorPayload) => {
 
 export const createCategory = async (payload: {
   name: string;
-  description?: string;
   isActive?: boolean;
 }) => {
-  const res = await api.post("/admin/menus", {
+  const res = await api.post<CategoryDetailResponse>("/admin/categories", {
     name: payload.name.trim(),
-    description: payload.description?.trim() ?? "",
     is_active: payload.isActive ?? true,
   });
 
-  return res.data as {
-    status: number;
-    category?: {
-      id: number;
-      name: string;
-      description?: string | null;
-      is_active?: boolean | null;
-      created_at?: string;
-    };
-  };
+  return res.data;
 };
 
 export const updateCategory = async (payload: {
   id: number;
   name: string;
-  description: string;
   isActive: boolean;
 }) => {
-  const detail = await api.get<MenuCategoryDetailResponse>(
-    `/admin/menus/${payload.id}`,
-  );
-  const category = detail.data.data;
-
-  const res = await api.put(`/admin/menus/${payload.id}`, {
+  const res = await api.put<CategoryDetailResponse>(`/admin/categories/${payload.id}`, {
     name: payload.name.trim(),
-    description: payload.description.trim(),
     is_active: payload.isActive,
-    items: category.items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      food_type: item.food_type,
-      image_url: item.image_url ?? null,
-      is_available: item.is_available ?? item.is_active ?? false,
-    })),
   });
 
   return res.data;
@@ -631,33 +648,31 @@ export const updateCategoryAvailability = async (
   return updateCategory({
     id: category.id,
     name: category.name,
-    description: category.description,
     isActive,
   });
 };
 
 export const deleteCategory = async (id: number) => {
-  await api.delete(`/admin/menus/${id}`);
+  await api.delete(`/admin/categories/${id}`);
 };
 
 export const updateMenu = async (payload: MenuEditorPayload) => {
-  if (!payload.categoryId) {
-    throw new Error("Category id is required for update.");
+  if (!payload.categoryId || !payload.itemId) {
+    throw new Error("Category id and item id are required for update.");
   }
 
   const formData = buildMenuFormData(payload);
-  const res = await api.post(
-    `/admin/menus/${payload.categoryId}?_method=PUT`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+  formData.append("_method", "PUT");
+
+  const res = await api.post(`/admin/menus/items/${payload.itemId}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
     },
-  );
+  });
   return res.data;
 };
 
-export const deleteMenu = async (categoryId: number) => {
-  await api.delete(`/admin/menus/${categoryId}`);
+export const deleteMenu = async (menuId: number) => {
+  await api.delete(`/admin/menus/items/${menuId}`);
 };
+

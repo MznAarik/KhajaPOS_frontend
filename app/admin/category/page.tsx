@@ -31,12 +31,10 @@ import { createCategory, deleteCategory, getCategories, type CategoryOption, upd
 type CategoryDialogState = {
   id?: number;
   name: string;
-  description: string;
 };
 
 const createInitialDialogState = (): CategoryDialogState => ({
   name: "",
-  description: "",
 });
 
 export default function CategoryManagementPage() {
@@ -85,7 +83,6 @@ export default function CategoryManagementPage() {
     setDialogState({
       id: category.id,
       name: category.name,
-      description: category.description,
     });
     setError("");
     setDialogOpen(true);
@@ -114,13 +111,11 @@ export default function CategoryManagementPage() {
         await updateCategory({
           id: dialogState.id,
           name: trimmedName,
-          description: dialogState.description,
           isActive: existingCategory?.isActive ?? true,
         });
       } else {
         await createCategory({
           name: trimmedName,
-          description: dialogState.description,
           isActive: true,
         });
       }
@@ -139,23 +134,20 @@ export default function CategoryManagementPage() {
 
   const handleDelete = async () => {
     if (!selectedCategory) return;
-
     setDeleting(true);
-    setError("");
-
     try {
       await deleteCategory(selectedCategory.id);
-      await fetchCategories();
-      setPage((currentPage) => {
-        const nextCount = Math.max(categories.length - 1, 0);
-        const nextLastPage = Math.max(Math.ceil(nextCount / rowsPerPage) - 1, 0);
-        return Math.min(currentPage, nextLastPage);
-      });
+      const updatedCategories = categories.filter(c => c.id !== selectedCategory.id);
+      setCategories(updatedCategories);
+
+      const totalPages = Math.ceil(updatedCategories.length / rowsPerPage);
+      if (page >= totalPages && page > 0) {
+        setPage(page - 1);
+      }
+
       setDeleteDialogOpen(false);
-      setSelectedCategory(null);
-    } catch (deleteError) {
-      console.error("Failed to delete category:", deleteError);
-      setError("Failed to delete category. Please try again.");
+    } catch (err) {
+      setError("Failed to delete.");
     } finally {
       setDeleting(false);
     }
@@ -269,9 +261,6 @@ export default function CategoryManagementPage() {
                 <Stack spacing={1.5}>
                   <Box>
                     <Typography sx={{ fontWeight: 600 }}>{category.name}</Typography>
-                    <Typography sx={{ color: "var(--foreground)", fontSize: "0.88rem", mt: 0.4 }}>
-                      {category.description || "No description added yet."}
-                    </Typography>
                     <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
                       Created {new Date(category.createdAt).toLocaleDateString()}
                     </Typography>
@@ -314,7 +303,6 @@ export default function CategoryManagementPage() {
           <TableHead>
             <TableRow sx={{ backgroundColor: "var(--background)" }}>
               <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
               <TableCell>Is Available</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell align="center">Actions</TableCell>
@@ -325,7 +313,6 @@ export default function CategoryManagementPage() {
               skeletonRows.map((row) => (
                 <TableRow key={`desktop-category-skeleton-${row}`}>
                   <TableCell><Skeleton variant="text" width="70%" height={28} /></TableCell>
-                  <TableCell><Skeleton variant="text" width="85%" height={24} /></TableCell>
                   <TableCell><Skeleton variant="rounded" width={98} height={26} sx={{ borderRadius: "999px" }} /></TableCell>
                   <TableCell><Skeleton variant="text" width="55%" height={24} /></TableCell>
                   <TableCell align="center">
@@ -341,9 +328,6 @@ export default function CategoryManagementPage() {
                 <TableRow sx={{ m: "500px" }} key={category.id}>
                   <TableCell>
                     <Typography sx={{ fontWeight: 600 }}>{capitalize(category.name)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{category.description || "N/A"}</Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -418,14 +402,6 @@ export default function CategoryManagementPage() {
               onChange={(event) => setDialogState((current) => ({ ...current, name: event.target.value }))}
               fullWidth
               autoFocus
-            />
-            <TextField
-              label="Description"
-              value={dialogState.description}
-              onChange={(event) => setDialogState((current) => ({ ...current, description: event.target.value }))}
-              fullWidth
-              multiline
-              minRows={3}
             />
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
               Keep category names short and reusable. You can update availability directly from the table whenever needed.
