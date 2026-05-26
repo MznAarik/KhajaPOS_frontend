@@ -4,6 +4,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import { poppins } from "./src/fonts";
 import RootThemeProvider from "@/components/common/RootThemeProvider";
 import ThemeRegistry from "@/components/common/ThemeRegistry";
+import { SnackbarProviderCustom } from "@/components/common/SnackBar";
 
 export const metadata: Metadata = {
   title: "KhajaPOS",
@@ -21,7 +22,9 @@ export default function RootLayout({
         <AppRouterCacheProvider>
           <RootThemeProvider>
             <ThemeRegistry>
-              {children}
+              <SnackbarProviderCustom>
+                {children}
+              </SnackbarProviderCustom>
             </ThemeRegistry>
           </RootThemeProvider>
         </AppRouterCacheProvider>

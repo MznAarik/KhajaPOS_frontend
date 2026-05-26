@@ -45,6 +45,8 @@ import {
   type MenuRow,
   updateMenuAvailability,
 } from "@/lib/api";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 import AddEditMenuDialog from "./addEdit";
 import MenuViewDialog from "./view";
@@ -78,6 +80,112 @@ const MenuThumb = ({ item }: { item: MenuItemType }) => {
 
   return <>{item.veg ? "V" : "NV"}</>;
 };
+
+const MenuMobileCard = ({
+  item,
+  onView,
+  onEdit,
+  onDelete,
+  onToggleAvailability,
+  updatingStatusId,
+}: {
+  item: MenuItemType;
+  onView: (item: MenuItemType) => void;
+  onEdit: (item: MenuItemType) => void;
+  onDelete: (item: MenuItemType) => void;
+  onToggleAvailability: (item: MenuItemType) => void;
+  updatingStatusId: number | null;
+}) => (
+  <Paper
+    sx={{
+      p: 2,
+      borderRadius: "18px",
+      border: "1px solid var(--border)",
+      backgroundColor: "var(--card)",
+    }}
+  >
+    <Stack spacing={1.75}>
+      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+        <Box
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: "14px",
+            overflow: "hidden",
+            backgroundColor: "var(--background)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <MenuThumb item={item} />
+        </Box>
+
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+            {capitalize(item.name)}
+          </Typography>
+          <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 0.25 }}>
+            {capitalize(item.category)}
+          </Typography>
+          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)", mt: 0.25 }}>
+            {getFoodTypeLabel(item.foodType)} | {item.price}
+          </Typography>
+        </Box>
+      </Stack>
+
+      <Typography
+        sx={{
+          fontSize: "0.88rem",
+          color: "var(--muted-foreground)",
+          lineHeight: 1.55,
+        }}
+      >
+        {item.description || "No description provided."}
+      </Typography>
+
+      <Chip
+        label={
+          updatingStatusId === item.id
+            ? "Updating..."
+            : getAvailabilityLabel(item.isAvailable)
+        }
+        size="small"
+        onClick={() => onToggleAvailability(item)}
+        sx={{
+          width: "fit-content",
+          backgroundColor:
+            updatingStatusId === item.id
+              ? "#e5e7eb"
+              : item.isAvailable
+                ? "rgba(46, 230, 166, 0.12)"
+                : "rgba(255, 90, 122, 0.12)",
+          color:
+            updatingStatusId === item.id
+              ? "#6b7280"
+              : item.isAvailable
+                ? "#2EE6A6"
+                : "#FF5A7A",
+          fontWeight: 700,
+          cursor: updatingStatusId === item.id ? "wait" : "pointer",
+        }}
+      />
+
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Button variant="outlined" size="small" onClick={() => onView(item)} sx={{ borderRadius: "12px" }}>
+          View
+        </Button>
+        <Button variant="outlined" size="small" onClick={() => onEdit(item)} sx={{ borderRadius: "12px" }}>
+          Edit
+        </Button>
+        <Button variant="outlined" size="small" color="error" onClick={() => onDelete(item)} sx={{ borderRadius: "12px" }}>
+          Delete
+        </Button>
+      </Stack>
+    </Stack>
+  </Paper>
+);
 
 export default function MenuManagementPage() {
   const searchId = React.useId();
@@ -113,6 +221,7 @@ export default function MenuManagementPage() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [totalRows, setTotalRows] = React.useState(0);
+  const { showSnackbar } = useAppSnackbar();
 
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
@@ -133,6 +242,7 @@ export default function MenuManagementPage() {
         setTotalRows(data.total);
       } catch (error) {
         console.error("Error fetching menus:", error);
+        showSnackbar(safeError(error, "Unable to load menu items."), "error");
       } finally {
         setLoading(false);
       }
@@ -147,6 +257,7 @@ export default function MenuManagementPage() {
         setCategories(data);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        showSnackbar(safeError(error, "Unable to load categories."), "warning");
       }
     };
 
@@ -255,6 +366,10 @@ export default function MenuManagementPage() {
       );
 
       await updateMenuAvailability(item, nextAvailability);
+      showSnackbar(
+        `${item.name} has been ${nextAvailability ? "marked available" : "marked unavailable"}.`,
+        "warning"
+      );
 
       await fetchMenus({
         search: deferredSearchTerm,
@@ -312,8 +427,10 @@ export default function MenuManagementPage() {
         page: page + 1,
         perPage: rowsPerPage,
       });
+      showSnackbar(`${item.name} has been deleted successfully.`, "success");
     } catch (error) {
       console.error("Error deleting menu:", error);
+      showSnackbar(safeError(error, "Failed to delete menu item."), "error");
     }
   };
 
@@ -489,6 +606,84 @@ export default function MenuManagementPage() {
               </MenuItem>
             </Select>
           </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: { xs: "grid", md: "none" },
+            gap: 2,
+            p: 2.5,
+          }}
+        >
+          {loading ? (
+            skeletonRows.map((item) => (
+              <Paper
+                key={`mobile-menu-skeleton-${item}`}
+                sx={{
+                  p: 2,
+                  borderRadius: "18px",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1.5}>
+                    <Skeleton variant="rounded" width={56} height={56} />
+                    <Box sx={{ flex: 1 }}>
+                      <Skeleton variant="text" width="60%" height={28} />
+                      <Skeleton variant="text" width="40%" height={20} />
+                      <Skeleton variant="text" width="35%" height={20} />
+                    </Box>
+                  </Stack>
+                  <Skeleton variant="text" width="100%" height={22} />
+                  <Skeleton variant="rounded" width={120} height={28} sx={{ borderRadius: "999px" }} />
+                  <Stack direction="row" spacing={1}>
+                    <Skeleton variant="rounded" width={72} height={34} sx={{ borderRadius: "12px" }} />
+                    <Skeleton variant="rounded" width={72} height={34} sx={{ borderRadius: "12px" }} />
+                    <Skeleton variant="rounded" width={72} height={34} sx={{ borderRadius: "12px" }} />
+                  </Stack>
+                </Stack>
+              </Paper>
+            ))
+          ) : menus.length ? (
+            menus.map((item) => (
+              <MenuMobileCard
+                key={item.id}
+                item={item}
+                onView={(menuItem) => setViewItem(menuItem)}
+                onEdit={openEditDialog}
+                onDelete={handleDelete}
+              onToggleAvailability={async (menuItem) => {
+                  try {
+                    setUpdatingStatusId(menuItem.id);
+                    await updateMenuAvailability(menuItem, !menuItem.isAvailable);
+                    setMenus((prev) =>
+                      prev.map((menu) =>
+                        menu.id === menuItem.id
+                          ? { ...menu, isAvailable: !menu.isAvailable }
+                          : menu
+                      )
+                    );
+                    showSnackbar(
+                      `${menuItem.name} has been ${
+                        !menuItem.isAvailable ? "marked available" : "marked unavailable"
+                      }.`,
+                      "warning"
+                    );
+                  } catch (error) {
+                    console.error("Error updating menu availability:", error);
+                    showSnackbar(safeError(error, "Failed to update menu availability."), "error");
+                  } finally {
+                    setUpdatingStatusId(null);
+                  }
+                }}
+                updatingStatusId={updatingStatusId}
+              />
+            ))
+          ) : (
+            <Typography sx={{ textAlign: "center", color: "var(--muted-foreground)" }}>
+              No menu items found.
+            </Typography>
+          )}
         </Box>
 
         {/* DIALOGS */}
@@ -725,18 +920,25 @@ export default function MenuManagementPage() {
                           setMenus((prev) =>
                             prev.map((menu) =>
                               menu.id === item.id
-                                ? {
-                                  ...menu,
-                                  isAvailable: !menu.isAvailable,
-                                }
+                          ? {
+                              ...menu,
+                              isAvailable: !menu.isAvailable,
+                            }
                                 : menu
                             )
+                          );
+                          showSnackbar(
+                            `${item.name} has been ${
+                              !item.isAvailable ? "marked available" : "marked unavailable"
+                            }.`,
+                            "warning"
                           );
                         } catch (error) {
                           console.error(
                             "Error updating menu availability:",
                             error
                           );
+                          showSnackbar(safeError(error, "Failed to update menu availability."), "error");
                         } finally {
                           setUpdatingStatusId(null);
                         }
