@@ -23,13 +23,22 @@ type RecentOrderSummary = {
   createdAt: string;
 };
 
-export default function RecentOrderClient({ tableCode }: { tableCode: string }) {
+export default function RecentOrderClient({ tableCode: initialTableCode }: { tableCode: string }) {
   const router = useRouter();
   const { showSnackbar } = useAppSnackbar();
+  const [tableCode, setTableCode] = React.useState(initialTableCode);
 
   const [orders, setOrders] = React.useState<RecentOrderSummary[]>([]);
   const [statuses, setStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
   const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (initialTableCode) return;
+
+    const search = new URLSearchParams(window.location.search);
+    const nextTableCode = search.get("tableCode") ?? "";
+    setTableCode(nextTableCode);
+  }, [initialTableCode]);
 
   const loadOrders = React.useCallback(() => {
     if (!tableCode) {
