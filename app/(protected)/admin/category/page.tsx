@@ -27,6 +27,8 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { createCategory, deleteCategory, getCategories, type CategoryOption, updateCategory, updateCategoryAvailability } from "@/lib/api";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 type CategoryDialogState = {
   id?: number;
@@ -51,6 +53,7 @@ export default function CategoryManagementPage() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
+  const { showSnackbar } = useAppSnackbar();
 
   const fetchCategories = React.useCallback(async () => {
     setLoading(true);
@@ -59,6 +62,7 @@ export default function CategoryManagementPage() {
       setCategories(data);
     } catch (loadError) {
       console.error("Failed to fetch categories:", loadError);
+      showSnackbar(safeError(loadError, "Unable to load categories."), "error");
     } finally {
       setLoading(false);
     }
@@ -124,9 +128,18 @@ export default function CategoryManagementPage() {
       setPage(0);
       setDialogOpen(false);
       setDialogState(createInitialDialogState());
+      const categoryLabel = trimmedName || "Category";
+      showSnackbar(
+        dialogState.id
+          ? `${categoryLabel} has been updated successfully.`
+          : `${categoryLabel} has been created successfully.`,
+        "success"
+      );
     } catch (saveError) {
       console.error("Failed to save category:", saveError);
-      setError("Failed to save category. Please try again.");
+      const message = safeError(saveError, "Failed to save category. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setSaving(false);
     }
@@ -146,8 +159,11 @@ export default function CategoryManagementPage() {
       }
 
       setDeleteDialogOpen(false);
+      showSnackbar(`${selectedCategory.name} has been deleted successfully.`, "success");
     } catch (err) {
-      setError("Failed to delete.");
+      const message = safeError(err, "Failed to delete.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setDeleting(false);
     }
@@ -164,9 +180,15 @@ export default function CategoryManagementPage() {
           item.id === category.id ? { ...item, isActive: nextAvailability } : item
         )
       );
+      showSnackbar(
+        `${category.name} has been ${nextAvailability ? "activated" : "disabled"}.`,
+        "warning"
+      );
     } catch (updateError) {
       console.error("Failed to update category availability:", updateError);
-      setError("Failed to update category availability. Please try again.");
+      const message = safeError(updateError, "Failed to update category availability. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setAvailabilityUpdatingId(null);
     }

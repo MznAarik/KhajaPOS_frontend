@@ -28,6 +28,8 @@ import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 import {
   buildTableOrderUrl,
@@ -76,6 +78,7 @@ export default function TablesPage() {
   const [updatingTables, setUpdatingTables] = React.useState<Set<number>>(
     new Set()
   );
+  const { showSnackbar } = useAppSnackbar();
 
   const fetchTables = React.useCallback(async () => {
     setLoading(true);
@@ -85,7 +88,9 @@ export default function TablesPage() {
       setTables(data);
     } catch (loadError) {
       console.error("Failed to load tables:", loadError);
-      setError("Unable to load tables right now.");
+      const message = safeError(loadError, "Unable to load tables right now.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setLoading(false);
     }
@@ -147,9 +152,17 @@ export default function TablesPage() {
 
       setDialogOpen(false);
       setDialogState(createInitialState());
+      showSnackbar(
+        dialogState.id
+          ? `Table ${dialogState.tableNo} has been updated successfully.`
+          : `Table ${dialogState.tableNo} has been created successfully.`,
+        "success"
+      );
     } catch (saveError) {
       console.error("Failed to save table:", saveError);
-      setError("Failed to save table. Please try again.");
+      const message = safeError(saveError, "Failed to save table. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setSaving(false);
     }
@@ -168,9 +181,12 @@ export default function TablesPage() {
 
       setDeleteOpen(false);
       setSelectedTable(null);
+      showSnackbar(`Table ${selectedTable.tableNo} has been deleted successfully.`, "success");
     } catch (deleteError) {
       console.error("Failed to delete table:", deleteError);
-      setError("Failed to delete table. Please try again.");
+      const message = safeError(deleteError, "Failed to delete table. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setSaving(false);
     }
@@ -192,9 +208,15 @@ export default function TablesPage() {
       });
 
       await fetchTables();
+      showSnackbar(
+        `Table ${table.tableNo} has been ${table.isActive ? "disabled" : "enabled"}.`,
+        "warning"
+      );
     } catch (toggleError) {
       console.error("Failed to toggle active state:", toggleError);
-      setError("Failed to update table status. Please try again.");
+      const message = safeError(toggleError, "Failed to update table status. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
     } finally {
       setUpdatingTables((prev) => {
         const next = new Set(prev);

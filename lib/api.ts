@@ -35,6 +35,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export async function apiFetch(url: string, options: RequestInit = {}) {
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include",
+  });
+
+  if (res.status === 401) {
+    window.location.href = "/auth/login?message=Session expired";
+    return;
+  }
+
+  return res;
+}
+
 export type MenuRow = {
   id: number;
   categoryId: number;
@@ -259,6 +273,29 @@ const parseAvailability = (value: unknown): boolean => {
   }
   return false;
 };
+
+export async function apiRequest<T>(
+  input: RequestInfo,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(input, init);
+
+  let data: any = null;
+
+  try {
+    data = await res.json();
+  } catch {
+    // ignore JSON parse errors
+  }
+
+  if (!res.ok) {
+    const message = data?.message || data?.error || "Something went wrong";
+
+    throw new Error(message);
+  }
+
+  return data;
+}
 
 export const resolveMenuImageUrl = (imageUrl: string | null) => {
   if (!imageUrl) return null;
@@ -487,18 +524,30 @@ export const placePublicOrder = async (payload: {
   return normalizeOrder(res.data.data);
 };
 
-export const getPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
-  const res = await api.get<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}`);
+export const getPublicOrder = async (
+  sessionToken: string,
+): Promise<KitchenOrder> => {
+  const res = await api.get<PublicOrderResponse>(
+    `/public/orders/${encodeURIComponent(sessionToken)}`,
+  );
   return normalizeOrder(res.data.data);
 };
 
-export const confirmPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
-  const res = await api.patch<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}/confirm`);
+export const confirmPublicOrder = async (
+  sessionToken: string,
+): Promise<KitchenOrder> => {
+  const res = await api.patch<PublicOrderResponse>(
+    `/public/orders/${encodeURIComponent(sessionToken)}/confirm`,
+  );
   return normalizeOrder(res.data.data);
 };
 
-export const cancelPublicOrder = async (sessionToken: string): Promise<KitchenOrder> => {
-  const res = await api.patch<PublicOrderResponse>(`/public/orders/${encodeURIComponent(sessionToken)}/cancel`);
+export const cancelPublicOrder = async (
+  sessionToken: string,
+): Promise<KitchenOrder> => {
+  const res = await api.patch<PublicOrderResponse>(
+    `/public/orders/${encodeURIComponent(sessionToken)}/cancel`,
+  );
   return normalizeOrder(res.data.data);
 };
 
@@ -633,10 +682,13 @@ export const updateCategory = async (payload: {
   name: string;
   isActive: boolean;
 }) => {
-  const res = await api.put<CategoryDetailResponse>(`/admin/categories/${payload.id}`, {
-    name: payload.name.trim(),
-    is_active: payload.isActive,
-  });
+  const res = await api.put<CategoryDetailResponse>(
+    `/admin/categories/${payload.id}`,
+    {
+      name: payload.name.trim(),
+      is_active: payload.isActive,
+    },
+  );
 
   return res.data;
 };
@@ -675,4 +727,3 @@ export const updateMenu = async (payload: MenuEditorPayload) => {
 export const deleteMenu = async (menuId: number) => {
   await api.delete(`/admin/menus/items/${menuId}`);
 };
-

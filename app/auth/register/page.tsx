@@ -25,6 +25,8 @@ import {
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 const businessTypes = [
     "restaurant",
@@ -56,6 +58,7 @@ export default function RegisterPage() {
     });
 
     const router = useRouter();
+    const { showSnackbar } = useAppSnackbar();
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
@@ -90,18 +93,14 @@ export default function RegisterPage() {
                 formData
             );
 
-            console.log(res.data);
-
-            alert("Registration successful");
+            showSnackbar("Registration successful", "success");
 
             router.push("/auth/login");
 
         } catch (error: any) {
             console.error(error?.response?.data || error);
-
-            alert(
-                error?.response?.data?.message || "Registration failed"
-            );
+            const message = safeError(error, "Registration failed");
+            showSnackbar(message, "error");
         } finally {
             setLoading(false);
         }
