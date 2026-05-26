@@ -80,6 +80,63 @@ export const SnackbarProviderCustom = ({
         };
     }, [mode, severity]);
 
+    const alertSx = {
+        width: "100%",
+        alignItems: "center",
+        display: "flex",
+        justifyContent: "space-between",
+        borderRadius: { xs: 2, sm: 3 },
+        border: `1px solid ${palette.border}`,
+        background: `linear-gradient(135deg, ${palette.surface}, ${palette.accentSoft})`,
+        color: palette.text,
+        boxShadow: palette.shadow,
+        backdropFilter: "blur(18px)",
+        minWidth: 0,
+        gap: 1,
+        px: { xs: 1.25, sm: 2 },
+        py: { xs: 1, sm: 1.35 },
+        "& .MuiAlert-message": {
+            flex: 1,
+            fontWeight: 500,
+            fontSize: { xs: "0.88rem", sm: "0.95rem" },
+            lineHeight: 1.45,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+            pr: 1,
+            alignSelf: "center",
+        },
+        "& .MuiAlert-action": {
+            alignItems: "center",
+            pt: 0,
+            ml: "auto",
+            mr: 0.5,
+            mt: 0,
+            flexShrink: 0,
+        },
+        "& .MuiAlert-icon": {
+            py: 0.25,
+            mr: 1,
+            alignSelf: "center",
+        },
+        "& .MuiSvgIcon-root": {
+            color: palette.accent,
+        },
+        "&.MuiAlert-standardWarning": {
+            borderColor: alpha(palette.warningAccent, mode === "dark" ? 0.78 : 0.65),
+            background:
+                mode === "dark"
+                    ? "linear-gradient(135deg, rgba(122, 92, 8, 0.98), rgba(57, 41, 8, 0.98))"
+                    : "linear-gradient(135deg, rgba(255, 245, 186, 1), rgba(253, 224, 71, 0.96))",
+            color: mode === "dark" ? "#fffdf2" : "#5f4300",
+            boxShadow:
+                mode === "dark"
+                    ? "0 18px 42px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.08)"
+                    : "0 18px 42px rgba(120,90,0,0.18), inset 0 1px 0 rgba(255,255,255,0.55)",
+        },
+    } as any;
+
     return (
         <SnackbarContext.Provider value={{ showSnackbar }}>
             {children}
@@ -127,63 +184,7 @@ export const SnackbarProviderCustom = ({
                             <CloseRoundedIcon fontSize="small" />
                         </IconButton>
                     }
-                    sx={{
-                        width: "100%",
-                        alignItems: "center",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        borderRadius: { xs: 2, sm: 3 },
-                        border: `1px solid ${palette.border}`,
-                        background:
-                            `linear-gradient(135deg, ${palette.surface}, ${palette.accentSoft})`,
-                        color: palette.text,
-                        boxShadow: palette.shadow,
-                        backdropFilter: "blur(18px)",
-                        minWidth: 0,
-                        gap: 1,
-                        px: { xs: 1.25, sm: 2 },
-                        py: { xs: 1, sm: 1.35 },
-                        "& .MuiAlert-message": {
-                            flex: 1,
-                            fontWeight: 500,
-                            fontSize: { xs: "0.88rem", sm: "0.95rem" },
-                            lineHeight: 1.45,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            minWidth: 0,
-                            pr: 1,
-                            alignSelf: "center",
-                        },
-                        "& .MuiAlert-action": {
-                            alignItems: "center",
-                            pt: 0,
-                            ml: "auto",
-                            mr: 0.5,
-                            mt: 0,
-                            flexShrink: 0,
-                        },
-                        "& .MuiAlert-icon": {
-                            py: 0.25,
-                            mr: 1,
-                            alignSelf: "center",
-                        },
-                        "& .MuiSvgIcon-root": {
-                            color: palette.accent,
-                        },
-                        "&.MuiAlert-standardWarning": {
-                            borderColor: alpha(palette.warningAccent, mode === "dark" ? 0.78 : 0.65),
-                            background:
-                                mode === "dark"
-                                    ? "linear-gradient(135deg, rgba(122, 92, 8, 0.98), rgba(57, 41, 8, 0.98))"
-                                    : "linear-gradient(135deg, rgba(255, 245, 186, 1), rgba(253, 224, 71, 0.96))",
-                            color: mode === "dark" ? "#fffdf2" : "#5f4300",
-                            boxShadow:
-                                mode === "dark"
-                                    ? "0 18px 42px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.08)"
-                                    : "0 18px 42px rgba(120,90,0,0.18), inset 0 1px 0 rgba(255,255,255,0.55)",
-                        },
-                    }}
+                    sx={alertSx}
                 >
                     {message}
                 </Alert>
