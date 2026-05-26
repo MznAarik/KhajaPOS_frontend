@@ -153,6 +153,7 @@ export const SnackbarProviderCustom = ({
                             whiteSpace: "nowrap",
                             minWidth: 0,
                             pr: 1,
+                            alignSelf: "center",
                         },
                         "& .MuiAlert-action": {
                             alignItems: "center",
@@ -165,9 +166,6 @@ export const SnackbarProviderCustom = ({
                         "& .MuiAlert-icon": {
                             py: 0.25,
                             mr: 1,
-                            alignSelf: "center",
-                        },
-                        "& .MuiAlert-message": {
                             alignSelf: "center",
                         },
                         "& .MuiSvgIcon-root": {
