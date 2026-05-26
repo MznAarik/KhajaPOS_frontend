@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { getAdminOrders, type KitchenOrder, type OrderStatus, updateAdminOrderStatus } from "@/lib/api";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled"];
 const lockedStatuses: OrderStatus[] = ["served", "cancelled"];
@@ -47,6 +49,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [updatingId, setUpdatingId] = React.useState<number | null>(null);
+  const { showSnackbar } = useAppSnackbar();
 
   const fetchOrders = React.useCallback(async () => {
     try {
@@ -54,6 +57,7 @@ export default function OrdersPage() {
       setOrders(data);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
+      showSnackbar(safeError(error, "Failed to fetch orders."), "error");
     } finally {
       setLoading(false);
     }
@@ -77,8 +81,10 @@ export default function OrdersPage() {
       setOrders((current) =>
         current.map((item) => (item.id === orderId ? updatedOrder : item))
       );
+      showSnackbar(`Order #${orderId} has been moved to ${nextStatus}.`, "success");
     } catch (error) {
       console.error("Failed to update order status:", error);
+      showSnackbar(safeError(error, "Failed to update order status."), "error");
     } finally {
       setUpdatingId(null);
     }

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -23,8 +22,12 @@ import {
   type KitchenOrder,
   type OrderStatus,
 } from "@/lib/api";
+import { useAppSnackbar } from "@/components/common/SnackBar";
 
 const statusSteps: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served"];
+const getLatestOrderStorageKey = (tableId: number) => `khajapos-latest-order:${tableId}`;
+const getRecentOrderStorageKey = (tableId: number) => `khajapos-recent-order:${tableId}`;
+const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
 
 const statusCopy: Record<OrderStatus, string> = {
   pending: "Your order is waiting for restaurant confirmation.",
@@ -38,27 +41,44 @@ const statusCopy: Record<OrderStatus, string> = {
 export default function TrackOrderPage() {
   const params = useParams<{ sessionToken: string }>();
   const router = useRouter();
+  const { showSnackbar } = useAppSnackbar();
   const sessionToken = params.sessionToken;
 
   const [order, setOrder] = React.useState<KitchenOrder | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [confirming, setConfirming] = React.useState(false);
   const [cancelling, setCancelling] = React.useState(false);
-  const [message, setMessage] = React.useState("");
-  const [error, setError] = React.useState("");
 
   const loadOrder = React.useCallback(async () => {
     try {
       const data = await getPublicOrder(sessionToken);
       setOrder(data);
-      setError("");
+      if (typeof window !== "undefined") {
+        const storedTableCode = window.localStorage.getItem(getOrderSessionTableCodeKey(data.sessionToken)) ?? undefined;
+        const summary = {
+          sessionToken: data.sessionToken,
+          orderId: data.id,
+          tableId: data.tableId,
+          tableNo: data.tableNo,
+          tableCode: storedTableCode ?? "",
+          createdAt: data.createdAt,
+        };
+        window.localStorage.setItem(
+          getRecentOrderStorageKey(data.tableId),
+          JSON.stringify(summary)
+        );
+        window.localStorage.setItem(
+          getLatestOrderStorageKey(data.tableId),
+          JSON.stringify(summary)
+        );
+      }
     } catch (loadError) {
       console.error("Failed to load order:", loadError);
-      setError("We couldn't load this order right now.");
+      showSnackbar("We couldn't load this order right now.", "error");
     } finally {
       setLoading(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, showSnackbar]);
 
   React.useEffect(() => {
     setLoading(true);
@@ -75,16 +95,14 @@ export default function TrackOrderPage() {
     if (!order) return;
 
     setConfirming(true);
-    setMessage("");
-    setError("");
 
     try {
       const updatedOrder = await confirmPublicOrder(order.sessionToken);
       setOrder(updatedOrder);
-      setMessage("Your order has been confirmed.");
+      showSnackbar("Your order has been confirmed.", "success");
     } catch (confirmError) {
       console.error("Failed to confirm order:", confirmError);
-      setError("This order can no longer be confirmed.");
+      showSnackbar("This order can no longer be confirmed.", "warning");
     } finally {
       setConfirming(false);
     }
@@ -94,16 +112,14 @@ export default function TrackOrderPage() {
     if (!order) return;
 
     setCancelling(true);
-    setMessage("");
-    setError("");
 
     try {
       const updatedOrder = await cancelPublicOrder(order.sessionToken);
       setOrder(updatedOrder);
-      setMessage("Your order has been cancelled.");
+      showSnackbar("Your order has been cancelled.", "success");
     } catch (cancelError) {
       console.error("Failed to cancel order:", cancelError);
-      setError("This order can no longer be cancelled.");
+      showSnackbar("This order can no longer be cancelled.", "warning");
     } finally {
       setCancelling(false);
     }
@@ -124,9 +140,6 @@ export default function TrackOrderPage() {
         </Stack>
       </Paper>
 
-      {message ? <Alert severity="success">{message}</Alert> : null}
-      {error ? <Alert severity="error">{error}</Alert> : null}
-
       <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "24px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
         {loading ? (
           <Stack spacing={2}>
@@ -141,7 +154,7 @@ export default function TrackOrderPage() {
                   Table {order.tableNo}
                 </Typography>
                 <Typography sx={{ color: "var(--muted-foreground)" }}>
-                  Order #{order.id} ? {new Date(order.createdAt).toLocaleString()}
+                  Order #{order.id} - {new Date(order.createdAt).toLocaleString()}
                 </Typography>
               </Box>
               <Chip label={`Rs. ${order.totalAmount}`} sx={{ fontWeight: 800, width: "fit-content" }} />

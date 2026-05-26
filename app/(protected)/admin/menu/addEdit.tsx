@@ -170,11 +170,15 @@ export default function AddEditMenuDialog({
                 PaperProps={{
                     sx: {
                         borderRadius: fullScreen ? 0 : "22px",
-                        overflow: "visible",
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        maxHeight: fullScreen ? "100dvh" : "92vh",
+                        height: fullScreen ? "100dvh" : "auto",
                     },
                 }}
             >
-                <DialogTitle sx={{ mb: 1 }}>
+                <DialogTitle sx={{ mb: 1, flexShrink: 0 }}>
                     {initialData ? "Update Menu Item" : "Add Menu Item"}
                     <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.92rem" }}>
                         {initialData
@@ -182,8 +186,15 @@ export default function AddEditMenuDialog({
                             : "Choose an existing category, then add the menu item."}
                     </Typography>
                 </DialogTitle>
-                <DialogContent sx={{ pt: 2.5, overflow: "visible" }}>
-                    <Stack spacing={2.25}>
+                <DialogContent
+                    sx={{
+                        pt: 2.5,
+                        overflowY: "auto",
+                        flex: 1,
+                        minHeight: 0,
+                    }}
+                >
+                    <Stack spacing={2.25} sx={{ pb: 1 }}>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                             <FormControl fullWidth disabled={Boolean(initialData)}>
                                 <InputLabel id="category-label">Category</InputLabel>
@@ -299,7 +310,16 @@ export default function AddEditMenuDialog({
                         ) : null}
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+                <DialogActions
+                    sx={{
+                        px: 3,
+                        pb: 3,
+                        pt: 1,
+                        flexShrink: 0,
+                        borderTop: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                    }}
+                >
                     <Button
                         variant="outlined"
                         onClick={onClose}

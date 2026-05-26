@@ -16,19 +16,36 @@ import { useParams, useRouter } from "next/navigation";
 import {
   getFoodTypeLabel,
   getPublicMenu,
+  getPublicOrder,
   placePublicOrder,
   resolveMenuImageUrl,
+  type KitchenOrder,
   type PublicTableMenu,
 } from "@/lib/api";
 import ThemeToggle from "@/components/common/ThemeToggle";
+import { useAppSnackbar } from "@/components/common/SnackBar";
 
 type CartState = Record<number, number>;
 
+type RecentOrderSummary = {
+  sessionToken: string;
+  orderId: number;
+  tableId: number;
+  tableNo: string;
+  tableCode: string;
+  createdAt: string;
+};
+
 const getCartStorageKey = (tableCode: string) => `khajapos-cart:${tableCode}`;
+const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-order:${tableId}`;
+const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
+const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
+const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
   const router = useRouter();
+  const { showSnackbar } = useAppSnackbar();
   const tableCode = params.tableCode;
 
   const [menu, setMenu] = React.useState<PublicTableMenu | null>(null);
@@ -37,6 +54,9 @@ export default function TableOrderPage() {
   const [loading, setLoading] = React.useState(true);
   const [placing, setPlacing] = React.useState(false);
   const [message, setMessage] = React.useState("");
+  const [recentOrders, setRecentOrders] = React.useState<RecentOrderSummary[]>([]);
+  const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
+  const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
     const savedCart = window.localStorage.getItem(getCartStorageKey(tableCode));
@@ -69,6 +89,90 @@ export default function TableOrderPage() {
 
     loadMenu();
   }, [tableCode]);
+
+  React.useEffect(() => {
+    if (!tableId) {
+      setRecentOrders([]);
+      setRecentOrderStatuses({});
+      return;
+    }
+
+    const saved = window.localStorage.getItem(getOrderListStorageKey(tableId));
+    if (!saved) {
+      setRecentOrders([]);
+      setRecentOrderStatuses({});
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as RecentOrderSummary[];
+      const filtered = parsed.filter((item) => item.sessionToken && item.tableId === tableId);
+      if (!filtered.length) {
+        setRecentOrders([]);
+        setRecentOrderStatuses({});
+        return;
+      }
+
+      setRecentOrders(filtered);
+
+      const refreshStatus = async () => {
+        try {
+          const statuses = await Promise.all(
+            filtered.map(async (item) => {
+              try {
+                const current = await getPublicOrder(item.sessionToken);
+                return [item.sessionToken, current] as const;
+              } catch (error) {
+                console.error("Failed to load recent order status:", error);
+                return [item.sessionToken, null] as const;
+              }
+            })
+          );
+          setRecentOrderStatuses(Object.fromEntries(statuses));
+        } catch (error) {
+          console.error("Failed to refresh recent orders:", error);
+        }
+      };
+
+      refreshStatus();
+
+      const interval = window.setInterval(refreshStatus, 10000);
+      return () => window.clearInterval(interval);
+    } catch {
+      window.localStorage.removeItem(getOrderListStorageKey(tableId));
+      setRecentOrders([]);
+      setRecentOrderStatuses({});
+    }
+  }, [tableId]);
+
+  React.useEffect(() => {
+    const syncOrders = () => {
+      try {
+        if (!tableId) {
+          setRecentOrders([]);
+          return;
+        }
+        const saved = window.localStorage.getItem(getOrderListStorageKey(tableId));
+        const parsed = saved ? (JSON.parse(saved) as RecentOrderSummary[]) : [];
+        setRecentOrders(parsed.filter((item) => item.sessionToken && item.tableId === tableId));
+      } catch {
+        setRecentOrders([]);
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === getOrderListStorageKey(tableId)) {
+        syncOrders();
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    const interval = window.setInterval(syncOrders, 5000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(interval);
+    };
+  }, [tableId]);
 
   const flatItems = React.useMemo(
     () => menu?.categories.flatMap((category) => category.items) ?? [],
@@ -123,12 +227,50 @@ export default function TableOrderPage() {
 
       setCart({});
       setRemarks("");
-      window.localStorage.removeItem(getCartStorageKey(tableCode));
-      router.push(`/order/track/${order.sessionToken}`);
+        window.localStorage.removeItem(getCartStorageKey(tableCode));
+        window.localStorage.setItem(
+        getRecentOrderStorageKey(menu.table.id),
+        JSON.stringify({
+          sessionToken: order.sessionToken,
+          orderId: order.id,
+          tableId: menu.table.id,
+          tableNo: menu.table.tableNo,
+          tableCode,
+          createdAt: order.createdAt ?? new Date().toISOString(),
+        })
+      );
+      const summary: RecentOrderSummary = {
+        sessionToken: order.sessionToken,
+        orderId: order.id,
+        tableId: menu.table.id,
+        tableNo: menu.table.tableNo,
+        tableCode,
+        createdAt: order.createdAt ?? new Date().toISOString(),
+      };
+      const existingOrders = (() => {
+        try {
+          const raw = window.localStorage.getItem(getOrderListStorageKey(menu.table.id));
+          return raw ? (JSON.parse(raw) as RecentOrderSummary[]) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const nextOrders = [summary, ...existingOrders.filter((item) => item.sessionToken !== order.sessionToken)].slice(0, 8);
+      window.localStorage.setItem(getOrderListStorageKey(menu.table.id), JSON.stringify(nextOrders));
+      window.localStorage.setItem(getLatestOrderStorageKey(menu.table.id), JSON.stringify(summary));
+      window.localStorage.setItem(getLatestOrderStorageKey(tableCode), JSON.stringify(summary));
+      window.localStorage.setItem(getOrderListStorageKey(tableCode), JSON.stringify(nextOrders));
+      window.localStorage.setItem(getOrderSessionTableCodeKey(order.sessionToken), tableCode);
+      setRecentOrders(nextOrders);
+      setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: null }));
+      showSnackbar(`Order #${order.id} has been created successfully.`, "success");
+      router.push(`/order/${encodeURIComponent(tableCode)}`);
       return;
     } catch (error) {
       console.error("Failed to place order:", error);
-      setMessage("We couldn't place your order. Please try again.");
+      const text = "We couldn't place your order. Please try again.";
+      showSnackbar(text, "error");
+      setMessage("");
     } finally {
       setPlacing(false);
     }
@@ -169,7 +311,83 @@ export default function TableOrderPage() {
           
           <ThemeToggle />
         </Stack>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => router.push(`/order/recent?tableCode=${encodeURIComponent(tableCode)}`)}
+            sx={{ borderRadius: "14px", width: { xs: "100%", sm: "fit-content" } }}
+          >
+            Recent Order Status
+          </Button>
+        </Stack>
       </Paper>
+
+      {recentOrders.length ? (
+        <Paper
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: "18px",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          }}
+        >
+          <Stack spacing={2}>
+            <Box>
+              <Typography sx={{ fontWeight: 800 }}>
+                Your Orders
+              </Typography>
+              <Typography sx={{ color: "var(--muted-foreground)" }}>
+                Live status updates for every order placed on this table.
+              </Typography>
+            </Box>
+
+            <Stack spacing={1.5}>
+              {recentOrders.map((item) => {
+                const current = recentOrderStatuses[item.sessionToken];
+                const status = current?.status ?? "pending";
+                return (
+                  <Paper
+                    key={item.sessionToken}
+                    sx={{
+                      p: 2,
+                      borderRadius: "16px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--background)",
+                    }}
+                  >
+                    <Stack
+                      direction={{ xs: "column", md: "row" }}
+                      justifyContent="space-between"
+                      alignItems={{ xs: "flex-start", md: "center" }}
+                      spacing={1.25}
+                    >
+                      <Box>
+                        <Typography sx={{ fontWeight: 800 }}>
+                          Order #{item.orderId}
+                        </Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)" }}>
+                          Placed at {new Date(item.createdAt).toLocaleString()}
+                        </Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)" }}>
+                          Status: {status}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        onClick={() => router.push(`/order/track/${item.sessionToken}`)}
+                        sx={{ borderRadius: "14px" }}
+                      >
+                        Open
+                      </Button>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          </Stack>
+        </Paper>
+      ) : null}
       {message ? (
         <Paper sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
           <Typography>{message}</Typography>
