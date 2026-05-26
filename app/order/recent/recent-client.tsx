@@ -10,7 +10,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { getPublicOrder, type KitchenOrder } from "@/lib/api";
 
@@ -23,11 +23,9 @@ type RecentOrderSummary = {
   createdAt: string;
 };
 
-export default function RecentOrderClient() {
+export default function RecentOrderClient({ tableCode }: { tableCode: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { showSnackbar } = useAppSnackbar();
-  const tableCode = searchParams.get("tableCode") ?? "";
 
   const [orders, setOrders] = React.useState<RecentOrderSummary[]>([]);
   const [statuses, setStatuses] = React.useState<Record<string, KitchenOrder | null>>({});

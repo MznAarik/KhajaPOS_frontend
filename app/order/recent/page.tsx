@@ -1,10 +1,9 @@
-import * as React from "react";
 import RecentOrderClient from "./recent-client";
 
-export default function RecentOrderPage() {
-  return (
-    <React.Suspense fallback={null}>
-      <RecentOrderClient />
-    </React.Suspense>
-  );
+export default function RecentOrderPage({
+  searchParams,
+}: {
+  searchParams?: { tableCode?: string };
+}) {
+  return <RecentOrderClient tableCode={searchParams?.tableCode ?? ""} />;
 }
