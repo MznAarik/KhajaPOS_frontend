@@ -37,9 +37,9 @@ type RecentOrderSummary = {
 };
 
 const getCartStorageKey = (tableCode: string) => `khajapos-cart:${tableCode}`;
-const getLatestOrderStorageKey = (tableId: number) => `khajapos-latest-order:${tableId}`;
-const getOrderListStorageKey = (tableId: number) => `khajapos-order-list:${tableId}`;
-const getRecentOrderStorageKey = (tableId: number) => `khajapos-recent-order:${tableId}`;
+const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-order:${tableId}`;
+const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
+const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
 
 export default function TableOrderPage() {
