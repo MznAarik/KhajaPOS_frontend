@@ -5,7 +5,7 @@ import { poppins } from "./src/fonts";
 import RootThemeProvider from "@/components/common/RootThemeProvider";
 import ThemeRegistry from "@/components/common/ThemeRegistry";
 import { SnackbarProviderCustom } from "@/components/common/SnackBar";
-
+import { Analytics } from "@vercel/analytics/next"
 export const metadata: Metadata = {
   title: "KhajaPOS",
   description: "Restaurant and POS management dashboard",
@@ -24,6 +24,7 @@ export default function RootLayout({
             <ThemeRegistry>
               <SnackbarProviderCustom>
                 {children}
+                <Analytics />
               </SnackbarProviderCustom>
             </ThemeRegistry>
           </RootThemeProvider>
