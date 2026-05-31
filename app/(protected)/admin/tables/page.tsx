@@ -337,9 +337,57 @@ export default function TablesPage() {
           </Stack>
         </Box>
 
-        {/* DESKTOP TABLE */}
+        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 2, p: 2 }}>
+          {loading ? (
+            Array.from({ length: 4 }, (_, index) => (
+              <Paper key={`mobile-table-skeleton-${index}`} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
+                <Skeleton variant="text" width="55%" height={28} />
+                <Skeleton variant="text" width="80%" />
+                <Skeleton variant="rounded" width={110} height={26} sx={{ borderRadius: "999px", mt: 1 }} />
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+                  <Skeleton variant="rounded" width={78} height={34} sx={{ borderRadius: "12px" }} />
+                  <Skeleton variant="rounded" width={78} height={34} sx={{ borderRadius: "12px" }} />
+                  <Skeleton variant="rounded" width={78} height={34} sx={{ borderRadius: "12px" }} />
+                </Stack>
+              </Paper>
+            ))
+          ) : visibleTables.length ? (
+            visibleTables.map((table) => (
+              <Paper key={table.id} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                <Stack spacing={1.25}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700 }}>{table.tableNo}</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>{table.qrCode}</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem", wordBreak: "break-word", mt: 0.5 }}>
+                      {buildTableOrderUrl(table.qrCode)}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={updatingTables.has(table.id) ? "Updating..." : table.isActive ? "Available" : "Unavailable"}
+                    onClick={() => !updatingTables.has(table.id) && handleToggleActive(table)}
+                    sx={{
+                      width: "fit-content",
+                      backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "rgba(46, 230, 166, 0.12)" : "rgba(255, 90, 122, 0.12)",
+                      color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "#2EE6A6" : "#FF5A7A",
+                      fontWeight: 700,
+                    }}
+                  />
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Button size="small" variant="outlined" onClick={() => window.open(buildTableQrPreviewUrl(table.qrCode), "_blank")} sx={{ borderRadius: "12px" }}>QR</Button>
+                    <Button size="small" variant="outlined" onClick={() => navigator.clipboard.writeText(buildTableOrderUrl(table.qrCode))} sx={{ borderRadius: "12px" }}>Copy URL</Button>
+                    <Button size="small" variant="outlined" onClick={() => openEditDialog(table)} sx={{ borderRadius: "12px" }}>Edit</Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ borderRadius: "12px" }}>Delete</Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            ))
+          ) : (
+            <Typography sx={{ textAlign: "center", color: "var(--muted-foreground)" }}>No tables found.</Typography>
+          )}
+        </Box>
 
-        <Table sx={{ display: { xs: "none", md: "table" } }}>
+        <Box sx={{ display: { xs: "none", md: "block" }, overflowX: "auto" }}>
+        <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ backgroundColor: "var(--background)" }}>
               <TableCell>Table</TableCell>
@@ -535,6 +583,7 @@ export default function TablesPage() {
             )}
           </TableBody>
         </Table>
+        </Box>
 
         {/* PAGINATION */}
 

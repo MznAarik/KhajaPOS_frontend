@@ -23,6 +23,8 @@ type RecentOrderSummary = {
   createdAt: string;
 };
 
+const ORDER_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
 export default function RecentOrderClient({ tableCode: initialTableCode }: { tableCode: string }) {
   const router = useRouter();
   const { showSnackbar } = useAppSnackbar();
@@ -58,8 +60,10 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
       if (!raw) continue;
 
       try {
-        const parsed = JSON.parse(raw) as RecentOrderSummary[];
-        for (const item of parsed) {
+        const parsed = JSON.parse(raw) as RecentOrderSummary | RecentOrderSummary[];
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        for (const item of items) {
+          if (Date.now() - new Date(item.createdAt).getTime() > ORDER_LIFETIME_MS) continue;
           if (item.tableCode === tableCode || String(item.tableId) === tableCode) {
             summaries.push(item);
           }

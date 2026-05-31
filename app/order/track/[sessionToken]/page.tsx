@@ -25,9 +25,18 @@ import {
 import { useAppSnackbar } from "@/components/common/SnackBar";
 
 const statusSteps: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served"];
+type RecentOrderSummary = {
+  sessionToken: string;
+  orderId: number;
+  tableId: number;
+  tableNo: string;
+  tableCode: string;
+  createdAt: string;
+};
 const getLatestOrderStorageKey = (tableId: number) => `khajapos-latest-order:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number) => `khajapos-recent-order:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
+const ORDER_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 const statusCopy: Record<OrderStatus, string> = {
   pending: "Your order is waiting for restaurant confirmation.",
@@ -63,9 +72,16 @@ export default function TrackOrderPage() {
           tableCode: storedTableCode ?? "",
           createdAt: data.createdAt,
         };
+        const storedAt = new Date(data.createdAt).getTime();
+        if (Date.now() - storedAt > ORDER_LIFETIME_MS) {
+          return;
+        }
+        const existingRecentRaw = window.localStorage.getItem(getRecentOrderStorageKey(data.tableId));
+        const existingRecent = existingRecentRaw ? (JSON.parse(existingRecentRaw) as RecentOrderSummary[]) : [];
+        const nextRecent = [summary, ...existingRecent.filter((item) => item.sessionToken !== data.sessionToken)].slice(0, 8);
         window.localStorage.setItem(
           getRecentOrderStorageKey(data.tableId),
-          JSON.stringify(summary)
+          JSON.stringify(nextRecent)
         );
         window.localStorage.setItem(
           getLatestOrderStorageKey(data.tableId),

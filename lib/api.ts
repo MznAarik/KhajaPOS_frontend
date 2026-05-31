@@ -22,6 +22,19 @@ const getAuthTokenFromStorage = (): {
   return { token: match ? decodeURIComponent(match[1]) : null, type };
 };
 
+export const clearAuthSession = async () => {
+  try {
+    await fetch("/api/auth-cookie", { method: "DELETE" });
+  } catch {
+    // ignore logout cleanup failures
+  }
+
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("authToken");
+    window.localStorage.removeItem("authTokenType");
+  }
+};
+
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   config.headers.Accept = "application/json";
@@ -290,6 +303,11 @@ export async function apiRequest<T>(
 
   if (!res.ok) {
     const message = data?.message || data?.error || "Something went wrong";
+
+    if (res.status === 401 && typeof window !== "undefined") {
+      await clearAuthSession();
+      window.location.href = "/auth/login?message=Session expired";
+    }
 
     throw new Error(message);
   }

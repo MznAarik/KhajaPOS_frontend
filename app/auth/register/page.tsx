@@ -46,7 +46,7 @@ export default function RegisterPage() {
         name: "",
         email: "",
         password: "",
-        role: "super-admin",
+        role: "admin",
 
         business: {
             name: "",
@@ -87,12 +87,13 @@ export default function RegisterPage() {
 
         try {
             setLoading(true);
-
+debugger    
             const res = await axios.post(
                 `${process.env.NEXT_PUBLIC_API_URL}/register`,
                 formData
             );
-
+            
+            debugger
             showSnackbar("Registration successful", "success");
 
             router.push("/auth/login");
