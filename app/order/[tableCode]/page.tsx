@@ -58,6 +58,7 @@ export default function TableOrderPage() {
   const [recentOrders, setRecentOrders] = React.useState<RecentOrderSummary[]>([]);
   const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
   const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
+  const [mobileCartOpen, setMobileCartOpen] = React.useState(false);
   const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
@@ -288,8 +289,7 @@ export default function TableOrderPage() {
       setRecentOrders(nextOrders);
       setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: null }));
       setOrderRefreshKey((current) => current + 1);
-      showSnackbar(`Order #${order.id} has been created successfully.`, "success");
-      router.push(`/order/${encodeURIComponent(tableCode)}`);
+      window.location.assign(`/order/track/${encodeURIComponent(order.sessionToken)}`);
       return;
     } catch (error) {
       console.error("Failed to place order:", error);
@@ -308,6 +308,7 @@ export default function TableOrderPage() {
         backgroundColor: "var(--background)",
         color: "var(--foreground)",
         p: { xs: 1.5, md: 3 },
+        pb: { xs: cartItems.length ? 13 : 1.5, lg: 3 },
         display: "grid",
         gap: 2,
       }}
@@ -533,8 +534,7 @@ export default function TableOrderPage() {
             ))}
         </Box>
 
-        {/* Cart Sidebar - Unchanged */}
-        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
+        <Paper sx={{ display: { xs: "none", lg: "block" }, p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
           <Stack spacing={2}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Your Cart
@@ -587,6 +587,135 @@ export default function TableOrderPage() {
           </Stack>
         </Paper>
       </Box>
+
+      {cartItems.length ? (
+        <Box
+          sx={{
+            display: { xs: "block", lg: "none" },
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 30,
+            px: 1.25,
+            pb: "calc(env(safe-area-inset-bottom) + 10px)",
+            pointerEvents: "none",
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              pointerEvents: "auto",
+              borderRadius: "22px",
+              border: "1px solid var(--border)",
+              backgroundColor: "color-mix(in srgb, var(--card) 96%, transparent)",
+              backdropFilter: "blur(18px)",
+              boxShadow: "0 18px 46px rgba(31, 42, 43, 0.22)",
+              overflow: "hidden",
+            }}
+          >
+            {mobileCartOpen ? (
+              <Stack spacing={1.25} sx={{ p: 1.5, pb: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, fontSize: "1.05rem" }}>Your Cart</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
+                      {cartItems.reduce((sum, item) => sum + item.quantity, 0)} items selected
+                    </Typography>
+                  </Box>
+                  <Button size="small" onClick={() => setMobileCartOpen(false)} sx={{ borderRadius: "12px" }}>
+                    Hide
+                  </Button>
+                </Stack>
+
+                <Stack spacing={0.75} sx={{ maxHeight: 150, overflowY: "auto", pr: 0.5 }}>
+                  {cartItems.map((item) => (
+                    <Stack
+                      key={item.id}
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={1.5}
+                      sx={{
+                        p: 1,
+                        borderRadius: "14px",
+                        backgroundColor: "var(--background)",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 750, minWidth: 0, overflowWrap: "anywhere" }}>
+                        {item.quantity}x {item.name}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 800, flexShrink: 0 }}>
+                        Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+
+                <TextField
+                  label="Remarks"
+                  size="small"
+                  multiline
+                  minRows={2}
+                  value={remarks}
+                  onChange={(event) => setRemarks(event.target.value)}
+                  placeholder="Less spicy, no onion, etc."
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "14px",
+                      backgroundColor: "var(--background)",
+                    },
+                  }}
+                />
+              </Stack>
+            ) : null}
+
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                p: 1,
+                borderTop: mobileCartOpen ? "1px solid var(--border)" : "none",
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => setMobileCartOpen((current) => !current)}
+                sx={{
+                  minWidth: 0,
+                  flex: "0 0 42%",
+                  borderRadius: "16px",
+                  minHeight: 50,
+                  display: "grid",
+                  lineHeight: 1.05,
+                  textTransform: "none",
+                }}
+              >
+                <Box component="span" sx={{ fontWeight: 900 }}>
+                  Rs. {totalAmount.toFixed(2)}
+                </Box>
+                <Box component="span" sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", fontWeight: 800 }}>
+                  View cart
+                </Box>
+              </Button>
+              <Button
+                variant="contained"
+                disabled={placing || cartItems.length === 0}
+                onClick={handlePlaceOrder}
+                sx={{
+                  flex: 1,
+                  borderRadius: "16px",
+                  minHeight: 50,
+                  fontWeight: 900,
+                  textTransform: "none",
+                }}
+              >
+                {placing ? "Placing..." : "Place Order"}
+              </Button>
+            </Stack>
+          </Paper>
+        </Box>
+      ) : null}
     </Box>
   );
 }
