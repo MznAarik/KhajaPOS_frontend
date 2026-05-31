@@ -11,7 +11,17 @@ export default async function AdminLayout({
 }) {
     const token = await getTokenFromCookies();
 
-    if (!token) {
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/user`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+        }
+    );
+
+    if (!res.ok) {
         redirect("/auth/login");
     }
 

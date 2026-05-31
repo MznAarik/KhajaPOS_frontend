@@ -16,7 +16,8 @@ import { useParams, useRouter } from "next/navigation";
 import {
   getFoodTypeLabel,
   getPublicMenu,
-  getPublicOrder,
+  getPublicTableOrders,
+  isOrderLocked,
   placePublicOrder,
   resolveMenuImageUrl,
   type KitchenOrder,
@@ -56,6 +57,7 @@ export default function TableOrderPage() {
   const [message, setMessage] = React.useState("");
   const [recentOrders, setRecentOrders] = React.useState<RecentOrderSummary[]>([]);
   const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
+  const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
   const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
@@ -97,53 +99,74 @@ export default function TableOrderPage() {
       return;
     }
 
-    const saved = window.localStorage.getItem(getOrderListStorageKey(tableId));
-    if (!saved) {
-      setRecentOrders([]);
-      setRecentOrderStatuses({});
-      return;
-    }
+    let timeout: number | undefined;
+    let isCancelled = false;
 
-    try {
-      const parsed = JSON.parse(saved) as RecentOrderSummary[];
-      const filtered = parsed.filter((item) => item.sessionToken && item.tableId === tableId);
-      if (!filtered.length) {
-        setRecentOrders([]);
-        setRecentOrderStatuses({});
-        return;
-      }
+    const refreshTableOrders = async () => {
+      try {
+        const orders = await getPublicTableOrders(tableCode);
+        const summaries = orders.map((order) => ({
+          sessionToken: order.sessionToken,
+          orderId: order.id,
+          tableId: order.tableId,
+          tableNo: order.tableNo,
+          tableCode,
+          createdAt: order.createdAt,
+        }));
 
-      setRecentOrders(filtered);
-
-      const refreshStatus = async () => {
-        try {
-          const statuses = await Promise.all(
-            filtered.map(async (item) => {
-              try {
-                const current = await getPublicOrder(item.sessionToken);
-                return [item.sessionToken, current] as const;
-              } catch (error) {
-                console.error("Failed to load recent order status:", error);
-                return [item.sessionToken, null] as const;
-              }
-            })
-          );
-          setRecentOrderStatuses(Object.fromEntries(statuses));
-        } catch (error) {
-          console.error("Failed to refresh recent orders:", error);
+        if (!summaries.length) {
+          setRecentOrders([]);
+          setRecentOrderStatuses({});
+          window.localStorage.removeItem(getOrderListStorageKey(tableId));
+          return true;
         }
-      };
 
-      refreshStatus();
+        setRecentOrders(summaries);
+        setRecentOrderStatuses(
+          Object.fromEntries(orders.map((order) => [order.sessionToken, order]))
+        );
+        window.localStorage.setItem(getOrderListStorageKey(tableId), JSON.stringify(summaries));
+        window.localStorage.setItem(getOrderListStorageKey(tableCode), JSON.stringify(summaries));
+        return orders.some((order) => !isOrderLocked(order.status));
+      } catch (error) {
+        console.error("Failed to refresh table orders:", error);
+        const saved = window.localStorage.getItem(getOrderListStorageKey(tableId));
+        if (!saved) {
+          setRecentOrders([]);
+          setRecentOrderStatuses({});
+          return true;
+        }
 
-      const interval = window.setInterval(refreshStatus, 10000);
-      return () => window.clearInterval(interval);
-    } catch {
-      window.localStorage.removeItem(getOrderListStorageKey(tableId));
-      setRecentOrders([]);
-      setRecentOrderStatuses({});
-    }
-  }, [tableId]);
+        try {
+          const parsed = JSON.parse(saved) as RecentOrderSummary[];
+          const filtered = parsed.filter((item) => item.sessionToken && item.tableId === tableId);
+          setRecentOrders(filtered);
+        } catch {
+          window.localStorage.removeItem(getOrderListStorageKey(tableId));
+          setRecentOrders([]);
+          setRecentOrderStatuses({});
+        }
+        return true;
+      }
+    };
+
+    const refreshAndSchedule = async () => {
+      const shouldKeepPolling = await refreshTableOrders();
+
+      if (!isCancelled && shouldKeepPolling) {
+        timeout = window.setTimeout(refreshAndSchedule, 10000);
+      }
+    };
+
+    refreshAndSchedule();
+
+    return () => {
+      isCancelled = true;
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
+    };
+  }, [orderRefreshKey, tableCode, tableId]);
 
   React.useEffect(() => {
     const syncOrders = () => {
@@ -154,7 +177,8 @@ export default function TableOrderPage() {
         }
         const saved = window.localStorage.getItem(getOrderListStorageKey(tableId));
         const parsed = saved ? (JSON.parse(saved) as RecentOrderSummary[]) : [];
-        setRecentOrders(parsed.filter((item) => item.sessionToken && item.tableId === tableId));
+        const filtered = parsed.filter((item) => item.sessionToken && item.tableId === tableId);
+        setRecentOrders(filtered);
       } catch {
         setRecentOrders([]);
       }
@@ -263,6 +287,7 @@ export default function TableOrderPage() {
       window.localStorage.setItem(getOrderSessionTableCodeKey(order.sessionToken), tableCode);
       setRecentOrders(nextOrders);
       setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: null }));
+      setOrderRefreshKey((current) => current + 1);
       showSnackbar(`Order #${order.id} has been created successfully.`, "success");
       router.push(`/order/${encodeURIComponent(tableCode)}`);
       return;
