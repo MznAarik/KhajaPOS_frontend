@@ -10,13 +10,13 @@ import {
     Typography,
     Breadcrumbs,
     Link as MuiLink,
-    IconButton,
     AppBar,
     ListItemButton,
     Stack,
     Paper,
+    BottomNavigation,
+    BottomNavigationAction,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { ShoppingCartIcon, type ShoppingCartIconHandle } from "@/components/ui/shopping-cart-icon";
@@ -32,9 +32,7 @@ const drawerWidth = 260;
 export default function SideNavLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
-    const [mobileOpen, setMobileOpen] = React.useState(false);
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
-    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
     const dashboardIconRef = React.useRef<DashboardIconHandle | null>(null);
     const categoryIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
@@ -68,7 +66,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     }, [pageTitle]);
 
     const drawer = (
-        <Box sx={{ px: 2, py: 15 }}>
+        <Box sx={{ px: 2, py: { xs: 2, sm: 15 } }}>
             <Link href="/admin/dashboard" style={{ textDecoration: "none" }}>
                 <Box
                     sx={{
@@ -113,7 +111,6 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             disableTouchRipple={false}
                             TouchRippleProps={{ center: false }}
                             onClick={() => {
-                                setMobileOpen(false);
                                 router.push(item.href);
                             }}
                             onMouseEnter={() => {
@@ -185,20 +182,27 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 sx={{
                     zIndex: (theme) => theme.zIndex.drawer + 1,
                     px: { xs: 1, sm: 2 },
+                    backgroundColor: "color-mix(in srgb, var(--card) 88%, transparent)",
+                    color: "var(--foreground)",
+                    backdropFilter: "blur(18px)",
+                    borderBottom: "1px solid var(--border)",
+                    boxShadow: "0 10px 30px rgba(31, 42, 43, 0.08)",
                 }}
             >
-                <Toolbar sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <IconButton
-                            aria-label="open drawer"
-                            edge="start"
-                            onClick={handleDrawerToggle}
-                            sx={{ display: { sm: "none" } }}
-                        >
-                            <MenuIcon />
-                        </IconButton>
-                        <Box>
-                            <Breadcrumbs separator=">" aria-label="breadcrumb">
+                <Toolbar sx={{ display: "flex", justifyContent: "space-between", gap: { xs: 1, sm: 2 }, minHeight: { xs: 64, sm: 76 } }}>
+                    <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center" sx={{ minWidth: 0 }}>
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography
+                                sx={{
+                                    display: { xs: "block", sm: "none" },
+                                    fontWeight: 850,
+                                    fontSize: "1.05rem",
+                                    color: "var(--foreground)",
+                                }}
+                            >
+                                {pageTitle}
+                            </Typography>
+                            <Breadcrumbs separator=">" aria-label="breadcrumb" sx={{ display: { xs: "none", sm: "block" } }}>
                                 {lastSegment === "dashboard"
                                     ? [
                                         <Typography key="dashboard" sx={{ color: "var(--muted-foreground)" }}>
@@ -223,41 +227,20 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             </Breadcrumbs>
                         </Box>
                     </Stack>
-                    <Stack direction="row" spacing={2} alignItems="center">
+                    <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                         <ThemeToggle />
                         <ProfileComponent />
                     </Stack>
                 </Toolbar>
             </AppBar>
 
-            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
-                <Drawer
-                    variant="temporary"
-                    open={mobileOpen}
-                    onClose={handleDrawerToggle}
-                    ModalProps={{ keepMounted: true }}
-                    sx={{
-                        display: { xs: "block", sm: "none" },
-                        "& .MuiDrawer-paper": {
-                            width: drawerWidth,
-                            pt: "76px",
-                            backgroundColor: "var(--sidebar)",
-                            backgroundImage:
-                                "linear-gradient(180deg, color-mix(in srgb, var(--sidebar) 96%, white 4%), color-mix(in srgb, var(--sidebar-accent) 42%, var(--sidebar) 58%) 52%, color-mix(in srgb, var(--sidebar) 88%, black 12%))",
-                            borderRight: "1px solid var(--sidebar-border)",
-                        },
-                    }}
-                >
-                    {drawer}
-                </Drawer>
-
+            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 }, display: { xs: "none", sm: "block" } }}>
                 <Drawer
                     variant="permanent"
                     sx={{
-                        display: { xs: "none", sm: "block" },
                         "& .MuiDrawer-paper": {
                             width: drawerWidth,
-                            pt: { xs: "76px", sm: "0px" },
+                            pt: "0px",
                             backgroundColor: "var(--sidebar)",
                             backgroundImage:
                                 "linear-gradient(180deg, color-mix(in srgb, var(--sidebar) 96%, white 4%), color-mix(in srgb, var(--sidebar-accent) 42%, var(--sidebar) 58%) 52%, color-mix(in srgb, var(--sidebar) 88%, black 12%))",
@@ -274,16 +257,72 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: { xs: 2, sm: 3 },
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    mt: { xs: "76px", sm: "76px" },
+                    minWidth: 0,
+                    p: { xs: 1.5, sm: 3 },
+                    width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+                    mt: { xs: "64px", sm: "76px" },
+                    pb: { xs: "calc(env(safe-area-inset-bottom) + 92px)", sm: 3 },
                     background:
                         "linear-gradient(180deg, color-mix(in srgb, var(--card) 68%, transparent), color-mix(in srgb, var(--background) 88%, transparent))",
-                    borderTopLeftRadius: { sm: "70%" },
+                    borderRadius: { xs: 0, sm: "28px 0 0 0" },
                     boxShadow: { sm: "inset 0 1px 0 rgba(255,255,255,0.08)" },
                 }}
             >
                 {children}
+            </Paper>
+
+            <Paper
+                elevation={0}
+                sx={{
+                    display: { xs: "block", sm: "none" },
+                    position: "fixed",
+                    left: 10,
+                    right: 10,
+                    bottom: "calc(env(safe-area-inset-bottom) + 10px)",
+                    zIndex: (theme) => theme.zIndex.drawer + 2,
+                    borderRadius: "22px",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "color-mix(in srgb, var(--card) 92%, transparent)",
+                    backdropFilter: "blur(18px)",
+                    overflow: "hidden",
+                    boxShadow: "0 18px 42px rgba(31, 42, 43, 0.2)",
+                }}
+            >
+                <BottomNavigation
+                    showLabels
+                    value={navItems.find((item) => isActive(item.href))?.href ?? "/admin/dashboard"}
+                    onChange={(_, value) => router.push(value)}
+                    sx={{
+                        height: 66,
+                        backgroundColor: "transparent",
+                        "& .MuiBottomNavigationAction-root": {
+                            minWidth: 0,
+                            px: 0.5,
+                            color: "var(--muted-foreground)",
+                        },
+                        "& .MuiBottomNavigationAction-label": {
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                        },
+                        "& .Mui-selected": {
+                            color: "var(--primary)",
+                        },
+                    }}
+                >
+                    {navItems.map((item) => (
+                        <BottomNavigationAction
+                            key={item.href}
+                            label={item.text}
+                            value={item.href}
+                            icon={
+                                <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
+                                    <item.icon ref={item.ref} size={20} />
+                                </Box>
+                            }
+                        />
+                    ))}
+                </BottomNavigation>
             </Paper>
         </Box>
     );

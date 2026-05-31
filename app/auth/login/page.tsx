@@ -27,6 +27,7 @@ export default function AuthPage() {
 
     const { showSnackbar } = useAppSnackbar();
     const router = useRouter();
+    const handledQueryMessageRef = React.useRef(false);
 
     React.useEffect(() => {
         const sessionExists = document.cookie.includes("authToken=");
@@ -35,7 +36,19 @@ export default function AuthPage() {
         if (sessionExists) {
             showSnackbar("Existing session detected", "info");
         }
-    }, []);
+    }, [showSnackbar]);
+
+    React.useEffect(() => {
+        if (handledQueryMessageRef.current) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const message = params.get("message");
+
+        if (message) {
+            handledQueryMessageRef.current = true;
+            showSnackbar(message, message.toLowerCase().includes("expired") ? "warning" : "info");
+        }
+    }, [showSnackbar]);
 
     const handleSubmit = async (
         e: React.FormEvent<HTMLFormElement>
@@ -89,7 +102,9 @@ export default function AuthPage() {
             showSnackbar("Login successful", "success");
 
             window.setTimeout(() => {
-                router.push("/admin/dashboard");
+                const params = new URLSearchParams(window.location.search);
+                const redirectTo = params.get("redirect");
+                router.push(redirectTo?.startsWith("/admin") ? redirectTo : "/admin/dashboard");
             }, 700);
         } catch (err) {
             const message = safeError(err, "Login failed");

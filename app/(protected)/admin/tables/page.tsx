@@ -54,6 +54,9 @@ const createInitialState = (): DialogState => ({
   isActive: true,
 });
 
+const shortToken = (value: string) =>
+  value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
+
 export default function TablesPage() {
   const [tables, setTables] = React.useState<AdminTable[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -63,6 +66,8 @@ export default function TablesPage() {
     React.useState<DialogState>(createInitialState());
 
   const [selectedTable, setSelectedTable] =
+    React.useState<AdminTable | null>(null);
+  const [qrPreviewTable, setQrPreviewTable] =
     React.useState<AdminTable | null>(null);
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -225,8 +230,18 @@ export default function TablesPage() {
     }
   };
 
+  const copyTableUrl = async (table: AdminTable) => {
+    await navigator.clipboard.writeText(buildTableOrderUrl(table.qrCode));
+    showSnackbar(`Order URL for table ${table.tableNo} copied.`, "success");
+  };
+
+  const copyTableToken = async (table: AdminTable) => {
+    await navigator.clipboard.writeText(table.qrCode);
+    showSnackbar(`Secure token for table ${table.tableNo} copied.`, "success");
+  };
+
   return (
-    <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
+    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
       {/* HEADER */}
 
       <Box
@@ -238,7 +253,7 @@ export default function TablesPage() {
           flexWrap: "wrap",
         }}
       >
-        <Box sx={{ maxWidth: 760 }}>
+        <Box sx={{ maxWidth: 760, minWidth: 0 }}>
           <Typography
             variant="h4"
             sx={{
@@ -255,6 +270,7 @@ export default function TablesPage() {
               color: "var(--muted-foreground)",
               mt: 0.75,
               lineHeight: 1.7,
+              fontSize: { xs: "0.92rem", md: "1rem" },
             }}
           >
             Create one QR identity per table so guests can scan once,
@@ -271,6 +287,7 @@ export default function TablesPage() {
             borderRadius: "14px",
             backgroundColor: "var(--primary)",
             color: "var(--primary-foreground)",
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           Add Table
@@ -281,7 +298,7 @@ export default function TablesPage() {
 
       <Paper
         sx={{
-          borderRadius: "22px",
+          borderRadius: { xs: "18px", md: "22px" },
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",
@@ -291,7 +308,7 @@ export default function TablesPage() {
 
         <Box
           sx={{
-            p: 2.5,
+            p: { xs: 1.75, md: 2.5 },
             borderBottom: "1px solid var(--border)",
           }}
         >
@@ -317,7 +334,7 @@ export default function TablesPage() {
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
               <Chip
                 label={`${tables.length} Total`}
                 sx={{ fontWeight: 700 }}
@@ -336,7 +353,7 @@ export default function TablesPage() {
           </Stack>
         </Box>
 
-        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 2, p: 2 }}>
+        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1.5, p: 1.5 }}>
           {loading ? (
             Array.from({ length: 4 }, (_, index) => (
               <Paper key={`mobile-table-skeleton-${index}`} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
@@ -352,30 +369,73 @@ export default function TablesPage() {
             ))
           ) : visibleTables.length ? (
             visibleTables.map((table) => (
-              <Paper key={table.id} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                <Stack spacing={1.25}>
-                  <Box>
-                    <Typography sx={{ fontWeight: 700 }}>{table.tableNo}</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>{table.qrCode}</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem", wordBreak: "break-word", mt: 0.5 }}>
-                      {buildTableOrderUrl(table.qrCode)}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={updatingTables.has(table.id) ? "Updating..." : table.isActive ? "Available" : "Unavailable"}
-                    onClick={() => !updatingTables.has(table.id) && handleToggleActive(table)}
+              <Paper key={table.id} sx={{ p: 1.75, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 850, fontSize: "1.05rem", overflowWrap: "anywhere" }}>
+                        Table {table.tableNo}
+                      </Typography>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+                        Secure QR enabled
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={updatingTables.has(table.id) ? "Updating" : table.isActive ? "Active" : "Off"}
+                      onClick={() => !updatingTables.has(table.id) && handleToggleActive(table)}
+                      sx={{
+                        flexShrink: 0,
+                        backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "rgba(46, 230, 166, 0.12)" : "rgba(255, 90, 122, 0.12)",
+                        color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "#2EE6A6" : "#FF5A7A",
+                        fontWeight: 800,
+                      }}
+                    />
+                  </Stack>
+
+                  <Paper
+                    elevation={0}
                     sx={{
-                      width: "fit-content",
-                      backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "rgba(46, 230, 166, 0.12)" : "rgba(255, 90, 122, 0.12)",
-                      color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "#2EE6A6" : "#FF5A7A",
-                      fontWeight: 700,
+                      p: 1.25,
+                      borderRadius: "14px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      display: "grid",
+                      gap: 0.75,
                     }}
-                  />
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    <Button size="small" variant="outlined" onClick={() => window.open(buildTableQrPreviewUrl(table.qrCode), "_blank")} sx={{ borderRadius: "12px" }}>QR</Button>
-                    <Button size="small" variant="outlined" onClick={() => navigator.clipboard.writeText(buildTableOrderUrl(table.qrCode))} sx={{ borderRadius: "12px" }}>Copy URL</Button>
-                    <Button size="small" variant="outlined" onClick={() => openEditDialog(table)} sx={{ borderRadius: "12px" }}>Edit</Button>
-                    <Button size="small" variant="outlined" color="error" onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ borderRadius: "12px" }}>Delete</Button>
+                  >
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
+                        Token
+                      </Typography>
+                      <Button size="small" onClick={() => copyTableToken(table)} sx={{ minWidth: 0, px: 1, borderRadius: "10px" }}>
+                        Copy
+                      </Button>
+                    </Stack>
+                    <Typography
+                      sx={{
+                        fontFamily: "monospace",
+                        fontSize: "0.82rem",
+                        color: "var(--foreground)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {shortToken(table.qrCode)}
+                    </Typography>
+                  </Paper>
+
+                  <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+                    <IconButton size="small" onClick={() => setQrPreviewTable(table)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}>
+                      <QrCode2OutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <Button size="small" variant="outlined" onClick={() => copyTableUrl(table)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0, px: 1 }}>Copy URL</Button>
+                    <IconButton size="small" onClick={() => openEditDialog(table)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+                      <DeleteOutlineOutlinedIcon fontSize="small" />
+                    </IconButton>
                   </Stack>
                 </Stack>
               </Paper>
@@ -462,7 +522,7 @@ export default function TablesPage() {
                   <TableCell>
                     <Typography
                       sx={{
-                        maxWidth: 350,
+                        maxWidth: 220,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -520,10 +580,7 @@ export default function TablesPage() {
                     <IconButton
                       size="small"
                       onClick={() =>
-                        window.open(
-                          buildTableQrPreviewUrl(table.qrCode),
-                          "_blank"
-                        )
+                        setQrPreviewTable(table)
                       }
                     >
                       <QrCode2OutlinedIcon />
@@ -532,9 +589,7 @@ export default function TablesPage() {
                     <IconButton
                       size="small"
                       onClick={() =>
-                        navigator.clipboard.writeText(
-                          buildTableOrderUrl(table.qrCode)
-                        )
+                        copyTableUrl(table)
                       }
                     >
                       <ContentCopyOutlinedIcon />
@@ -711,6 +766,67 @@ export default function TablesPage() {
           >
             {saving ? "Deleting..." : "Delete"}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(qrPreviewTable)}
+        onClose={() => setQrPreviewTable(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>
+          Table {qrPreviewTable?.tableNo ?? ""} QR
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          {qrPreviewTable ? (
+            <Stack spacing={2} alignItems="center">
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: "18px",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "#fff",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={buildTableQrPreviewUrl(qrPreviewTable.qrCode)}
+                  alt={`QR code for table ${qrPreviewTable.tableNo}`}
+                  sx={{
+                    width: 220,
+                    height: 220,
+                    display: "block",
+                  }}
+                />
+              </Paper>
+              <Typography
+                sx={{
+                  width: "100%",
+                  color: "var(--muted-foreground)",
+                  fontSize: "0.82rem",
+                  textAlign: "center",
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {buildTableOrderUrl(qrPreviewTable.qrCode)}
+              </Typography>
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setQrPreviewTable(null)}>
+            Close
+          </Button>
+          {qrPreviewTable ? (
+            <Button
+              variant="contained"
+              onClick={() => copyTableUrl(qrPreviewTable)}
+            >
+              Copy URL
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
     </Box>

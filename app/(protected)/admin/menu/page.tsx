@@ -98,13 +98,15 @@ const MenuMobileCard = ({
 }) => (
   <Paper
     sx={{
-      p: 2,
+      p: 1.75,
       borderRadius: "18px",
       border: "1px solid var(--border)",
-      backgroundColor: "var(--card)",
+      backgroundColor: "var(--background)",
+      minWidth: 0,
+      overflow: "hidden",
     }}
   >
-    <Stack spacing={1.75}>
+    <Stack spacing={1.5}>
       <Stack direction="row" spacing={1.5} alignItems="flex-start">
         <Box
           sx={{
@@ -123,65 +125,90 @@ const MenuMobileCard = ({
         </Box>
 
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+          <Typography sx={{ fontWeight: 850, fontSize: "1.02rem", lineHeight: 1.25, overflowWrap: "anywhere" }}>
             {capitalize(item.name)}
           </Typography>
           <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 0.25 }}>
             {capitalize(item.category)}
           </Typography>
-          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)", mt: 0.25 }}>
-            {getFoodTypeLabel(item.foodType)} | {item.price}
-          </Typography>
         </Box>
+
+        <Chip
+          label={
+            updatingStatusId === item.id
+              ? "Updating"
+              : item.isAvailable
+                ? "Active"
+                : "Off"
+          }
+          size="small"
+          onClick={() => onToggleAvailability(item)}
+          sx={{
+            flexShrink: 0,
+            backgroundColor:
+              updatingStatusId === item.id
+                ? "#e5e7eb"
+                : item.isAvailable
+                  ? "rgba(46, 230, 166, 0.12)"
+                  : "rgba(255, 90, 122, 0.12)",
+            color:
+              updatingStatusId === item.id
+                ? "#6b7280"
+                : item.isAvailable
+                  ? "#2EE6A6"
+                  : "#FF5A7A",
+            fontWeight: 800,
+            cursor: updatingStatusId === item.id ? "wait" : "pointer",
+          }}
+        />
       </Stack>
 
-      <Typography
+      <Paper
+        elevation={0}
         sx={{
-          fontSize: "0.88rem",
-          color: "var(--muted-foreground)",
-          lineHeight: 1.55,
+          p: 1.25,
+          borderRadius: "14px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
         }}
       >
-        {item.description || "No description provided."}
-      </Typography>
+        <Stack direction="row" justifyContent="space-between" spacing={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
+              Type
+            </Typography>
+            <Typography sx={{ fontWeight: 750 }}>{getFoodTypeLabel(item.foodType)}</Typography>
+          </Box>
+          <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
+              Price
+            </Typography>
+            <Typography sx={{ fontWeight: 850 }}>Rs. {item.price}</Typography>
+          </Box>
+        </Stack>
+        <Typography
+          sx={{
+            fontSize: "0.86rem",
+            color: "var(--muted-foreground)",
+            lineHeight: 1.45,
+            mt: 1,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {item.description || "No description provided."}
+        </Typography>
+      </Paper>
 
-      <Chip
-        label={
-          updatingStatusId === item.id
-            ? "Updating..."
-            : getAvailabilityLabel(item.isAvailable)
-        }
-        size="small"
-        onClick={() => onToggleAvailability(item)}
-        sx={{
-          width: "fit-content",
-          backgroundColor:
-            updatingStatusId === item.id
-              ? "#e5e7eb"
-              : item.isAvailable
-                ? "rgba(46, 230, 166, 0.12)"
-                : "rgba(255, 90, 122, 0.12)",
-          color:
-            updatingStatusId === item.id
-              ? "#6b7280"
-              : item.isAvailable
-                ? "#2EE6A6"
-                : "#FF5A7A",
-          fontWeight: 700,
-          cursor: updatingStatusId === item.id ? "wait" : "pointer",
-        }}
-      />
-
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Button variant="outlined" size="small" onClick={() => onView(item)} sx={{ borderRadius: "12px" }}>
+      <Stack direction="row" spacing={0.75} alignItems="center">
+        <Button variant="contained" size="small" onClick={() => onView(item)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0 }}>
           View
         </Button>
-        <Button variant="outlined" size="small" onClick={() => onEdit(item)} sx={{ borderRadius: "12px" }}>
-          Edit
-        </Button>
-        <Button variant="outlined" size="small" color="error" onClick={() => onDelete(item)} sx={{ borderRadius: "12px" }}>
-          Delete
-        </Button>
+        <IconButton size="small" onClick={() => onEdit(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
+          <EditOutlinedIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" color="error" onClick={() => onDelete(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+          <DeleteOutlineOutlinedIcon fontSize="small" />
+        </IconButton>
       </Stack>
     </Stack>
   </Paper>
@@ -435,7 +462,7 @@ export default function MenuManagementPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
+    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
       <Box
         sx={{
           display: "flex",
@@ -472,6 +499,7 @@ export default function MenuManagementPage() {
             display: "flex",
             gap: 1.5,
             flexWrap: "wrap",
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           <Button
@@ -483,6 +511,7 @@ export default function MenuManagementPage() {
               borderColor: "var(--border)",
               color: "var(--foreground)",
               backgroundColor: "var(--card)",
+              flex: { xs: 1, sm: "initial" },
             }}
           >
             Export
@@ -497,16 +526,17 @@ export default function MenuManagementPage() {
               backgroundColor: "var(--primary)",
               color: "var(--primary-foreground)",
               boxShadow: "0 12px 24px rgba(79, 139, 255, 0.25)",
+              flex: { xs: 1, sm: "initial" },
             }}
           >
-            Add New Menu
+            Add Menu
           </Button>
         </Box>
       </Box>
 
       <Paper
         sx={{
-          borderRadius: "22px",
+          borderRadius: { xs: "18px", md: "22px" },
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",
@@ -517,7 +547,7 @@ export default function MenuManagementPage() {
           sx={{
             display: "grid",
             gap: 2,
-            p: 2.5,
+            p: { xs: 1.5, md: 2.5 },
             borderBottom: "1px solid var(--border)",
           }}
         >
@@ -611,8 +641,8 @@ export default function MenuManagementPage() {
         <Box
           sx={{
             display: { xs: "grid", md: "none" },
-            gap: 2,
-            p: 2.5,
+            gap: 1.5,
+            p: 1.5,
           }}
         >
           {loading ? (
