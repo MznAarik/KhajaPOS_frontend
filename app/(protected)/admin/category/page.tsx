@@ -195,7 +195,7 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
+    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
         <Box sx={{ maxWidth: 760 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: "1.25rem", md: "2.125rem" } }}>
@@ -214,6 +214,7 @@ export default function CategoryManagementPage() {
             backgroundColor: "var(--primary)",
             color: "var(--primary-foreground)",
             boxShadow: "0 12px 24px rgba(79, 139, 255, 0.25)",
+            width: { xs: "100%", sm: "auto" },
           }}
         >
           Add Category
@@ -222,13 +223,13 @@ export default function CategoryManagementPage() {
 
       <Paper
         sx={{
-          borderRadius: "22px",
+          borderRadius: { xs: "18px", md: "22px" },
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",
         }}
       >
-        <Box sx={{ p: 2.5, borderBottom: "1px solid var(--border)" }}>
+        <Box sx={{ p: { xs: 1.75, md: 2.5 }, borderBottom: "1px solid var(--border)" }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={2}
@@ -264,7 +265,7 @@ export default function CategoryManagementPage() {
           </Stack>
         </Box>
 
-        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 2, p: 2.5 }}>
+        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1.5, p: 1.5 }}>
           {loading ? (
             skeletonRows.map((row) => (
               <Paper key={`mobile-category-skeleton-${row}`} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
@@ -279,39 +280,56 @@ export default function CategoryManagementPage() {
             ))
           ) : paginatedCategories.length ? (
             paginatedCategories.map((category) => (
-              <Paper key={category.id} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
+              <Paper key={category.id} sx={{ p: 1.75, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
                 <Stack spacing={1.5}>
-                  <Box>
-                    <Typography sx={{ fontWeight: 600 }}>{category.name}</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-                      Created {new Date(category.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={availabilityUpdatingId === category.id ? "Updating..." : category.isActive ? "Available" : "Unavailable"}
-                    onClick={() => handleAvailabilityToggle(category)}
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 850, fontSize: "1.05rem", overflowWrap: "anywhere" }}>
+                        {capitalize(category.name)}
+                      </Typography>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+                        Menu group
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={availabilityUpdatingId === category.id ? "Updating" : category.isActive ? "Active" : "Off"}
+                      onClick={() => handleAvailabilityToggle(category)}
+                      sx={{
+                        flexShrink: 0,
+                        backgroundColor: category.isActive
+                          ? "rgba(46, 230, 166, 0.12)"
+                          : "rgba(255, 90, 122, 0.12)",
+                        color: category.isActive ? "#2EE6A6" : "#FF5A7A",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    />
+                  </Stack>
+
+                  <Paper
+                    elevation={0}
                     sx={{
-                      width: "fit-content",
-                      backgroundColor: category.isActive
-                        ? "rgba(46, 230, 166, 0.12)"
-                        : "rgba(255, 90, 122, 0.12)",
-                      color: category.isActive ? "#2EE6A6" : "#FF5A7A",
-                      fontWeight: 700,
-                      cursor: "pointer",
+                      p: 1.25,
+                      borderRadius: "14px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
                     }}
-                  />
-                  <Stack direction="row" spacing={1}>
-                    <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px" }}>
+                  >
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
+                      Created
+                    </Typography>
+                    <Typography sx={{ fontWeight: 750, mt: 0.35 }}>
+                      {new Date(category.createdAt).toLocaleDateString()}
+                    </Typography>
+                  </Paper>
+
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0 }}>
                       Edit
                     </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={() => openDeleteDialog(category)}
-                      sx={{ borderRadius: "12px" }}
-                    >
-                      Delete
-                    </Button>
+                    <IconButton color="error" onClick={() => openDeleteDialog(category)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+                      <DeleteOutlineOutlinedIcon fontSize="small" />
+                    </IconButton>
                   </Stack>
                 </Stack>
               </Paper>
@@ -347,7 +365,7 @@ export default function CategoryManagementPage() {
               ))
             ) : paginatedCategories.length ? (
               paginatedCategories.map((category) => (
-                <TableRow sx={{ m: "500px" }} key={category.id}>
+                <TableRow key={category.id}>
                   <TableCell>
                     <Typography sx={{ fontWeight: 600 }}>{capitalize(category.name)}</Typography>
                   </TableCell>

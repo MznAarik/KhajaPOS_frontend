@@ -17,6 +17,7 @@ import {
     Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import { clearAuthSession } from "@/lib/api";
 
 const getInitials = () => "KP";
 
@@ -54,14 +55,10 @@ export default function ProfileComponent() {
         setIsLoggingOut(true);
 
         try {
-            await fetch("/api/auth-cookie", {
-                method: "DELETE",
-            });
+            await clearAuthSession();
         } catch (error) {
             console.error("Failed to clear auth cookie:", error);
         } finally {
-            window.localStorage.removeItem("authToken");
-            window.localStorage.removeItem("authTokenType");
             setIsAuthenticated(false);
             handleClose();
             setIsLoggingOut(false);

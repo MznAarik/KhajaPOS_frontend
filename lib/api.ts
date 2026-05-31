@@ -22,6 +22,35 @@ const getAuthTokenFromStorage = (): {
   return { token: match ? decodeURIComponent(match[1]) : null, type };
 };
 
+export const clearAuthSession = async () => {
+  try {
+    await fetch("/api/auth-cookie", { method: "DELETE" });
+  } catch {
+    // ignore logout cleanup failures
+  }
+
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("authToken");
+    window.localStorage.removeItem("authTokenType");
+  }
+};
+
+let authRedirectStarted = false;
+
+const redirectToLogin = async () => {
+  if (typeof window === "undefined" || authRedirectStarted) return;
+
+  authRedirectStarted = true;
+  await clearAuthSession();
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const loginPath = "/auth/login";
+
+  if (window.location.pathname.startsWith(loginPath)) return;
+
+  window.location.replace(`${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`);
+};
+
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   config.headers.Accept = "application/json";
@@ -35,6 +64,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error?.response?.status === 401) {
+      await redirectToLogin();
+      return new Promise(() => {
+        // Keep page-level catch handlers from rendering "Unauthenticated."
+      });
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const res = await fetch(url, {
     ...options,
@@ -42,8 +85,10 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   });
 
   if (res.status === 401) {
-    window.location.href = "/auth/login?message=Session expired";
-    return;
+    await redirectToLogin();
+    return new Promise(() => {
+      // Keep callers from rendering the backend 401 body.
+    });
   }
 
   return res;
@@ -264,6 +309,12 @@ type PublicOrderResponse = {
   data: AdminOrderResponse;
 };
 
+type PublicOrderListResponse = {
+  status: number;
+  message?: string;
+  data: AdminOrderResponse[];
+};
+
 const parseAvailability = (value: unknown): boolean => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
@@ -290,6 +341,10 @@ export async function apiRequest<T>(
 
   if (!res.ok) {
     const message = data?.message || data?.error || "Something went wrong";
+
+    if (res.status === 401 && typeof window !== "undefined") {
+      await redirectToLogin();
+    }
 
     throw new Error(message);
   }
@@ -531,6 +586,15 @@ export const getPublicOrder = async (
     `/public/orders/${encodeURIComponent(sessionToken)}`,
   );
   return normalizeOrder(res.data.data);
+};
+
+export const getPublicTableOrders = async (
+  tableCode: string,
+): Promise<KitchenOrder[]> => {
+  const res = await api.get<PublicOrderListResponse>(
+    `/public/tables/${encodeURIComponent(tableCode)}/orders`,
+  );
+  return res.data.data.map(normalizeOrder);
 };
 
 export const confirmPublicOrder = async (

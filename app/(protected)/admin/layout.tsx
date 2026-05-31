@@ -15,6 +15,21 @@ export default async function AdminLayout({
         redirect("/auth/login");
     }
 
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/user`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+            },
+            cache: "no-store",
+        }
+    );
+
+    if (!res.ok) {
+        redirect("/auth/login");
+    }
+
     return (
         <SideNavLayout>
             {children}

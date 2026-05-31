@@ -5,9 +5,8 @@ import {
   Box,
   Button,
   Chip,
-  MenuItem,
+  IconButton,
   Paper,
-  Select,
   Skeleton,
   Stack,
   Typography,
@@ -20,6 +19,7 @@ import { safeError } from "@/lib/safeError";
 
 const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled"];
 const lockedStatuses: OrderStatus[] = ["served", "cancelled"];
+type OrderFilter = "active" | "all" | OrderStatus;
 
 const getStatusStyle = (status: OrderStatus) => {
   switch (status) {
@@ -45,10 +45,28 @@ const statusLabel = (status: OrderStatus) =>
 
 const isLocked = (status: OrderStatus) => lockedStatuses.includes(status);
 
+const getNextOrderAction = (
+  status: OrderStatus,
+): { label: string; status: OrderStatus } | null => {
+  switch (status) {
+    case "pending":
+      return { label: "Confirm Order", status: "confirmed" };
+    case "confirmed":
+      return { label: "Start Preparing", status: "preparing" };
+    case "preparing":
+      return { label: "Mark Ready", status: "ready" };
+    case "ready":
+      return { label: "Mark Served", status: "served" };
+    default:
+      return null;
+  }
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [updatingId, setUpdatingId] = React.useState<number | null>(null);
+  const [filter, setFilter] = React.useState<OrderFilter>("active");
   const { showSnackbar } = useAppSnackbar();
 
   const fetchOrders = React.useCallback(async () => {
@@ -90,67 +108,197 @@ export default function OrdersPage() {
     }
   };
 
-  return (
-    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1600, mx: "auto" }}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", md: "center" }}
-        spacing={2}
-        mb={4}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Kitchen Orders
-          </Typography>
-          <Typography sx={{ color: "var(--muted-foreground)" }}>
-            Real-time table orders for kitchen and cashier
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={fetchOrders}
-          disabled={loading}
-          size="large"
-        >
-          Refresh
-        </Button>
-      </Stack>
+  const visibleOrders = React.useMemo(() => {
+    if (filter === "all") return orders;
+    if (filter === "active") return orders.filter((order) => !isLocked(order.status));
+    return orders.filter((order) => order.status === filter);
+  }, [filter, orders]);
 
-      <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap" mb={4}>
-        <Chip label={`${orders.length} Total Orders`} sx={{ fontWeight: 700, color: "var(--foreground)", backgroundColor: "var(--card)" }} />
-        <Chip label={`${orders.filter((o) => o.status === "pending").length} Pending`} color="warning" sx={{ fontWeight: 700 }} />
-        <Chip label={`${orders.filter((o) => o.status === "confirmed").length} Confirmed`} color="info" sx={{ fontWeight: 700 }} />
-        <Chip label={`${orders.filter((o) => o.status === "preparing").length} Preparing`} color="warning" sx={{ fontWeight: 700 }} />
-        <Chip label={`${orders.filter((o) => o.status === "ready").length} Ready`} color="success" sx={{ fontWeight: 700 }} />
-        <Chip label={`${orders.filter((o) => o.status === "served").length} Served`} color="default" sx={{ fontWeight: 700 }} />
-        <Chip label={`${orders.filter((o) => o.status === "cancelled").length} Cancelled`} color="error" sx={{ fontWeight: 700 }} />
+  const filterOptions: Array<{ value: OrderFilter; label: string; count: number }> = [
+    { value: "active", label: "Active", count: orders.filter((order) => !isLocked(order.status)).length },
+    { value: "all", label: "All", count: orders.length },
+    ...statusOptions.map((status) => ({
+      value: status,
+      label: statusLabel(status),
+      count: orders.filter((order) => order.status === status).length,
+    })),
+  ];
+
+  const activeOrders = orders.filter((order) => !isLocked(order.status)).length;
+  const readyOrders = orders.filter((order) => order.status === "ready").length;
+
+  return (
+    <Box sx={{ width: "100%", minWidth: 0, overflow: "hidden", p: { xs: 0, md: 3 }, maxWidth: 1600, mx: "auto" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          position: { xs: "fixed", md: "static" },
+          top: { xs: 74, md: "auto" },
+          left: { xs: 12, md: "auto" },
+          right: { xs: 12, md: "auto" },
+          zIndex: (theme) => theme.zIndex.appBar,
+          mb: { xs: 0, md: 4 },
+          p: { xs: 1.25, md: 0 },
+          borderRadius: { xs: "18px", md: 0 },
+          border: { xs: "1px solid var(--border)", md: "none" },
+          borderTop: 0,
+          backgroundColor: { xs: "color-mix(in srgb, var(--card) 88%, transparent)", md: "transparent" },
+          backdropFilter: { xs: "blur(18px)", md: "none" },
+          boxShadow: { xs: "0 12px 30px rgba(31, 42, 43, 0.12)", md: "none" },
+        }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={1.5}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: "1.18rem", md: "2.125rem" }, lineHeight: 1.05 }}>
+              Kitchen Orders
+            </Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.76rem", md: "1rem" }, mt: 0.3, fontWeight: 650 }}>
+              Live kitchen queue
+            </Typography>
+          </Box>
+          <IconButton
+            aria-label="refresh orders"
+            onClick={fetchOrders}
+            disabled={loading}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+              borderRadius: "13px",
+              border: "1px solid var(--border)",
+              backgroundColor: "color-mix(in srgb, var(--background) 82%, black 18%)",
+              color: "var(--foreground)",
+            }}
+          >
+            <RefreshIcon />
+          </IconButton>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={fetchOrders}
+            disabled={loading}
+            size="medium"
+            sx={{ display: { xs: "none", md: "inline-flex" }, borderRadius: "14px" }}
+          >
+            Refresh
+          </Button>
+        </Stack>
+
+        <Box
+          sx={{
+            display: { xs: "grid", md: "none" },
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 0.75,
+            mt: 1.1,
+          }}
+        >
+          {[
+            { label: "Active", value: activeOrders },
+            { label: "Ready", value: readyOrders },
+            { label: "Total", value: orders.length },
+          ].map((item) => (
+            <Paper
+              key={item.label}
+              elevation={0}
+              sx={{
+                px: 0.75,
+                py: 0.85,
+                borderRadius: "13px",
+                border: "1px solid var(--border)",
+                backgroundColor: "color-mix(in srgb, var(--background) 82%, black 18%)",
+                textAlign: "center",
+                minWidth: 0,
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, fontSize: "0.98rem", lineHeight: 1, color: "var(--foreground)" }}>
+                {item.value}
+              </Typography>
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.66rem", fontWeight: 850, mt: 0.3 }}>
+                {item.label}
+              </Typography>
+            </Paper>
+          ))}
+        </Box>
+      </Paper>
+
+      <Box sx={{ display: { xs: "block", md: "none" }, height: 132 }} />
+
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          position: { xs: "sticky", md: "static" },
+          top: { xs: 90, md: "auto" },
+          zIndex: 2,
+          mx: 0,
+          px: { xs: 0.7, md: 0 },
+          py: { xs: 0.7, md: 0 },
+          pb: { xs: 1, md: 0 },
+          mb: { xs: 1.5, md: 4 },
+          borderRadius: { xs: "18px", md: 0 },
+          overflowX: "auto",
+          overflowY: "hidden",
+          flexWrap: "nowrap",
+          backgroundColor: { xs: "var(--background)", md: "transparent" },
+          scrollbarWidth: "none",
+          "&::-webkit-scrollbar": { display: "none" },
+        }}
+      >
+        {filterOptions.map((option) => {
+          const selected = filter === option.value;
+          return (
+            <Chip
+              key={option.value}
+              label={`${option.label} ${option.count}`}
+              onClick={() => setFilter(option.value)}
+              sx={{
+                flexShrink: 0,
+                height: { xs: 36, md: 38 },
+                borderRadius: "999px",
+                px: { xs: 0.35, md: 0.5 },
+                fontWeight: 800,
+                fontSize: { xs: "0.78rem", md: "0.875rem" },
+                color: selected ? "var(--primary-foreground)" : "var(--foreground)",
+                backgroundColor: selected ? "var(--primary)" : "var(--card)",
+                border: "1px solid var(--border)",
+              }}
+            />
+          );
+        })}
       </Stack>
 
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
-          gap: 3,
+          gap: { xs: 1.5, md: 3 },
+          minWidth: 0,
         }}
       >
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Paper key={i} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "divider" }}>
-              <Skeleton variant="text" width="45%" height={36} />
-              <Skeleton variant="text" width="65%" height={22} sx={{ mt: 1 }} />
-              <Skeleton variant="rounded" height={220} sx={{ mt: 3, borderRadius: 3 }} />
+            <Paper key={i} sx={{ p: { xs: 2, md: 3 }, borderRadius: { xs: "18px", md: 4 }, border: "1px solid", borderColor: "divider", minWidth: 0 }}>
+              <Skeleton variant="text" width="45%" height={30} />
+              <Skeleton variant="text" width="65%" height={20} sx={{ mt: 0.5 }} />
+              <Skeleton variant="rounded" height={150} sx={{ mt: 2, borderRadius: 3 }} />
             </Paper>
           ))
-        ) : orders.length === 0 ? (
-          <Paper sx={{ p: 8, textAlign: "center", gridColumn: "1 / -1", borderRadius: 4 }}>
-            <Typography variant="h6" sx={{ color: "var(--muted-foreground)" }}>No orders available</Typography>
+        ) : visibleOrders.length === 0 ? (
+          <Paper sx={{ p: { xs: 3, md: 8 }, textAlign: "center", gridColumn: "1 / -1", borderRadius: { xs: "18px", md: 4 }, border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <Typography variant="h6" sx={{ color: "var(--muted-foreground)" }}>No orders in this view</Typography>
           </Paper>
         ) : (
-          orders.map((order) => {
+          visibleOrders.map((order) => {
             const locked = isLocked(order.status);
             const statusStyle = getStatusStyle(order.status);
+            const nextAction = getNextOrderAction(order.status);
+            const isUpdating = updatingId === order.id;
 
             return (
               <Paper
@@ -158,55 +306,73 @@ export default function OrdersPage() {
                 elevation={0}
                 sx={{
                   p: { xs: 2, md: 3 },
-                  borderRadius: 4,
+                  width: "100%",
+                  minWidth: 0,
+                  overflow: "hidden",
+                  borderRadius: { xs: "22px", md: 4 },
                   border: "1px solid",
                   borderColor: locked ? "rgba(148, 163, 184, 0.24)" : "divider",
+                  backgroundColor: "var(--background)",
                   transition: locked ? "none" : "all 0.25s ease",
                   opacity: locked ? 0.82 : 1,
                   "&:hover": locked
                     ? {
-                        borderColor: "rgba(148, 163, 184, 0.24)",
-                        transform: "none",
-                        boxShadow: "none",
-                      }
+                      borderColor: "rgba(148, 163, 184, 0.24)",
+                      transform: "none",
+                      boxShadow: "none",
+                    }
                     : {
-                        borderColor: "primary.main",
-                        transform: "translateY(-4px)",
-                        boxShadow: 3,
-                      },
+                      borderColor: "primary.main",
+                      transform: "translateY(-4px)",
+                      boxShadow: 3,
+                    },
                 }}
               >
-                <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
-                  <Box>
-                    <Typography variant="h5" fontWeight={800}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h5" fontWeight={900} sx={{ fontSize: { xs: "1.2rem", md: "1.5rem" }, lineHeight: 1.1 }}>
                       Table {order.tableNo}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: "var(--muted-foreground)" }}>
-                      Order #{order.id} ? {new Date(order.createdAt).toLocaleString()}
+                    <Typography variant="body2" sx={{ color: "var(--muted-foreground)", overflowWrap: "anywhere", fontSize: { xs: "0.78rem", md: "0.875rem" }, mt: 0.45 }}>
+                      #{order.id} - {new Date(order.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </Typography>
                   </Box>
 
-                  <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                    <Chip label={statusLabel(order.status)} sx={{ fontWeight: 800, color: statusStyle.color, bgcolor: statusStyle.bgcolor }} />
-                    <Chip label={`Rs. ${order.totalAmount}`} sx={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--foreground)", backgroundColor: "var(--card)" }} />
+                  <Stack spacing={0.75} alignItems="flex-end" sx={{ flexShrink: 0 }}>
+                    <Chip label={statusLabel(order.status)} sx={{ height: 30, fontWeight: 900, color: statusStyle.color, bgcolor: statusStyle.bgcolor }} />
+                    <Typography sx={{ fontWeight: 900, fontSize: { xs: "1rem", md: "1.1rem" }, whiteSpace: "nowrap" }}>
+                      Rs. {order.totalAmount}
+                    </Typography>
                   </Stack>
                 </Stack>
 
                 {order.remarks ? (
-                  <Typography sx={{ mt: 2, fontStyle: "italic", color: "#d97706" }}>
+                  <Typography sx={{ mt: 1.5, p: 1.25, borderRadius: "14px", backgroundColor: "rgba(251, 191, 36, 0.14)", fontWeight: 700, color: "#d97706", overflowWrap: "anywhere", fontSize: "0.88rem" }}>
                     Note: {order.remarks}
                   </Typography>
                 ) : null}
 
-                <Divider sx={{ my: 2.5 }} />
+                <Divider sx={{ my: { xs: 1.75, md: 2.5 } }} />
 
-                <Stack spacing={1.5} sx={{ mb: 3 }}>
+                <Stack spacing={0.75} sx={{ mb: { xs: 2, md: 3 } }}>
                   {order.items.map((item) => (
-                    <Stack key={item.id} direction="row" justifyContent="space-between" spacing={2}>
-                      <Typography fontWeight={600}>
+                    <Stack
+                      key={item.id}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={2}
+                      sx={{
+                        p: 1.2,
+                        minWidth: 0,
+                        borderRadius: "14px",
+                        backgroundColor: "var(--card)",
+                      }}
+                    >
+                      <Typography fontWeight={700} sx={{ minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
                         {item.quantity}x {item.name}
                       </Typography>
-                      <Typography sx={{ color: "var(--muted-foreground)" }}>Rs. {item.price}</Typography>
+                      <Typography sx={{ color: "var(--muted-foreground)", flexShrink: 0 }}>Rs. {item.price}</Typography>
                     </Stack>
                   ))}
                 </Stack>
@@ -231,30 +397,45 @@ export default function OrdersPage() {
                       </Typography>
                     </Paper>
                   ) : (
-                    <Select
-                      fullWidth
-                      size="medium"
-                      value={order.status}
-                      disabled={updatingId === order.id}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                      sx={{
-                        borderRadius: 3,
-                        "& .MuiSelect-select": {
-                          fontWeight: 600,
-                          py: 1.5,
-                          color: "var(--foreground)",
-                        },
-                      }}
-                      MenuProps={{ disableScrollLock: true }}
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      sx={{ width: "100%" }}
                     >
-                      {statusOptions.map((status) => (
-                        <MenuItem key={status} value={status}>
-                          <Box sx={{ color: getStatusStyle(status).color, bgcolor: getStatusStyle(status).bgcolor, fontWeight: 600, px: 2, py: 1, borderRadius: 2 }}>
-                            {statusLabel(status)}
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
+                      {nextAction ? (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(order.id, nextAction.status)}
+                          sx={{
+                            minHeight: 44,
+                            borderRadius: "14px",
+                            fontWeight: 850,
+                            textTransform: "none",
+                            backgroundColor: order.status === "ready" ? "#166534" : "var(--primary)",
+                            color: order.status === "ready" ? "#ffffff" : "var(--primary-foreground)",
+                          }}
+                        >
+                          {isUpdating ? "Updating..." : nextAction.label}
+                        </Button>
+                      ) : null}
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="error"
+                        disabled={isUpdating}
+                        onClick={() => handleStatusChange(order.id, "cancelled")}
+                        sx={{
+                          minHeight: 44,
+                          borderRadius: "14px",
+                          fontWeight: 850,
+                          textTransform: "none",
+                        }}
+                      >
+                        Cancel Order
+                      </Button>
+                    </Stack>
                   )}
                   {locked ? (
                     <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
