@@ -35,6 +35,22 @@ export const clearAuthSession = async () => {
   }
 };
 
+let authRedirectStarted = false;
+
+const redirectToLogin = async () => {
+  if (typeof window === "undefined" || authRedirectStarted) return;
+
+  authRedirectStarted = true;
+  await clearAuthSession();
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const loginPath = "/auth/login";
+
+  if (window.location.pathname.startsWith(loginPath)) return;
+
+  window.location.href = `${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`;
+};
+
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   config.headers.Accept = "application/json";
@@ -48,6 +64,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error?.response?.status === 401) {
+      await redirectToLogin();
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const res = await fetch(url, {
     ...options,
@@ -55,7 +82,7 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   });
 
   if (res.status === 401) {
-    window.location.href = "/auth/login?message=Session expired";
+    await redirectToLogin();
     return;
   }
 
@@ -311,8 +338,7 @@ export async function apiRequest<T>(
     const message = data?.message || data?.error || "Something went wrong";
 
     if (res.status === 401 && typeof window !== "undefined") {
-      await clearAuthSession();
-      window.location.href = "/auth/login?message=Session expired";
+      await redirectToLogin();
     }
 
     throw new Error(message);
