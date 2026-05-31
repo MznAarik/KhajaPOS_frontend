@@ -55,6 +55,34 @@ const parseRecentOrders = (raw: string | null): RecentOrderSummary[] => {
   return Array.isArray(parsed) ? parsed : [parsed];
 };
 
+const findStoredTableCode = (sessionToken: string, tableId?: number) => {
+  if (typeof window === "undefined") return "";
+
+  const direct = window.localStorage.getItem(getOrderSessionTableCodeKey(sessionToken));
+  if (direct) return direct;
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key || !key.startsWith("khajapos-order-list:")) continue;
+
+    try {
+      const orders = parseRecentOrders(window.localStorage.getItem(key));
+      const match = orders.find(
+        (item) =>
+          item.sessionToken === sessionToken &&
+          (!tableId || item.tableId === tableId) &&
+          item.tableCode
+      );
+
+      if (match?.tableCode) return match.tableCode;
+    } catch {
+      continue;
+    }
+  }
+
+  return "";
+};
+
 export default function TrackOrderPage() {
   const params = useParams<{ sessionToken: string }>();
   const router = useRouter();
@@ -65,6 +93,7 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = React.useState(true);
   const [confirming, setConfirming] = React.useState(false);
   const [cancelling, setCancelling] = React.useState(false);
+  const [returnTableCode, setReturnTableCode] = React.useState("");
 
   const loadOrder = React.useCallback(async () => {
     try {
@@ -72,13 +101,16 @@ export default function TrackOrderPage() {
       setOrder(data);
       if (typeof window !== "undefined") {
         try {
-          const storedTableCode = window.localStorage.getItem(getOrderSessionTableCodeKey(data.sessionToken)) ?? undefined;
+          const storedTableCode = findStoredTableCode(data.sessionToken, data.tableId);
+          if (storedTableCode) {
+            setReturnTableCode(storedTableCode);
+          }
           const summary = {
             sessionToken: data.sessionToken,
             orderId: data.id,
             tableId: data.tableId,
             tableNo: data.tableNo,
-            tableCode: storedTableCode ?? "",
+            tableCode: storedTableCode,
             createdAt: data.createdAt,
           };
           const storedAt = new Date(data.createdAt).getTime();
@@ -126,7 +158,7 @@ export default function TrackOrderPage() {
   }, [loadOrder, order?.status]);
 
   const handleConfirm = async () => {
-    if (!order) return;
+    if (!order || confirming || cancelling) return;
 
     setConfirming(true);
 
@@ -143,7 +175,7 @@ export default function TrackOrderPage() {
   };
 
   const handleCancel = async () => {
-    if (!order) return;
+    if (!order || confirming || cancelling) return;
 
     setCancelling(true);
 
@@ -159,10 +191,24 @@ export default function TrackOrderPage() {
     }
   };
 
+  const handleBackToMenu = React.useCallback(() => {
+    if (returnTableCode) {
+      window.location.assign(`/order/${encodeURIComponent(returnTableCode)}`);
+      return;
+    }
+
+    router.back();
+  }, [returnTableCode, router]);
+
   const activeStepIndex = order ? statusSteps.indexOf(order.status) : -1;
+  const actionPending = confirming || cancelling;
+  const locked = order ? isOrderLocked(order.status) : false;
+  const canConfirm = order ? canCustomerConfirmOrder(order.status) && !locked : false;
+  const canCancel = order ? canCustomerCancelOrder(order.status) && !locked : false;
+  const showMobileActionPanel = Boolean(order);
 
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "var(--background)", color: "var(--foreground)", p: { xs: 2, md: 3 }, display: "grid", gap: 2 }}>
+    <Box sx={{ minHeight: "100vh", backgroundColor: "var(--background)", color: "var(--foreground)", p: { xs: 1.5, md: 3 }, pb: { xs: showMobileActionPanel ? 18 : 2, md: 3 }, display: "grid", gap: 2 }}>
       <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "24px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
         <Stack spacing={1}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
@@ -249,28 +295,106 @@ export default function TrackOrderPage() {
               </>
             ) : null}
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button variant="outlined" onClick={() => router.back()} sx={{ borderRadius: "14px" }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.25}
+              sx={{
+                display: { xs: "none", sm: "flex" },
+                p: { xs: 1, sm: 0 },
+                borderRadius: { xs: "18px", sm: 0 },
+                border: { xs: "1px solid var(--border)", sm: "none" },
+                backgroundColor: { xs: "var(--background)", sm: "transparent" },
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleBackToMenu}
+                sx={{ borderRadius: "14px", minHeight: { xs: 46, sm: "auto" } }}
+              >
                 Back to Menu
               </Button>
               <Button
                 variant="contained"
-                disabled={!canCustomerConfirmOrder(order.status) || confirming || isOrderLocked(order.status)}
+                disabled={!canConfirm || actionPending}
                 onClick={handleConfirm}
-                sx={{ borderRadius: "14px" }}
+                sx={{ borderRadius: "14px", minHeight: { xs: 48, sm: "auto" }, fontWeight: { xs: 850, sm: 600 } }}
               >
-                {confirming ? "Confirming..." : canCustomerConfirmOrder(order.status) ? "Confirm Order" : "Confirmation Locked"}
+                {confirming ? "Confirming..." : canConfirm ? "Confirm Order" : "Confirmation Locked"}
               </Button>
               <Button
                 variant="contained"
                 color="error"
-                disabled={!canCustomerCancelOrder(order.status) || cancelling || isOrderLocked(order.status)}
+                disabled={!canCancel || actionPending}
                 onClick={handleCancel}
-                sx={{ borderRadius: "14px" }}
+                sx={{ borderRadius: "14px", minHeight: { xs: 48, sm: "auto" }, fontWeight: { xs: 850, sm: 600 } }}
               >
-                {cancelling ? "Cancelling..." : canCustomerCancelOrder(order.status) ? "Cancel Order" : "Cancellation Locked"}
+                {cancelling ? "Cancelling..." : canCancel ? "Cancel Order" : "Cancellation Locked"}
               </Button>
             </Stack>
+
+            {showMobileActionPanel ? (
+              <Box
+                sx={{
+                  display: { xs: "block", sm: "none" },
+                  position: "fixed",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 30,
+                  px: 1.5,
+                  pb: "calc(env(safe-area-inset-bottom) + 12px)",
+                  pt: 1,
+                  pointerEvents: "none",
+                }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1,
+                    borderRadius: "20px",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "color-mix(in srgb, var(--card) 94%, transparent)",
+                    backdropFilter: "blur(18px)",
+                    boxShadow: "0 18px 42px rgba(31, 42, 43, 0.22)",
+                    pointerEvents: "auto",
+                  }}
+                >
+                  <Stack spacing={1}>
+                    {!locked ? (
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        disabled={!canConfirm || actionPending}
+                        onClick={handleConfirm}
+                        sx={{ borderRadius: "14px", minHeight: 50, fontWeight: 850 }}
+                      >
+                        {confirming ? "Confirming..." : canConfirm ? "Confirm Order" : "Confirmation Locked"}
+                      </Button>
+                    ) : null}
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={handleBackToMenu}
+                        sx={{ borderRadius: "14px", minHeight: 44, fontWeight: 800 }}
+                      >
+                        Menu
+                      </Button>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="error"
+                        disabled={!canCancel || actionPending}
+                        onClick={handleCancel}
+                        sx={{ display: locked ? "none" : "inline-flex", borderRadius: "14px", minHeight: 44, fontWeight: 850 }}
+                      >
+                        {cancelling ? "Cancelling..." : canCancel ? "Cancel Order" : "Cancellation Locked"}
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              </Box>
+            ) : null}
           </Stack>
         ) : (
           <Typography sx={{ color: "var(--muted-foreground)" }}>Order not found.</Typography>
@@ -279,4 +403,3 @@ export default function TrackOrderPage() {
     </Box>
   );
 }
-
