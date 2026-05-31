@@ -277,6 +277,12 @@ type PublicOrderResponse = {
   data: AdminOrderResponse;
 };
 
+type PublicOrderListResponse = {
+  status: number;
+  message?: string;
+  data: AdminOrderResponse[];
+};
+
 const parseAvailability = (value: unknown): boolean => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
@@ -549,6 +555,15 @@ export const getPublicOrder = async (
     `/public/orders/${encodeURIComponent(sessionToken)}`,
   );
   return normalizeOrder(res.data.data);
+};
+
+export const getPublicTableOrders = async (
+  tableCode: string,
+): Promise<KitchenOrder[]> => {
+  const res = await api.get<PublicOrderListResponse>(
+    `/public/tables/${encodeURIComponent(tableCode)}/orders`,
+  );
+  return res.data.data.map(normalizeOrder);
 };
 
 export const confirmPublicOrder = async (

@@ -35,6 +35,7 @@ type RecentOrderSummary = {
 };
 const getLatestOrderStorageKey = (tableId: number) => `khajapos-latest-order:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number) => `khajapos-recent-order:${tableId}`;
+const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
 const ORDER_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
@@ -45,6 +46,13 @@ const statusCopy: Record<OrderStatus, string> = {
   ready: "Your order is ready.",
   served: "Your order has been served.",
   cancelled: "This order has been cancelled.",
+};
+
+const parseRecentOrders = (raw: string | null): RecentOrderSummary[] => {
+  if (!raw) return [];
+
+  const parsed = JSON.parse(raw) as RecentOrderSummary | RecentOrderSummary[];
+  return Array.isArray(parsed) ? parsed : [parsed];
 };
 
 export default function TrackOrderPage() {
@@ -63,30 +71,34 @@ export default function TrackOrderPage() {
       const data = await getPublicOrder(sessionToken);
       setOrder(data);
       if (typeof window !== "undefined") {
-        const storedTableCode = window.localStorage.getItem(getOrderSessionTableCodeKey(data.sessionToken)) ?? undefined;
-        const summary = {
-          sessionToken: data.sessionToken,
-          orderId: data.id,
-          tableId: data.tableId,
-          tableNo: data.tableNo,
-          tableCode: storedTableCode ?? "",
-          createdAt: data.createdAt,
-        };
-        const storedAt = new Date(data.createdAt).getTime();
-        if (Date.now() - storedAt > ORDER_LIFETIME_MS) {
-          return;
+        try {
+          const storedTableCode = window.localStorage.getItem(getOrderSessionTableCodeKey(data.sessionToken)) ?? undefined;
+          const summary = {
+            sessionToken: data.sessionToken,
+            orderId: data.id,
+            tableId: data.tableId,
+            tableNo: data.tableNo,
+            tableCode: storedTableCode ?? "",
+            createdAt: data.createdAt,
+          };
+          const storedAt = new Date(data.createdAt).getTime();
+          if (Date.now() - storedAt > ORDER_LIFETIME_MS) {
+            return;
+          }
+
+          const existingRecent = parseRecentOrders(
+            window.localStorage.getItem(getRecentOrderStorageKey(data.tableId))
+          );
+          const nextRecent = [summary, ...existingRecent.filter((item) => item.sessionToken !== data.sessionToken)].slice(0, 8);
+          window.localStorage.setItem(getRecentOrderStorageKey(data.tableId), JSON.stringify(nextRecent));
+          window.localStorage.setItem(getOrderListStorageKey(data.tableId), JSON.stringify(nextRecent));
+          if (summary.tableCode) {
+            window.localStorage.setItem(getOrderListStorageKey(summary.tableCode), JSON.stringify(nextRecent));
+          }
+          window.localStorage.setItem(getLatestOrderStorageKey(data.tableId), JSON.stringify(summary));
+        } catch (cacheError) {
+          console.error("Failed to update recent order cache:", cacheError);
         }
-        const existingRecentRaw = window.localStorage.getItem(getRecentOrderStorageKey(data.tableId));
-        const existingRecent = existingRecentRaw ? (JSON.parse(existingRecentRaw) as RecentOrderSummary[]) : [];
-        const nextRecent = [summary, ...existingRecent.filter((item) => item.sessionToken !== data.sessionToken)].slice(0, 8);
-        window.localStorage.setItem(
-          getRecentOrderStorageKey(data.tableId),
-          JSON.stringify(nextRecent)
-        );
-        window.localStorage.setItem(
-          getLatestOrderStorageKey(data.tableId),
-          JSON.stringify(summary)
-        );
       }
     } catch (loadError) {
       console.error("Failed to load order:", loadError);
@@ -99,13 +111,19 @@ export default function TrackOrderPage() {
   React.useEffect(() => {
     setLoading(true);
     loadOrder();
+  }, [loadOrder]);
+
+  React.useEffect(() => {
+    if (!order || isOrderLocked(order.status)) {
+      return;
+    }
 
     const interval = window.setInterval(() => {
       loadOrder();
     }, 10000);
 
     return () => window.clearInterval(interval);
-  }, [loadOrder]);
+  }, [loadOrder, order?.status]);
 
   const handleConfirm = async () => {
     if (!order) return;

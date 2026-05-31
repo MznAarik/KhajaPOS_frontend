@@ -186,7 +186,7 @@ export const SnackbarProviderCustom = ({
                     }
                     sx={alertSx}
                 >
-                    {message}
+                    {message ? message.charAt(0).toUpperCase() + message.slice(1) : message}
                 </Alert>
             </Snackbar>
         </SnackbarContext.Provider>

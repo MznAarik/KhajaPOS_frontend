@@ -137,13 +137,12 @@ export default function TablesPage() {
         await updateAdminTable({
           id: dialogState.id,
           tableNo: dialogState.tableNo,
-          qrCode: dialogState.qrCode || dialogState.tableNo,
+          qrCode: dialogState.qrCode,
           isActive: dialogState.isActive,
         });
       } else {
         await createAdminTable({
           tableNo: dialogState.tableNo,
-          qrCode: dialogState.qrCode || undefined,
           isActive: dialogState.isActive,
         });
       }
@@ -634,15 +633,10 @@ export default function TablesPage() {
             />
 
             <TextField
-              label="QR Code Slug"
-              helperText="Optional. Leave blank to auto-generate."
+              label="Secure QR Token"
+              helperText="Generated automatically. Share only the QR code or copied order URL with customers."
               value={dialogState.qrCode}
-              onChange={(event) =>
-                setDialogState((current) => ({
-                  ...current,
-                  qrCode: event.target.value,
-                }))
-              }
+              disabled
               fullWidth
             />
 

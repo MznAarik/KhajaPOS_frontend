@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useAppSnackbar } from "@/components/common/SnackBar";
-import { getPublicOrder, type KitchenOrder } from "@/lib/api";
+import { getPublicTableOrders, isOrderLocked, type KitchenOrder } from "@/lib/api";
 
 type RecentOrderSummary = {
   sessionToken: string;
@@ -24,6 +24,15 @@ type RecentOrderSummary = {
 };
 
 const ORDER_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+const toSummary = (order: KitchenOrder, tableCode: string): RecentOrderSummary => ({
+  sessionToken: order.sessionToken,
+  orderId: order.id,
+  tableId: order.tableId,
+  tableNo: order.tableNo,
+  tableCode,
+  createdAt: order.createdAt,
+});
 
 export default function RecentOrderClient({ tableCode: initialTableCode }: { tableCode: string }) {
   const router = useRouter();
@@ -42,83 +51,70 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
     setTableCode(nextTableCode);
   }, [initialTableCode]);
 
-  const loadOrders = React.useCallback(() => {
+  const loadOrders = React.useCallback(async () => {
     if (!tableCode) {
       setOrders([]);
       setStatuses({});
       setLoading(false);
-      return;
+      return false;
     }
 
-    const summaries: RecentOrderSummary[] = [];
+    try {
+      const tableOrders = await getPublicTableOrders(tableCode);
+      const activeOrders = tableOrders.filter(
+        (order) => Date.now() - new Date(order.createdAt).getTime() <= ORDER_LIFETIME_MS
+      );
+      const summaries = activeOrders.map((order) => toSummary(order, tableCode));
 
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index);
-      if (!key || !key.startsWith("khajapos-order-list:")) continue;
+      setOrders(summaries);
+      setStatuses(
+        Object.fromEntries(activeOrders.map((order) => [order.sessionToken, order]))
+      );
 
-      const raw = window.localStorage.getItem(key);
-      if (!raw) continue;
-
-      try {
-        const parsed = JSON.parse(raw) as RecentOrderSummary | RecentOrderSummary[];
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        for (const item of items) {
-          if (Date.now() - new Date(item.createdAt).getTime() > ORDER_LIFETIME_MS) continue;
-          if (item.tableCode === tableCode || String(item.tableId) === tableCode) {
-            summaries.push(item);
-          }
-        }
-      } catch {
-        continue;
+      if (!summaries.length) {
+        showSnackbar(`No recent order found for table ${tableCode}.`, "warning");
+        return false;
       }
-    }
 
-    const unique = Array.from(
-      new Map(summaries.map((item) => [item.sessionToken, item])).values()
-    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      window.localStorage.setItem(
+        `khajapos-order-list:${activeOrders[0].tableId}`,
+        JSON.stringify(summaries)
+      );
+      window.localStorage.setItem(
+        `khajapos-order-list:${tableCode}`,
+        JSON.stringify(summaries)
+      );
 
-    setOrders(unique);
-
-    if (!unique.length) {
-      setStatuses({});
+      return activeOrders.some((order) => !isOrderLocked(order.status));
+    } catch (error) {
+      console.error("Failed to load recent orders:", error);
+      showSnackbar("We couldn't refresh recent orders right now.", "error");
+      return true;
+    } finally {
       setLoading(false);
-      showSnackbar(`No recent order found for table ${tableCode}.`, "warning");
-      return;
     }
-
-    Promise.all(
-      unique.map(async (item) => {
-        try {
-          const current = await getPublicOrder(item.sessionToken);
-          return [item.sessionToken, current] as const;
-        } catch {
-          return [item.sessionToken, null] as const;
-        }
-      })
-    )
-      .then((pairs) => {
-        setStatuses(Object.fromEntries(pairs));
-      })
-      .catch((error) => {
-        console.error("Failed to load recent orders:", error);
-        showSnackbar("We couldn't refresh recent orders right now.", "error");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
   }, [showSnackbar, tableCode]);
 
   React.useEffect(() => {
-    setLoading(true);
-    loadOrders();
-  }, [loadOrders]);
+    let timeout: number | undefined;
+    let isCancelled = false;
 
-  React.useEffect(() => {
-    const sync = () => loadOrders();
-    const interval = window.setInterval(sync, 5000);
+    const sync = async () => {
+      const shouldKeepPolling = await loadOrders();
+
+      if (!isCancelled && shouldKeepPolling) {
+        timeout = window.setTimeout(sync, 5000);
+      }
+    };
+
+    setLoading(true);
+    sync();
     window.addEventListener("storage", sync);
     return () => {
-      window.clearInterval(interval);
+      isCancelled = true;
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
       window.removeEventListener("storage", sync);
     };
   }, [loadOrders]);
