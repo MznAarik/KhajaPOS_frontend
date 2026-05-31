@@ -6,7 +6,7 @@ const buildLoginRedirect = (request: NextRequest) => {
   const loginUrl = new URL(LOGIN_PATH, request.url);
   const currentPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
-  loginUrl.searchParams.set("message", "Session expired");
+  loginUrl.searchParams.set("message", "Session expired! Please log in again.");
   loginUrl.searchParams.set("redirect", currentPath);
 
   return NextResponse.redirect(loginUrl);

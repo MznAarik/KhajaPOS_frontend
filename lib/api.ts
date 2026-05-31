@@ -48,7 +48,7 @@ const redirectToLogin = async () => {
 
   if (window.location.pathname.startsWith(loginPath)) return;
 
-  window.location.href = `${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`;
+  window.location.replace(`${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`);
 };
 
 api.interceptors.request.use((config) => {
@@ -69,6 +69,9 @@ api.interceptors.response.use(
   async (error) => {
     if (error?.response?.status === 401) {
       await redirectToLogin();
+      return new Promise(() => {
+        // Keep page-level catch handlers from rendering "Unauthenticated."
+      });
     }
 
     return Promise.reject(error);
@@ -83,7 +86,9 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
 
   if (res.status === 401) {
     await redirectToLogin();
-    return;
+    return new Promise(() => {
+      // Keep callers from rendering the backend 401 body.
+    });
   }
 
   return res;
