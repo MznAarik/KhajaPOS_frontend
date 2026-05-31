@@ -344,8 +344,8 @@ export default function TablesPage() {
                 label={`${tables.filter((table) => table.isActive).length
                   } Active`}
                 sx={{
-                  backgroundColor: "rgba(46, 230, 166, 0.12)",
-                  color: "#2EE6A6",
+                  backgroundColor: "var(--status-active-bg)",
+                  color: "var(--status-active-fg)",
                   fontWeight: 700,
                 }}
               />
@@ -381,13 +381,23 @@ export default function TablesPage() {
                       </Typography>
                     </Box>
                     <Chip
+                      clickable={!updatingTables.has(table.id)}
+                      disabled={updatingTables.has(table.id)}
                       label={updatingTables.has(table.id) ? "Updating" : table.isActive ? "Active" : "Off"}
                       onClick={() => !updatingTables.has(table.id) && handleToggleActive(table)}
                       sx={{
                         flexShrink: 0,
-                        backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "rgba(46, 230, 166, 0.12)" : "rgba(255, 90, 122, 0.12)",
-                        color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "#2EE6A6" : "#FF5A7A",
+                        backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "var(--status-active-bg)" : "var(--status-inactive-bg)",
+                        color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+                        border: "1px solid",
+                        borderColor: updatingTables.has(table.id)
+                          ? "var(--status-neutral-border)"
+                          : table.isActive
+                            ? "var(--status-active-border)"
+                            : "var(--status-inactive-border)",
                         fontWeight: 800,
+                        cursor: updatingTables.has(table.id) ? "wait" : "pointer",
+                        opacity: 1,
                       }}
                     />
                   </Stack>
@@ -536,6 +546,8 @@ export default function TablesPage() {
 
                   <TableCell>
                     <Chip
+                      clickable={!updatingTables.has(table.id)}
+                      disabled={updatingTables.has(table.id)}
                       label={
                         updatingTables.has(table.id)
                           ? "Updating..."
@@ -547,24 +559,30 @@ export default function TablesPage() {
                         backgroundColor: updatingTables.has(table.id)
                           ? "rgba(128,128,128,0.12)"
                           : table.isActive
-                            ? "rgba(46, 230, 166, 0.12)"
-                            : "rgba(255, 90, 122, 0.12)",
+                            ? "var(--status-active-bg)"
+                            : "var(--status-inactive-bg)",
 
                         color: updatingTables.has(table.id)
                           ? "#808080"
                           : table.isActive
-                            ? "#2EE6A6"
-                            : "#FF5A7A",
+                            ? "var(--status-active-fg)"
+                            : "var(--status-inactive-fg)",
 
                         fontWeight: 700,
 
+                        border: "1px solid",
+
+                        borderColor: updatingTables.has(table.id)
+                          ? "var(--status-neutral-border)"
+                          : table.isActive
+                            ? "var(--status-active-border)"
+                            : "var(--status-inactive-border)",
+
                         cursor: updatingTables.has(table.id)
-                          ? "not-allowed"
+                          ? "wait"
                           : "pointer",
 
-                        opacity: updatingTables.has(table.id)
-                          ? 0.7
-                          : 1,
+                        opacity: 1,
                       }}
                       onClick={() => {
                         if (!updatingTables.has(table.id)) {
@@ -605,7 +623,7 @@ export default function TablesPage() {
 
                     <IconButton
                       size="small"
-                      sx={{ color: "#FF5A7A" }}
+                      sx={{ color: "var(--status-inactive-fg)" }}
                       onClick={() => {
                         setSelectedTable(table);
                         setDeleteOpen(true);
@@ -698,7 +716,7 @@ export default function TablesPage() {
             {error ? (
               <Typography
                 sx={{
-                  color: "#FF5A7A",
+                  color: "var(--status-inactive-fg)",
                   fontSize: "0.9rem",
                 }}
               >
@@ -832,3 +850,4 @@ export default function TablesPage() {
     </Box>
   );
 }
+

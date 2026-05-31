@@ -38,6 +38,16 @@
 
   --destructive: #D64545;
 
+  --status-active-bg: #d7f4e7;
+  --status-active-fg: #116b4b;
+  --status-active-border: #74d6a7;
+  --status-inactive-bg: #ffe0e4;
+  --status-inactive-fg: #a11632;
+  --status-inactive-border: #ff9aad;
+  --status-neutral-bg: #e6ece8;
+  --status-neutral-fg: #526063;
+  --status-neutral-border: #c7d1cc;
+
   --border: #d7ddd8;
   --input: #d7ddd8;
   --ring: #50686b;
@@ -91,6 +101,16 @@
   --muted-foreground: #c8d5d2;
 
   --destructive: #FF6B86;
+
+  --status-active-bg: rgba(62, 221, 157, 0.22);
+  --status-active-fg: #9df3ca;
+  --status-active-border: rgba(157, 243, 202, 0.42);
+  --status-inactive-bg: rgba(255, 107, 134, 0.22);
+  --status-inactive-fg: #ffbac5;
+  --status-inactive-border: rgba(255, 186, 197, 0.42);
+  --status-neutral-bg: rgba(216, 230, 225, 0.14);
+  --status-neutral-fg: #d8e6e1;
+  --status-neutral-border: rgba(216, 230, 225, 0.3);
 
   --border: #647b79;
   --input: #647b79;
@@ -182,8 +202,35 @@
       color 500ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  html {
+  html,
+  body,
+  main,
+  section,
+  aside,
+  .MuiDialogContent-root,
+  .MuiDrawer-paper,
+  .MuiMenu-paper,
+  .MuiPopover-paper {
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html {
+    scroll-padding-top: 88px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html,
+    body,
+    main,
+    section,
+    aside,
+    .MuiDialogContent-root,
+    .MuiDrawer-paper,
+    .MuiMenu-paper,
+    .MuiPopover-paper {
+      scroll-behavior: auto;
+    }
   }
 
   @supports (height: 100dvh) {
