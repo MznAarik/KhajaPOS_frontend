@@ -105,9 +105,9 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
                                     label={item.isAvailable ? "Available" : "Unavailable"}
                                     sx={{
                                         backgroundColor: item.isAvailable
-                                            ? "rgba(46, 230, 166, 0.12)"
-                                            : "rgba(255, 90, 122, 0.12)",
-                                        color: item.isAvailable ? "#2EE6A6" : "#FF5A7A",
+                                            ? "var(--status-active-bg)"
+                                            : "var(--status-inactive-bg)",
+                                        color: item.isAvailable ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
                                         fontWeight: 700,
                                     }}
                                 />
@@ -173,3 +173,4 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
         </Dialog>
     );
 }
+

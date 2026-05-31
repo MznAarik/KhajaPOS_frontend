@@ -270,7 +270,7 @@ export default function TrackOrderPage() {
                   );
                 })}
                 {order.status === "cancelled" ? (
-                  <Chip label="Cancelled" sx={{ fontWeight: 700, backgroundColor: "rgba(255, 90, 122, 0.12)", color: "#FF5A7A" }} />
+                  <Chip label="Cancelled" sx={{ fontWeight: 700, backgroundColor: "var(--status-inactive-bg)", color: "var(--status-inactive-fg)" }} />
                 ) : null}
               </Stack>
             </Paper>
@@ -403,3 +403,4 @@ export default function TrackOrderPage() {
     </Box>
   );
 }
+

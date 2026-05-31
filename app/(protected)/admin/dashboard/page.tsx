@@ -17,7 +17,7 @@ const StatCard = ({ label, value, delta }: { label: string; value: string; delta
     <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>{label}</Typography>
     <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
       <Typography sx={{ fontSize: "1.35rem", fontWeight: 700 }}>{value}</Typography>
-      <Typography sx={{ fontSize: "0.85rem", color: "#2EE6A6" }}>{delta}</Typography>
+      <Typography sx={{ fontSize: "0.85rem", color: "var(--status-active-fg)" }}>{delta}</Typography>
     </Stack>
   </Paper>
 );
@@ -136,3 +136,4 @@ export default function AdminDashboardPage() {
     </Box>
   );
 }
+

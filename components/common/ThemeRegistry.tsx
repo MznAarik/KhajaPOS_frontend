@@ -18,6 +18,19 @@ export function useThemeToggle() {
     return React.useContext(ThemeContext);
 }
 
+const applyThemeMode = (nextMode: "light" | "dark") => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+
+    root.classList.remove("light", "dark");
+    root.classList.add(nextMode);
+    root.setAttribute("data-theme", nextMode);
+    root.style.colorScheme = nextMode;
+
+    window.localStorage.setItem("theme", nextMode);
+};
+
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const [mode, setMode] = React.useState<"light" | "dark">("light");
 
@@ -26,27 +39,28 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
         const saved = localStorage.getItem("theme") as "light" | "dark" | null;
         if (saved) {
             setMode(saved);
+            applyThemeMode(saved);
         } else {
             // Optional: respect system preference
             const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            setMode(prefersDark ? "dark" : "light");
+            const preferredMode = prefersDark ? "dark" : "light";
+            setMode(preferredMode);
+            applyThemeMode(preferredMode);
         }
     }, []);
 
     // Apply theme changes
     React.useEffect(() => {
-        const root = document.documentElement;
-
-        root.classList.remove("light", "dark");
-        root.classList.add(mode);
-        root.setAttribute("data-theme", mode);
-
-        localStorage.setItem("theme", mode);
+        applyThemeMode(mode);
     }, [mode]);
 
-    const toggleMode = () => {
-        setMode((prev) => (prev === "light" ? "dark" : "light"));
-    };
+    const toggleMode = React.useCallback(() => {
+        setMode((prev) => {
+            const nextMode = prev === "light" ? "dark" : "light";
+            applyThemeMode(nextMode);
+            return nextMode;
+        });
+    }, []);
 
     const theme = React.useMemo(() => createAppTheme(mode), [mode]);
 

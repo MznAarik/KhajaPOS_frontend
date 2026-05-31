@@ -256,8 +256,8 @@ export default function CategoryManagementPage() {
                 label={`${categories.filter((category) => category.isActive).length} Active`}
                 sx={{
                   borderRadius: "999px",
-                  backgroundColor: "rgba(46, 230, 166, 0.12)",
-                  color: "#2EE6A6",
+                  backgroundColor: "var(--status-active-bg)",
+                  color: "var(--status-active-fg)",
                   fontWeight: 700,
                 }}
               />
@@ -292,16 +292,23 @@ export default function CategoryManagementPage() {
                       </Typography>
                     </Box>
                     <Chip
+                      clickable={availabilityUpdatingId !== category.id}
+                      disabled={availabilityUpdatingId === category.id}
                       label={availabilityUpdatingId === category.id ? "Updating" : category.isActive ? "Active" : "Off"}
-                      onClick={() => handleAvailabilityToggle(category)}
+                      onClick={() => availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
                       sx={{
                         flexShrink: 0,
                         backgroundColor: category.isActive
-                          ? "rgba(46, 230, 166, 0.12)"
-                          : "rgba(255, 90, 122, 0.12)",
-                        color: category.isActive ? "#2EE6A6" : "#FF5A7A",
+                          ? "var(--status-active-bg)"
+                          : "var(--status-inactive-bg)",
+                        color: category.isActive ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+                        border: "1px solid",
+                        borderColor: category.isActive
+                          ? "var(--status-active-border)"
+                          : "var(--status-inactive-border)",
                         fontWeight: 800,
-                        cursor: "pointer",
+                        cursor: availabilityUpdatingId === category.id ? "wait" : "pointer",
+                        opacity: 1,
                       }}
                     />
                   </Stack>
@@ -371,15 +378,22 @@ export default function CategoryManagementPage() {
                   </TableCell>
                   <TableCell>
                     <Chip
+                      clickable={availabilityUpdatingId !== category.id}
+                      disabled={availabilityUpdatingId === category.id}
                       label={availabilityUpdatingId === category.id ? "Updating..." : category.isActive ? "Available" : "Unavailable"}
-                      onClick={() => handleAvailabilityToggle(category)}
+                      onClick={() => availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
                       sx={{
                         backgroundColor: category.isActive
-                          ? "rgba(46, 230, 166, 0.12)"
-                          : "rgba(255, 90, 122, 0.12)",
-                        color: category.isActive ? "#2EE6A6" : "#FF5A7A",
+                          ? "var(--status-active-bg)"
+                          : "var(--status-inactive-bg)",
+                        color: category.isActive ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+                        border: "1px solid",
+                        borderColor: category.isActive
+                          ? "var(--status-active-border)"
+                          : "var(--status-inactive-border)",
                         fontWeight: 700,
-                        cursor: "pointer",
+                        cursor: availabilityUpdatingId === category.id ? "wait" : "pointer",
+                        opacity: 1,
                       }}
                     />
                   </TableCell>
@@ -388,7 +402,7 @@ export default function CategoryManagementPage() {
                     <IconButton size="small" sx={{ color: "var(--primary)" }} onClick={() => openEditDialog(category)}>
                       <EditOutlinedIcon />
                     </IconButton>
-                    <IconButton size="small" sx={{ color: "#FF5A7A" }} onClick={() => openDeleteDialog(category)}>
+                    <IconButton size="small" sx={{ color: "var(--status-inactive-fg)" }} onClick={() => openDeleteDialog(category)}>
                       <DeleteOutlineOutlinedIcon />
                     </IconButton>
                   </TableCell>
@@ -446,7 +460,7 @@ export default function CategoryManagementPage() {
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
               Keep category names short and reusable. You can update availability directly from the table whenever needed.
             </Typography>
-            {error ? <Typography sx={{ color: "#FF5A7A", fontSize: "0.9rem" }}>{error}</Typography> : null}
+            {error ? <Typography sx={{ color: "var(--status-inactive-fg)", fontSize: "0.9rem" }}>{error}</Typography> : null}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -490,7 +504,7 @@ export default function CategoryManagementPage() {
             <Typography sx={{ color: "var(--muted-foreground)" }}>
               This will soft-delete <strong>{selectedCategory?.name ?? "this category"}</strong>. Existing menu records should remain intact, but the category will no longer appear for new assignment.
             </Typography>
-            {error ? <Typography sx={{ color: "#FF5A7A", fontSize: "0.9rem" }}>{error}</Typography> : null}
+            {error ? <Typography sx={{ color: "var(--status-inactive-fg)", fontSize: "0.9rem" }}>{error}</Typography> : null}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -516,3 +530,4 @@ export default function CategoryManagementPage() {
     </Box>
   );
 }
+
