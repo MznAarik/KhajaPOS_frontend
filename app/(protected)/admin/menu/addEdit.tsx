@@ -71,6 +71,7 @@ export default function AddEditMenuDialog({
     const [categories, setCategories] = React.useState<CategoryOption[]>([]);
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string>("");
+    const imageInputRef = React.useRef<HTMLInputElement | null>(null);
 
     React.useEffect(() => {
         if (open) {
@@ -114,6 +115,11 @@ export default function AddEditMenuDialog({
             (value: FormState[K]) => {
                 setForm((current) => ({ ...current, [key]: value }));
             };
+
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        handleFieldChange("imageFile")(event.target.files?.[0] ?? null);
+        event.target.value = "";
+    };
 
     const handleSubmit = async () => {
         const selectedCategory = categories.find((category) => String(category.id) === form.categoryId);
@@ -175,6 +181,7 @@ export default function AddEditMenuDialog({
                         flexDirection: "column",
                         maxHeight: fullScreen ? "100dvh" : "92vh",
                         height: fullScreen ? "100dvh" : "auto",
+                        zIndex: (theme) => theme.zIndex.modal + 2,
                     },
                 }}
             >
@@ -287,26 +294,36 @@ export default function AddEditMenuDialog({
                                     <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
                                         Upload a new image for this menu item. [png, jpg, jpeg formats supported]
                                     </Typography>
+                                    <input
+                                        ref={imageInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        style={{ display: "none" }}
+                                    />
                                     <Button
-                                        component="label"
+                                        type="button"
                                         variant="outlined"
                                         startIcon={<CloudUploadOutlinedIcon />}
-                                        sx={{ alignSelf: "flex-start", borderRadius: "12px" }}
+                                        onClick={() => imageInputRef.current?.click()}
+                                        sx={{
+                                            position: "relative",
+                                            zIndex: 1,
+                                            alignSelf: { xs: "stretch", sm: "flex-start" },
+                                            borderRadius: "12px",
+                                            minHeight: 48,
+                                            pointerEvents: "auto",
+                                            touchAction: "manipulation",
+                                        }}
                                     >
                                         Choose Image
-                                        <input
-                                            hidden
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => handleFieldChange("imageFile")(e.target.files?.[0] ?? null)}
-                                        />
                                     </Button>
                                 </Stack>
                             </Stack>
                         </Box>
 
                         {error ? (
-                            <Typography sx={{ color: "#FF5A7A", fontSize: "0.9rem" }}>{error}</Typography>
+                            <Typography sx={{ color: "var(--status-inactive-fg)", fontSize: "0.9rem" }}>{error}</Typography>
                         ) : null}
                     </Stack>
                 </DialogContent>

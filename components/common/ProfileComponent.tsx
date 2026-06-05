@@ -89,13 +89,19 @@ export default function ProfileComponent() {
         <>
             <Tooltip title={isAuthenticated ? "Account" : "Login"}>
                 <IconButton
+                    type="button"
                     onClick={handleOpen}
                     size="small"
+                    aria-haspopup="menu"
+                    aria-expanded={Boolean(anchorEl) ? "true" : undefined}
                     sx={{
                         p: 0.4,
+                        minWidth: 42,
+                        minHeight: 42,
                         border: "1px solid var(--sidebar-border)",
                         backgroundColor: "color-mix(in srgb, var(--card) 82%, transparent)",
                         boxShadow: "0 10px 24px rgba(31, 42, 43, 0.12)",
+                        pointerEvents: "auto",
                         "&:hover": {
                             backgroundColor: "color-mix(in srgb, var(--sidebar-accent) 76%, transparent)",
                         },
@@ -139,6 +145,7 @@ export default function ProfileComponent() {
                     sx: {
                         mt: 1,
                         minWidth: 220,
+                        zIndex: (theme) => theme.zIndex.modal + 1,
                         borderRadius: "18px",
                         border: "1px solid var(--border)",
                         backgroundColor: "var(--card)",

@@ -110,8 +110,8 @@ const MenuMobileCard = ({
       <Stack direction="row" spacing={1.5} alignItems="flex-start">
         <Box
           sx={{
-            width: 56,
-            height: 56,
+            width: 62,
+            height: 62,
             borderRadius: "14px",
             overflow: "hidden",
             backgroundColor: "var(--background)",
@@ -134,6 +134,8 @@ const MenuMobileCard = ({
         </Box>
 
         <Chip
+          clickable={updatingStatusId !== item.id}
+          disabled={updatingStatusId === item.id}
           label={
             updatingStatusId === item.id
               ? "Updating"
@@ -142,23 +144,31 @@ const MenuMobileCard = ({
                 : "Off"
           }
           size="small"
-          onClick={() => onToggleAvailability(item)}
+          onClick={() => updatingStatusId !== item.id && onToggleAvailability(item)}
           sx={{
             flexShrink: 0,
             backgroundColor:
               updatingStatusId === item.id
                 ? "#e5e7eb"
                 : item.isAvailable
-                  ? "rgba(46, 230, 166, 0.12)"
-                  : "rgba(255, 90, 122, 0.12)",
+                  ? "var(--status-active-bg)"
+                  : "var(--status-inactive-bg)",
             color:
               updatingStatusId === item.id
                 ? "#6b7280"
                 : item.isAvailable
-                  ? "#2EE6A6"
-                  : "#FF5A7A",
+                  ? "var(--status-active-fg)"
+                  : "var(--status-inactive-fg)",
+            border: "1px solid",
+            borderColor:
+              updatingStatusId === item.id
+                ? "var(--status-neutral-border)"
+                : item.isAvailable
+                  ? "var(--status-active-border)"
+                  : "var(--status-inactive-border)",
             fontWeight: 800,
             cursor: updatingStatusId === item.id ? "wait" : "pointer",
+            opacity: 1,
           }}
         />
       </Stack>
@@ -380,7 +390,6 @@ export default function MenuManagementPage() {
     setUpdatingStatusId(item.id);
 
     try {
-      // Optimistic UI update
       setMenus((prev) =>
         prev.map((menu) =>
           menu.id === item.id
@@ -542,7 +551,6 @@ export default function MenuManagementPage() {
           overflow: "hidden",
         }}
       >
-        {/* FILTERS */}
         <Box
           sx={{
             display: "grid",
@@ -682,7 +690,7 @@ export default function MenuManagementPage() {
                 onView={(menuItem) => setViewItem(menuItem)}
                 onEdit={openEditDialog}
                 onDelete={handleDelete}
-              onToggleAvailability={async (menuItem) => {
+                onToggleAvailability={async (menuItem) => {
                   try {
                     setUpdatingStatusId(menuItem.id);
                     await updateMenuAvailability(menuItem, !menuItem.isAvailable);
@@ -694,8 +702,7 @@ export default function MenuManagementPage() {
                       )
                     );
                     showSnackbar(
-                      `${menuItem.name} has been ${
-                        !menuItem.isAvailable ? "marked available" : "marked unavailable"
+                      `${menuItem.name} has been ${!menuItem.isAvailable ? "marked available" : "marked unavailable"
                       }.`,
                       "warning"
                     );
@@ -888,8 +895,8 @@ export default function MenuManagementPage() {
                   <TableCell>
                     <Box
                       sx={{
-                        width: 48,
-                        height: 48,
+                        width: 62,
+                        height: 62,
                         borderRadius: "14px",
                         overflow: "hidden",
                         backgroundColor:
@@ -931,12 +938,13 @@ export default function MenuManagementPage() {
 
                   <TableCell>
                     <Chip
+                      clickable={updatingStatusId !== item.id}
                       label={
                         updatingStatusId === item.id
                           ? "Updating..."
                           : getAvailabilityLabel(item.isAvailable)
                       }
-                      size="small"
+                      size="medium"
                       disabled={updatingStatusId === item.id}
                       onClick={async () => {
                         try {
@@ -950,16 +958,15 @@ export default function MenuManagementPage() {
                           setMenus((prev) =>
                             prev.map((menu) =>
                               menu.id === item.id
-                          ? {
-                              ...menu,
-                              isAvailable: !menu.isAvailable,
-                            }
+                                ? {
+                                  ...menu,
+                                  isAvailable: !menu.isAvailable,
+                                }
                                 : menu
                             )
                           );
                           showSnackbar(
-                            `${item.name} has been ${
-                              !item.isAvailable ? "marked available" : "marked unavailable"
+                            `${item.name} has been ${!item.isAvailable ? "marked available" : "marked unavailable"
                             }.`,
                             "warning"
                           );
@@ -984,17 +991,21 @@ export default function MenuManagementPage() {
                           : item.isAvailable
                             ? {
                               backgroundColor:
-                                "rgba(46, 230, 166, 0.12)",
-                              color: "#2EE6A6",
+                                "var(--status-active-bg)",
+                              color: "var(--status-active-fg)",
+                              border: "1px solid var(--status-active-border)",
                               fontWeight: 600,
                               cursor: "pointer",
+                              opacity: 1,
                             }
                             : {
                               backgroundColor:
-                                "rgba(255, 90, 122, 0.12)",
-                              color: "#FF5A7A",
+                                "var(--status-inactive-bg)",
+                              color: "var(--status-inactive-fg)",
+                              border: "1px solid var(--status-inactive-border)",
                               fontWeight: 600,
                               cursor: "pointer",
+                              opacity: 1,
                             }
                       }
                     />
@@ -1021,7 +1032,7 @@ export default function MenuManagementPage() {
 
                     <IconButton
                       size="small"
-                      sx={{ color: "#FF5A7A" }}
+                      sx={{ color: "var(--status-inactive-fg)" }}
                       onClick={() =>
                         handleDelete(item)
                       }
@@ -1074,3 +1085,4 @@ export default function MenuManagementPage() {
     </Box>
   );
 }
+

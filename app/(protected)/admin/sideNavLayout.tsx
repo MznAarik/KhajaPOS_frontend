@@ -227,7 +227,12 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             </Breadcrumbs>
                         </Box>
                     </Stack>
-                    <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
+                    <Stack
+                        direction="row"
+                        spacing={{ xs: 1, sm: 2 }}
+                        alignItems="center"
+                        sx={{ position: "relative", zIndex: (theme) => theme.zIndex.drawer + 3, pointerEvents: "auto" }}
+                    >
                         <ThemeToggle />
                         <ProfileComponent />
                     </Stack>
