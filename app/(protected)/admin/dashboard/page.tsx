@@ -27,7 +27,7 @@ export default function AdminDashboardPage() {
     <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: 3 }}>
       <Box className="flex justify-between ">
         <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "1.25rem", md: "2.125rem" }, mt: 0.5 }}>
-          Dashboard
+          Home
         </Typography>
       </Box>
 

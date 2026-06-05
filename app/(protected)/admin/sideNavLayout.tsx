@@ -20,12 +20,12 @@ import {
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { ShoppingCartIcon, type ShoppingCartIconHandle } from "@/components/ui/shopping-cart-icon";
-import { LayoutListIcon, LayoutListIconHandle } from "@/components/ui/layout-list-icon";
+import { LayoutListIcon, type LayoutListIconHandle } from "@/components/ui/layout-list-icon";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import ProfileComponent from "@/components/common/ProfileComponent";
-import { CoffeeIcon, CoffeeIconHandle } from "@/components/ui/coffee-icon";
-import { HouseIcon } from "@/components/ui/house-icon";
+import { CoffeeIcon, type CoffeeIconHandle } from "@/components/ui/coffee-icon";
+import { HouseIcon, type HouseIconHandle } from "@/components/ui/house-icon";
 
 const drawerWidth = 260;
 
@@ -33,14 +33,14 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     const router = useRouter();
     const pathname = usePathname();
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
-    const dashboardIconRef = React.useRef<DashboardIconHandle | null>(null);
+    const dashboardIconRef = React.useRef<HouseIconHandle | null>(null);
     const categoryIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
-    const tablesIconRef = React.useRef<LayoutListIconHandle | null>(null);
-    const ordersIconRef = React.useRef<CoffeeIconHandle | null>(null);
+    const tablesIconRef = React.useRef<CoffeeIconHandle | null>(null);
+    const ordersIconRef = React.useRef<DashboardIconHandle | null>(null);
 
     const navItems = [
-        { text: "Dashboard", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+        { text: "Home", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
         { text: "Category", href: "/admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
         { text: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
         { text: "Tables", href: "/admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
@@ -48,7 +48,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     ];
 
     const segmentLabels: Record<string, string> = {
-        dashboard: "Dashboard",
+        dashboard: "Home",
         menu: "Menu",
         category: "Category",
         tables: "Tables",
@@ -60,6 +60,14 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
     const isActive = (href: string) => pathname.startsWith(href);
+    const startItemAnimation = (item: (typeof navItems)[number]) => {
+        setHoveredItem(item.text);
+        item.ref.current?.startAnimation();
+    };
+    const stopItemAnimation = (item: (typeof navItems)[number]) => {
+        setHoveredItem((current) => (current === item.text ? null : current));
+        item.ref.current?.stopAnimation();
+    };
 
     React.useEffect(() => {
         document.title = `${pageTitle} - KhajaPOS Admin`;
@@ -113,14 +121,12 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             onClick={() => {
                                 router.push(item.href);
                             }}
-                            onMouseEnter={() => {
-                                setHoveredItem(item.text);
-                                item.ref.current?.startAnimation();
-                            }}
-                            onMouseLeave={() => {
-                                setHoveredItem((current) => (current === item.text ? null : current));
-                                item.ref.current?.stopAnimation();
-                            }}
+                            onPointerEnter={() => startItemAnimation(item)}
+                            onPointerLeave={() => stopItemAnimation(item)}
+                            onMouseEnter={() => startItemAnimation(item)}
+                            onMouseLeave={() => stopItemAnimation(item)}
+                            onFocus={() => startItemAnimation(item)}
+                            onBlur={() => stopItemAnimation(item)}
                             sx={{
                                 border: "2px solid var(--sidebar-border)",
                                 color: "var(--sidebar-foreground)",
@@ -150,9 +156,31 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                                 "& .nav-icon svg": {
                                     color: active ? "var(--sidebar-primary)" : "inherit",
                                 },
+
                             }}
                         >
-                            <Box className="nav-icon">
+                            <Box
+                                className="nav-icon"
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    display: "grid",
+                                    placeItems: "center",
+                                    borderRadius: "10px",
+                                    flexShrink: 0,
+                                    pointerEvents: "none",
+                                    transform:
+                                        hoveredItem === item.text
+                                            ? "translateY(-2px) scale(1.14) rotate(-4deg)"
+                                            : "translateY(0) scale(1) rotate(0deg)",
+                                    transition: "transform 180ms ease, background-color 180ms ease",
+                                    backgroundColor:
+                                        hoveredItem === item.text || active
+                                            ? "color-mix(in srgb, var(--sidebar-primary) 14%, transparent)"
+                                            : "transparent",
+                                    willChange: "transform",
+                                }}
+                            >
                                 <item.icon
                                     ref={item.ref}
                                     size={20}
@@ -172,9 +200,11 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
             sx={{
                 display: "flex",
                 minHeight: "100vh",
+                position: "relative",
+                overflowX: "hidden",
                 backgroundColor: "var(--background)",
                 backgroundImage:
-                    "radial-gradient(1200px 620px at 100% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 58%), radial-gradient(900px 520px at 0% 10%, color-mix(in srgb, var(--sidebar-accent) 18%, transparent), transparent 55%), linear-gradient(180deg, color-mix(in srgb, var(--background) 96%, white 4%), var(--background))",
+                    "radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 28%), radial-gradient(circle at 14% 18%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 32%), radial-gradient(circle at 68% 86%, color-mix(in srgb, var(--sidebar-primary) 16%, transparent), transparent 34%), linear-gradient(135deg, color-mix(in srgb, var(--background) 94%, white 6%) 0%, var(--background) 46%, color-mix(in srgb, var(--background) 88%, black 12%) 100%)",
             }}
         >
             <AppBar
@@ -205,8 +235,8 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             <Breadcrumbs separator=">" aria-label="breadcrumb" sx={{ display: { xs: "none", sm: "block" } }}>
                                 {lastSegment === "dashboard"
                                     ? [
-                                        <Typography key="dashboard" sx={{ color: "var(--muted-foreground)" }}>
-                                            Dashboard
+                                        <Typography key="dashboard" sx={{ color: "var(--foreground)", fontWeight: 700 }}>
+                                            Home
                                         </Typography>,
                                     ]
                                     : [
@@ -218,7 +248,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                                             href="/admin/dashboard"
                                             sx={{ color: "var(--muted-foreground)" }}
                                         >
-                                            Dashboard
+                                            Home
                                         </MuiLink>,
                                         <Typography key="page-title" sx={{ color: "var(--foreground)", fontWeight: 600 }}>
                                             {pageTitle}
@@ -245,6 +275,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                     sx={{
                         "& .MuiDrawer-paper": {
                             width: drawerWidth,
+                            overflowY: "hidden",
                             pt: "0px",
                             backgroundColor: "var(--sidebar)",
                             backgroundImage:
@@ -261,6 +292,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
             <Paper
                 component="main"
                 sx={{
+                    position: "relative",
                     flexGrow: 1,
                     minWidth: 0,
                     p: { xs: 1.5, sm: 3 },
@@ -268,9 +300,14 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                     mt: { xs: "64px", sm: "76px" },
                     pb: { xs: "calc(env(safe-area-inset-bottom) + 92px)", sm: 3 },
                     background:
-                        "linear-gradient(180deg, color-mix(in srgb, var(--card) 68%, transparent), color-mix(in srgb, var(--background) 88%, transparent))",
+                        "linear-gradient(145deg, color-mix(in srgb, var(--card) 82%, transparent), color-mix(in srgb, var(--background) 74%, transparent) 48%, color-mix(in srgb, var(--accent) 10%, var(--background) 90%))",
+                    backdropFilter: "blur(14px)",
+                    borderLeft: { sm: "1px solid color-mix(in srgb, var(--border) 70%, transparent)" },
+                    borderTop: { sm: "1px solid color-mix(in srgb, var(--border) 48%, transparent)" },
                     borderRadius: { xs: 0, sm: "28px 0 0 0" },
-                    boxShadow: { sm: "inset 0 1px 0 rgba(255,255,255,0.08)" },
+                    boxShadow: {
+                        sm: "inset 0 1px 0 rgba(255,255,255,0.10), -22px 0 60px rgba(31,42,43,0.08)",
+                    },
                 }}
             >
                 {children}
@@ -281,15 +318,16 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                 sx={{
                     display: { xs: "block", sm: "none" },
                     position: "fixed",
-                    left: 10,
-                    right: 10,
-                    bottom: "calc(env(safe-area-inset-bottom) + 10px)",
+                    left: "max(8px, env(safe-area-inset-left))",
+                    right: "max(8px, env(safe-area-inset-right))",
+                    bottom: "calc(env(safe-area-inset-bottom) + 8px)",
                     zIndex: (theme) => theme.zIndex.drawer + 2,
-                    borderRadius: "22px",
+                    borderRadius: "20px",
                     border: "1px solid var(--border)",
                     backgroundColor: "color-mix(in srgb, var(--card) 92%, transparent)",
                     backdropFilter: "blur(18px)",
                     overflow: "hidden",
+                    maxWidth: "calc(100vw - 16px)",
                     boxShadow: "0 18px 42px rgba(31, 42, 43, 0.2)",
                 }}
             >
@@ -302,13 +340,20 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                         backgroundColor: "transparent",
                         "& .MuiBottomNavigationAction-root": {
                             minWidth: 0,
-                            px: 0.5,
+                            flex: "1 1 0",
+                            maxWidth: "none",
+                            px: 0.25,
+                            py: 0.65,
                             color: "var(--muted-foreground)",
                         },
                         "& .MuiBottomNavigationAction-label": {
                             fontSize: "0.68rem",
                             fontWeight: 700,
+                            lineHeight: 1.1,
                             whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "100%",
                         },
                         "& .Mui-selected": {
                             color: "var(--primary)",
@@ -322,7 +367,7 @@ export default function SideNavLayout({ children }: { children: React.ReactNode 
                             value={item.href}
                             icon={
                                 <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
-                                    <item.icon ref={item.ref} size={20} />
+                                    <item.icon size={20} />
                                 </Box>
                             }
                         />
