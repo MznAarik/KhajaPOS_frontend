@@ -6,20 +6,20 @@ export function createAppTheme(mode: ThemeMode = "light") {
   const paletteByMode =
     mode === "dark"
       ? {
-          primary: { main: "#d8e6e1", contrastText: "#233234" },
-          secondary: { main: "#384c4f", contrastText: "#eef4f2" },
-          background: { default: "#3f5457", paper: "#496164" },
-          text: { primary: "#eef4f2", secondary: "#c8d5d2" },
-          divider: "#647b79",
-          error: { main: "#d64545" },
+          primary: { main: "#f59e0b", contrastText: "#17100b" },
+          secondary: { main: "#33241b", contrastText: "#f6dfc8" },
+          background: { default: "#120f0c", paper: "#1f1a16" },
+          text: { primary: "#f8efe7", secondary: "#d8c0aa" },
+          divider: "#4d3a2d",
+          error: { main: "#f87171" },
         }
       : {
-          primary: { main: "#50686b", contrastText: "#f6f8f7" },
-          secondary: { main: "#dfe6e2", contrastText: "#223033" },
-          background: { default: "#f5f4ef", paper: "#fcfbf7" },
-          text: { primary: "#1f2a2b", secondary: "#667779" },
-          divider: "#d7ddd8",
-          error: { main: "#d64545" },
+          primary: { main: "#b45309", contrastText: "#fffaf3" },
+          secondary: { main: "#f1dfc9", contrastText: "#271812" },
+          background: { default: "#f8f1e7", paper: "#ffffff" },
+          text: { primary: "#1f1712", secondary: "#6d5140" },
+          divider: "#dec9ae",
+          error: { main: "#dc2626" },
         };
 
   return createTheme({
@@ -45,7 +45,7 @@ export function createAppTheme(mode: ThemeMode = "light") {
             backgroundColor: "color-mix(in srgb, var(--card) 82%, transparent)",
             color: "var(--foreground)",
             backgroundImage: "none",
-            boxShadow: "0 18px 42px rgba(31, 42, 43, 0.14)",
+            boxShadow: "0 18px 42px color-mix(in srgb, var(--foreground) 12%, transparent)",
             borderBottom: "1px solid var(--border)",
             backdropFilter: "blur(18px)",
           },
@@ -74,7 +74,7 @@ export function createAppTheme(mode: ThemeMode = "light") {
             "&:hover": {
               backgroundColor: "color-mix(in srgb, var(--sidebar-accent) 70%, transparent)",
               color: "var(--sidebar-accent-foreground)",
-              boxShadow: "0 10px 24px rgba(80, 104, 107, 0.18)",
+              boxShadow: "0 10px 24px color-mix(in srgb, var(--sidebar-primary) 24%, transparent)",
             },
           },
         },
@@ -100,6 +100,37 @@ export function createAppTheme(mode: ThemeMode = "light") {
         styleOverrides: {
           root: {
             backgroundImage: "none",
+            color: "var(--foreground)",
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            "& .MuiInputBase-input": {
+              color: "var(--foreground)",
+            },
+            "& .MuiInputLabel-root": {
+              color: "var(--muted-foreground)",
+            },
+            "& .MuiInputLabel-root.Mui-focused": {
+              color: "var(--primary)",
+            },
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: "var(--input)",
+            },
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            color: "var(--foreground)",
+            borderColor: "var(--border)",
+          },
+          head: {
+            color: "var(--foreground)",
+            fontWeight: 800,
           },
         },
       },

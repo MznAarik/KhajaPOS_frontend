@@ -29,6 +29,8 @@ import {
     resolveMenuImageUrl,
     updateMenu,
 } from "@/lib/api";
+import { useAppSnackbar } from "@/components/common/SnackBar";
+import { safeError } from "@/lib/safeError";
 
 type MenuEditDialogProps = {
     open: boolean;
@@ -72,6 +74,7 @@ export default function AddEditMenuDialog({
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string>("");
     const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+    const { showSnackbar } = useAppSnackbar();
 
     React.useEffect(() => {
         if (open) {
@@ -89,11 +92,12 @@ export default function AddEditMenuDialog({
                 setCategories(data);
             } catch (loadError) {
                 console.error("Failed to load categories:", loadError);
+                showSnackbar(safeError(loadError, "Failed to load categories."), "error");
             }
         };
 
         loadCategories();
-    }, [open]);
+    }, [open, showSnackbar]);
 
     const previewUrl = React.useMemo(() => {
         if (form.imageFile) {
@@ -127,7 +131,9 @@ export default function AddEditMenuDialog({
         const categoryId = initialData?.categoryId ?? selectedCategory?.id;
 
         if (!categoryName.trim() || !form.name.trim() || !form.price.trim()) {
-            setError("Category, menu name, and price are required.");
+            const message = "Category, menu name, and price are required.";
+            setError(message);
+            showSnackbar(message, "warning");
             return;
         }
 
@@ -157,7 +163,9 @@ export default function AddEditMenuDialog({
             onClose();
         } catch (submitError) {
             console.error("Failed to save menu item:", submitError);
-            setError("Failed to save menu. Please verify the values and try again.");
+            const message = safeError(submitError, "Failed to save menu. Please verify the values and try again.");
+            setError(message);
+            showSnackbar(message, "error");
         } finally {
             setSaving(false);
         }
