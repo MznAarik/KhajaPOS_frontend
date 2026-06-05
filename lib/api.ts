@@ -1,4 +1,5 @@
 import axios from "axios";
+import { safeError } from "./safeError";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export const api = axios.create({
@@ -65,7 +66,20 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (
+      response.data &&
+      typeof response.data === "object" &&
+      "status" in response.data &&
+      Number(response.data.status) === 0
+    ) {
+      const apiError = new Error(safeError({ response }, "Request failed."));
+      Object.assign(apiError, { response });
+      return Promise.reject(apiError);
+    }
+
+    return response;
+  },
   async (error) => {
     if (error?.response?.status === 401) {
       await redirectToLogin();
@@ -340,7 +354,14 @@ export async function apiRequest<T>(
   }
 
   if (!res.ok) {
-    const message = data?.message || data?.error || "Something went wrong";
+    const message = safeError(
+      { response: { data } },
+      res.status === 403
+        ? "Access denied."
+        : res.status >= 500
+          ? "Server error. Please try again."
+          : "Something went wrong.",
+    );
 
     if (res.status === 401 && typeof window !== "undefined") {
       await redirectToLogin();
@@ -349,8 +370,25 @@ export async function apiRequest<T>(
     throw new Error(message);
   }
 
+  if (
+    data &&
+    typeof data === "object" &&
+    "status" in data &&
+    Number(data.status) === 0
+  ) {
+    throw new Error(safeError({ response: { data } }, "Request failed."));
+  }
+
   return data;
 }
+
+export const unwrapApiData = <T,>(payload: unknown): T => {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return (payload as { data: T }).data;
+  }
+
+  return payload as T;
+};
 
 export const resolveMenuImageUrl = (imageUrl: string | null) => {
   if (!imageUrl) return null;
@@ -433,7 +471,7 @@ const buildMenuFormData = (payload: MenuEditorPayload) => {
 export const getCategories = async (): Promise<CategoryOption[]> => {
   const res = await api.get<CategoryListResponse>("/admin/categories");
 
-  return res.data.data.map((category) => ({
+  return unwrapApiData<CategoryResponse[]>(res.data).map((category) => ({
     id: category.id,
     name: category.name,
     isActive: parseAvailability(category.is_active ?? true),
@@ -452,7 +490,7 @@ export const buildTableQrPreviewUrl = (qrCode: string) => {
 export const getAdminTables = async (): Promise<AdminTable[]> => {
   const res = await api.get<AdminTableListResponse>("/admin/tables");
 
-  return res.data.data.map((table) => ({
+  return unwrapApiData<AdminTableResponse[]>(res.data).map((table) => ({
     id: table.id,
     tableNo: table.table_no,
     qrCode: table.qr_code,
@@ -487,7 +525,7 @@ export const updateAdminTable = async (payload: {
     is_active: payload.isActive,
   });
 
-  return res.data;
+  return unwrapApiData(res.data);
 };
 
 export const deleteAdminTable = async (id: number) => {
@@ -514,7 +552,7 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
 
 export const getAdminOrders = async (): Promise<KitchenOrder[]> => {
   const res = await api.get<AdminOrderListResponse>("/admin/orders");
-  return res.data.data.map(normalizeOrder);
+  return unwrapApiData<AdminOrderResponse[]>(res.data).map(normalizeOrder);
 };
 
 export const updateAdminOrderStatus = async (
@@ -528,7 +566,7 @@ export const updateAdminOrderStatus = async (
     },
   );
 
-  return normalizeOrder(res.data.data);
+  return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
 };
 
 export const getPublicMenu = async (
@@ -537,16 +575,17 @@ export const getPublicMenu = async (
   const res = await api.get<PublicMenuResponse>(
     `/public/menu/${encodeURIComponent(tableCode)}`,
   );
+  const payload = unwrapApiData<PublicMenuResponse["data"]>(res.data);
 
   return {
     table: {
-      id: res.data.data.table.id,
-      tableNo: res.data.data.table.table_no,
-      qrCode: res.data.data.table.qr_code,
-      isActive: parseAvailability(res.data.data.table.is_active ?? true),
-      createdAt: res.data.data.table.created_at,
+      id: payload.table.id,
+      tableNo: payload.table.table_no,
+      qrCode: payload.table.qr_code,
+      isActive: parseAvailability(payload.table.is_active ?? true),
+      createdAt: payload.table.created_at,
     },
-    categories: res.data.data.categories.map((category) => ({
+    categories: payload.categories.map((category) => ({
       id: category.id,
       name: category.name,
       description: category.description ?? "",
@@ -576,7 +615,7 @@ export const placePublicOrder = async (payload: {
     })),
   });
 
-  return normalizeOrder(res.data.data);
+  return normalizeOrder(unwrapApiData<PlaceOrderResponse["data"]>(res.data));
 };
 
 export const getPublicOrder = async (
@@ -585,7 +624,7 @@ export const getPublicOrder = async (
   const res = await api.get<PublicOrderResponse>(
     `/public/orders/${encodeURIComponent(sessionToken)}`,
   );
-  return normalizeOrder(res.data.data);
+  return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
 };
 
 export const getPublicTableOrders = async (
@@ -594,7 +633,9 @@ export const getPublicTableOrders = async (
   const res = await api.get<PublicOrderListResponse>(
     `/public/tables/${encodeURIComponent(tableCode)}/orders`,
   );
-  return res.data.data.map(normalizeOrder);
+  return unwrapApiData<PublicOrderListResponse["data"]>(res.data).map(
+    normalizeOrder,
+  );
 };
 
 export const confirmPublicOrder = async (
@@ -603,7 +644,7 @@ export const confirmPublicOrder = async (
   const res = await api.patch<PublicOrderResponse>(
     `/public/orders/${encodeURIComponent(sessionToken)}/confirm`,
   );
-  return normalizeOrder(res.data.data);
+  return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
 };
 
 export const cancelPublicOrder = async (
@@ -612,7 +653,7 @@ export const cancelPublicOrder = async (
   const res = await api.patch<PublicOrderResponse>(
     `/public/orders/${encodeURIComponent(sessionToken)}/cancel`,
   );
-  return normalizeOrder(res.data.data);
+  return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
 };
 
 export type GetMenusParams = {
@@ -649,7 +690,8 @@ export const getMenus = async (
     },
   });
 
-  const items = res.data.data
+  const menuCategories = unwrapApiData<GetMenusResponse["data"]>(res.data);
+  const items = menuCategories
     .flatMap((category) =>
       category.items.map((item) => {
         const categoryIsActive = parseAvailability(category.is_active ?? true);
@@ -697,7 +739,7 @@ export const updateMenuAvailability = async (
   const detail = await api.get<MenuCategoryDetailResponse>(
     `/admin/menus/${row.categoryId}`,
   );
-  const category = detail.data.data;
+  const category = unwrapApiData<MenuCategoryResponse>(detail.data);
 
   await api.put(`/admin/menus/${row.categoryId}`, {
     name: category.name,
@@ -726,7 +768,7 @@ export const createMenu = async (payload: MenuEditorPayload) => {
       "Content-Type": "multipart/form-data",
     },
   });
-  return res.data;
+  return unwrapApiData(res.data);
 };
 
 export const createCategory = async (payload: {
@@ -738,7 +780,7 @@ export const createCategory = async (payload: {
     is_active: payload.isActive ?? true,
   });
 
-  return res.data;
+  return unwrapApiData<CategoryResponse>(res.data);
 };
 
 export const updateCategory = async (payload: {
@@ -754,7 +796,7 @@ export const updateCategory = async (payload: {
     },
   );
 
-  return res.data;
+  return unwrapApiData<CategoryResponse>(res.data);
 };
 
 export const updateCategoryAvailability = async (
@@ -785,7 +827,7 @@ export const updateMenu = async (payload: MenuEditorPayload) => {
       "Content-Type": "multipart/form-data",
     },
   });
-  return res.data;
+  return unwrapApiData(res.data);
 };
 
 export const deleteMenu = async (menuId: number) => {

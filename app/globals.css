@@ -8,130 +8,130 @@
   --radius: 0.875rem;
 
   /* =========================
-     LIGHT MODE - NEUTRAL MINIMAL
+     LIGHT MODE - WARM RESTAURANT
      ========================= */
 
   /* Base */
-  --background: #f5f4ef;
-  --foreground: #1f2a2b;
+  --background: #f8f1e7;
+  --foreground: #1f1712;
 
   /* Surfaces */
-  --card: #d2dac7;
-  --card-foreground: #1f2a2b;
+  --card: #ffffff;
+  --card-foreground: #1f1712;
 
   --popover: #ffffff;
-  --popover-foreground: #1f2a2b;
+  --popover-foreground: #1f1712;
 
   /* Brand */
-  --primary: #50686b;
-  --primary-foreground: #f6f8f7;
+  --primary: #b45309;
+  --primary-foreground: #fffaf3;
 
-  --secondary: #dfe6e2;
-  --secondary-foreground: #223033;
+  --secondary: #f1dfc9;
+  --secondary-foreground: #271812;
 
-  --accent: #b9c9c5;
-  --accent-foreground: #1f2a2b;
+  --accent: #2f7d57;
+  --accent-foreground: #f7fff9;
 
   /* Utility */
-  --muted: #ece8e0;
-  --muted-foreground: #667779;
+  --muted: #efe1cf;
+  --muted-foreground: #6d5140;
 
-  --destructive: #D64545;
+  --destructive: #dc2626;
 
-  --status-active-bg: #d7f4e7;
-  --status-active-fg: #116b4b;
-  --status-active-border: #74d6a7;
-  --status-inactive-bg: #ffe0e4;
-  --status-inactive-fg: #a11632;
-  --status-inactive-border: #ff9aad;
-  --status-neutral-bg: #e6ece8;
-  --status-neutral-fg: #526063;
-  --status-neutral-border: #c7d1cc;
+  --status-active-bg: #dcfce7;
+  --status-active-fg: #166534;
+  --status-active-border: #86efac;
+  --status-inactive-bg: #fee2e2;
+  --status-inactive-fg: #991b1b;
+  --status-inactive-border: #fca5a5;
+  --status-neutral-bg: #ffedd5;
+  --status-neutral-fg: #9a3412;
+  --status-neutral-border: #fdba74;
 
-  --border: #d7ddd8;
-  --input: #d7ddd8;
-  --ring: #50686b;
+  --border: #dec9ae;
+  --input: #cdb89f;
+  --ring: #b45309;
 
   /* Charts */
-  --chart-1: #50686b;
-  --chart-2: #758d89;
-  --chart-3: #93a8a4;
-  --chart-4: #b3c0bb;
-  --chart-5: #384b4e;
+  --chart-1: #b45309;
+  --chart-2: #d97706;
+  --chart-3: #2f7d57;
+  --chart-4: #7c3aed;
+  --chart-5: #0f766e;
 
   /* Sidebar */
-  --sidebar: #bbc7b0;
-  --sidebar-foreground: #203032;
-  --sidebar-primary: #50686b;
-  --sidebar-primary-foreground: #f6f8f7;
-  --sidebar-accent: #cdd8d4;
-  --sidebar-accent-foreground: #203032;
-  --sidebar-border: #c3ead5;
-  --sidebar-ring: #50686b;
+  --sidebar: #24150e;
+  --sidebar-foreground: #fff8ef;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #1f1712;
+  --sidebar-accent: #3a2419;
+  --sidebar-accent-foreground: #fff1dc;
+  --sidebar-border: #5b3a29;
+  --sidebar-ring: #f59e0b;
 }
 
 .dark {
   /* =========================
-     DARK MODE - DEEP NEBULA
+     DARK MODE - ESPRESSO KITCHEN
      ========================= */
 
   /* Base */
-  --background: #293638;
-  --foreground: #eef4f2;
+  --background: #120f0c;
+  --foreground: #f8efe7;
 
   /* Surfaces */
-  --card: #496164;
-  --card-foreground: #eef4f2;
+  --card: #1f1a16;
+  --card-foreground: #f8efe7;
 
-  --popover: #44595c;
-  --popover-foreground: #eef4f2;
+  --popover: #251d18;
+  --popover-foreground: #f8efe7;
 
   /* Brand */
-  --primary: #d8e6e1;
-  --primary-foreground: #233234;
+  --primary: #f59e0b;
+  --primary-foreground: #17100b;
 
-  --secondary: #384c4f;
-  --secondary-foreground: #eef4f2;
+  --secondary: #33241b;
+  --secondary-foreground: #f6dfc8;
 
-  --accent: #86aaa4;
-  --accent-foreground: #1f2b2d;
+  --accent: #86a873;
+  --accent-foreground: #10180d;
 
   /* Utility */
-  --muted: #37494c;
-  --muted-foreground: #c8d5d2;
+  --muted: #2a211b;
+  --muted-foreground: #d8c0aa;
 
-  --destructive: #FF6B86;
+  --destructive: #f87171;
 
-  --status-active-bg: rgba(62, 221, 157, 0.22);
-  --status-active-fg: #9df3ca;
-  --status-active-border: rgba(157, 243, 202, 0.42);
-  --status-inactive-bg: rgba(255, 107, 134, 0.22);
-  --status-inactive-fg: #ffbac5;
-  --status-inactive-border: rgba(255, 186, 197, 0.42);
-  --status-neutral-bg: rgba(216, 230, 225, 0.14);
-  --status-neutral-fg: #d8e6e1;
-  --status-neutral-border: rgba(216, 230, 225, 0.3);
+  --status-active-bg: rgba(34, 197, 94, 0.18);
+  --status-active-fg: #bbf7d0;
+  --status-active-border: rgba(134, 239, 172, 0.42);
+  --status-inactive-bg: rgba(248, 113, 113, 0.18);
+  --status-inactive-fg: #fecaca;
+  --status-inactive-border: rgba(252, 165, 165, 0.42);
+  --status-neutral-bg: rgba(251, 146, 60, 0.18);
+  --status-neutral-fg: #fed7aa;
+  --status-neutral-border: rgba(251, 146, 60, 0.42);
 
-  --border: #647b79;
-  --input: #647b79;
-  --ring: #d8e6e1;
+  --border: #4d3a2d;
+  --input: #6a5241;
+  --ring: #f59e0b;
 
   /* Charts */
-  --chart-1: #d8e6e1;
-  --chart-2: #a9c1bc;
-  --chart-3: #8eb3ad;
-  --chart-4: #78a19a;
-  --chart-5: #cfe0da;
+  --chart-1: #f59e0b;
+  --chart-2: #facc15;
+  --chart-3: #a3b18a;
+  --chart-4: #c084fc;
+  --chart-5: #5eead4;
 
   /* Sidebar */
-  --sidebar: #34484b;
-  --sidebar-foreground: #eef4f2;
-  --sidebar-primary: #e2efea;
-  --sidebar-primary-foreground: #223133;
-  --sidebar-accent: #5e7678;
-  --sidebar-accent-foreground: #eef4f2;
-  --sidebar-border: #617876;
-  --sidebar-ring: #d8e6e1;
+  --sidebar: #0c0907;
+  --sidebar-foreground: #fff8ef;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #17100b;
+  --sidebar-accent: #231812;
+  --sidebar-accent-foreground: #f6dfc8;
+  --sidebar-border: #3b2a20;
+  --sidebar-ring: #f59e0b;
 }
 
 @theme inline {
@@ -200,6 +200,48 @@
     transition:
       background-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
       color 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .MuiPaper-root,
+  .MuiCard-root,
+  .MuiTableContainer-root {
+    color: var(--foreground);
+  }
+
+  .MuiTableCell-root,
+  .MuiTypography-root,
+  .MuiInputBase-input,
+  .MuiSelect-select,
+  .MuiFormLabel-root {
+    color: var(--foreground);
+  }
+
+  .MuiFormLabel-root.Mui-focused,
+  .MuiInputLabel-root.Mui-focused,
+  .text--primary {
+    color: var(--primary);
+  }
+
+  .MuiOutlinedInput-notchedOutline {
+    border-color: var(--input);
+  }
+
+  .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+  .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: var(--primary);
+  }
+
+  .MuiTableHead-root .MuiTableCell-root {
+    color: var(--foreground);
+    background-color: color-mix(in srgb, var(--muted) 72%, var(--card));
+  }
+
+  .MuiMenu-paper,
+  .MuiPopover-paper,
+  .MuiDialog-paper {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
   }
 
   html,
