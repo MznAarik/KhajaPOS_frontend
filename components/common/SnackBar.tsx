@@ -194,12 +194,14 @@ export const SnackbarProviderCustom = ({
                     <Slide {...props} direction={isMobile ? "up" : "down"} timeout={{ enter: 260, exit: 180 }} />
                 )}
                 sx={{
+                    pointerEvents: "none",
                     top: { sm: 18 },
                     right: { sm: 18 },
                     bottom: { xs: "calc(env(safe-area-inset-bottom) + 76px)", sm: "auto" },
                     left: { xs: 12, sm: "auto" },
                     width: { xs: "calc(100vw - 24px)", sm: "auto" },
                     maxWidth: { xs: "calc(100vw - 24px)", sm: 520 },
+                    zIndex: (theme) => theme.zIndex.modal + 1,
                 }}
             >
                 <Alert
@@ -225,7 +227,10 @@ export const SnackbarProviderCustom = ({
                             <CloseRoundedIcon fontSize="small" />
                         </IconButton>
                     }
-                    sx={alertSx}
+                    sx={{
+                        ...alertSx,
+                        pointerEvents: "auto",
+                    }}
                 >
                     {message ? message.charAt(0).toUpperCase() + message.slice(1) : message}
                 </Alert>

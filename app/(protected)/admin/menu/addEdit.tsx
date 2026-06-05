@@ -181,6 +181,7 @@ export default function AddEditMenuDialog({
                         flexDirection: "column",
                         maxHeight: fullScreen ? "100dvh" : "92vh",
                         height: fullScreen ? "100dvh" : "auto",
+                        zIndex: (theme) => theme.zIndex.modal + 2,
                     },
                 }}
             >
@@ -306,9 +307,12 @@ export default function AddEditMenuDialog({
                                         startIcon={<CloudUploadOutlinedIcon />}
                                         onClick={() => imageInputRef.current?.click()}
                                         sx={{
+                                            position: "relative",
+                                            zIndex: 1,
                                             alignSelf: { xs: "stretch", sm: "flex-start" },
                                             borderRadius: "12px",
                                             minHeight: 48,
+                                            pointerEvents: "auto",
                                             touchAction: "manipulation",
                                         }}
                                     >
