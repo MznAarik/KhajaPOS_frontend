@@ -8,10 +8,7 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    FormControl,
-    InputLabel,
     MenuItem,
-    Select,
     Stack,
     TextField,
     Typography,
@@ -60,6 +57,27 @@ const createInitialState = (initialData?: MenuRow | null): FormState => ({
     imageFile: null,
     imageUrl: initialData?.imageUrl ?? null,
 });
+
+const floatingFieldSx = {
+    mt: 1.75,
+    "& .MuiInputLabel-root": {
+        backgroundColor: "transparent",
+        px: 0.75,
+        borderRadius: "6px",
+        lineHeight: 1.15,
+        overflow: "visible",
+        zIndex: 2,
+    },
+    "& .MuiInputLabel-root.MuiInputLabel-shrink": {
+        transform: "translate(11px, -7px) scale(0.75)",
+    },
+    "& .MuiOutlinedInput-root": {
+        overflow: "visible",
+    },
+    "& .MuiOutlinedInput-notchedOutline legend": {
+        height: 12,
+    },
+};
 
 export default function AddEditMenuDialog({
     open,
@@ -184,7 +202,7 @@ export default function AddEditMenuDialog({
                 PaperProps={{
                     sx: {
                         borderRadius: fullScreen ? 0 : "22px",
-                        overflow: "hidden",
+                        overflow: "visible",
                         display: "flex",
                         flexDirection: "column",
                         maxHeight: fullScreen ? "100dvh" : "92vh",
@@ -203,51 +221,53 @@ export default function AddEditMenuDialog({
                 </DialogTitle>
                 <DialogContent
                     sx={{
-                        pt: 2.5,
+                        pt: 4,
                         overflowY: "auto",
+                        overflowX: "visible",
                         flex: 1,
                         minHeight: 0,
                     }}
                 >
-                    <Stack spacing={2.25} sx={{ pb: 1 }}>
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                            <FormControl fullWidth disabled={Boolean(initialData)}>
-                                <InputLabel id="category-label">Category</InputLabel>
-                                <Select
-                                    labelId="category-label"
-                                    label="Category"
-                                    value={form.categoryId}
-                                    onChange={(e) => handleFieldChange("categoryId")(e.target.value)}
-                                >
-                                    {categories.map((category) => (
-                                        <MenuItem key={category.id} value={String(category.id)}>
-                                            {category.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            <FormControl fullWidth>
-                                <InputLabel id="food-type-label">Food Type</InputLabel>
-                                <Select
-                                    labelId="food-type-label"
-                                    label="Food Type"
-                                    value={form.foodType}
-                                    onChange={(e) => handleFieldChange("foodType")(e.target.value as FormState["foodType"])}
-                                >
-                                    <MenuItem value="veg">Veg</MenuItem>
-                                    <MenuItem value="non-veg">Non-Veg</MenuItem>
-                                    <MenuItem value="egg">{getFoodTypeLabel("egg")}</MenuItem>
-                                    <MenuItem value="vegan">{getFoodTypeLabel("vegan")}</MenuItem>
-                                </Select>
-                            </FormControl>
+                    <Stack spacing={2.5} sx={{ pb: 1.5, overflow: "visible" }}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 0.75, overflow: "visible" }}>
+                            <TextField
+                                select
+                                fullWidth
+                                disabled={Boolean(initialData)}
+                                sx={floatingFieldSx}
+                                SelectProps={{ displayEmpty: false }}
+                                label="Category"
+                                value={form.categoryId}
+                                onChange={(e) => handleFieldChange("categoryId")(e.target.value)}
+                            >
+                                {categories.map((category) => (
+                                    <MenuItem key={category.id} value={String(category.id)}>
+                                        {category.name}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField
+                                select
+                                fullWidth
+                                sx={floatingFieldSx}
+                                label="Food Type"
+                                value={form.foodType}
+                                onChange={(e) => handleFieldChange("foodType")(e.target.value as FormState["foodType"])}
+                            >
+                                <MenuItem value="veg">Veg</MenuItem>
+                                <MenuItem value="non-veg">Non-Veg</MenuItem>
+                                <MenuItem value="egg">{getFoodTypeLabel("egg")}</MenuItem>
+                                <MenuItem value="vegan">{getFoodTypeLabel("vegan")}</MenuItem>
+                            </TextField>
                         </Stack>
 
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ overflow: "visible" }}>
                             <TextField
                                 label="Menu Name"
                                 value={form.name}
                                 onChange={(e) => handleFieldChange("name")(e.target.value)}
                                 fullWidth
+                                sx={floatingFieldSx}
                             />
 
                             <TextField
@@ -256,6 +276,7 @@ export default function AddEditMenuDialog({
                                 value={form.price}
                                 onChange={(e) => handleFieldChange("price")(e.target.value)}
                                 fullWidth
+                                sx={floatingFieldSx}
                             />
                         </Stack>
 
@@ -266,6 +287,7 @@ export default function AddEditMenuDialog({
                             fullWidth
                             multiline
                             minRows={3}
+                            sx={floatingFieldSx}
                         />
 
                         <Box

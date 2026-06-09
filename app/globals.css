@@ -252,34 +252,6 @@
     color: var(--primary);
   }
 
-  .MuiFormControl-root,
-  .MuiOutlinedInput-root {
-    overflow: visible;
-  }
-
-  .MuiInputLabel-root {
-    line-height: 1.25;
-    overflow: visible;
-    z-index: 1;
-  }
-
-  .MuiInputLabel-root.MuiInputLabel-shrink {
-    padding: 0 6px;
-    background-color: var(--card);
-    border-radius: 999px;
-    transform: translate(14px, -8px) scale(0.75);
-  }
-
-  .MuiOutlinedInput-notchedOutline legend {
-    height: 12px;
-    line-height: 12px;
-  }
-
-  .MuiOutlinedInput-notchedOutline legend > span {
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-
   .MuiOutlinedInput-notchedOutline {
     border-color: var(--input);
   }
