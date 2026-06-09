@@ -47,6 +47,7 @@ const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-
 const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
+const MAX_ORDER_QUANTITY = 10;
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
@@ -236,7 +237,13 @@ export default function TableOrderPage() {
         const { [itemId]: _removed, ...rest } = current;
         return rest;
       }
-      return { ...current, [itemId]: nextQuantity };
+
+      if (nextQuantity > MAX_ORDER_QUANTITY) {
+        setMessage(`You can order up to ${MAX_ORDER_QUANTITY} of one item at a time.`);
+        return current;
+      }
+
+      return { ...current, [itemId]: Math.min(nextQuantity, MAX_ORDER_QUANTITY) };
     });
   };
 
@@ -555,7 +562,12 @@ export default function TableOrderPage() {
                                   <Paper sx={{ px: 2, py: 1, borderRadius: "12px", minWidth: 48, textAlign: "center" }}>
                                     {quantity}
                                   </Paper>
-                                  <Button variant="contained" onClick={() => updateQuantity(item.id, quantity + 1)} sx={{ minWidth: 42, borderRadius: "12px" }}>
+                                  <Button
+                                    variant="contained"
+                                    disabled={quantity >= MAX_ORDER_QUANTITY}
+                                    onClick={() => updateQuantity(item.id, quantity + 1)}
+                                    sx={{ minWidth: 42, borderRadius: "12px" }}
+                                  >
                                     +
                                   </Button>
                                 </Stack>
@@ -821,6 +833,7 @@ export default function TableOrderPage() {
               </Button>
               <Button
                 variant="contained"
+                disabled={(cart[selectedItem.id] ?? 0) >= MAX_ORDER_QUANTITY}
                 onClick={() => {
                   updateQuantity(selectedItem.id, (cart[selectedItem.id] ?? 0) + 1);
                   setSelectedItem(null);
