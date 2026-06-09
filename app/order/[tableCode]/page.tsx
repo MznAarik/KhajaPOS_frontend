@@ -5,6 +5,10 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Paper,
   Skeleton,
@@ -21,6 +25,7 @@ import {
   placePublicOrder,
   resolveMenuImageUrl,
   type KitchenOrder,
+  type PublicMenuItem,
   type PublicTableMenu,
 } from "@/lib/api";
 import ThemeToggle from "@/components/common/ThemeToggle";
@@ -59,6 +64,7 @@ export default function TableOrderPage() {
   const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
   const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
   const [mobileCartOpen, setMobileCartOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<PublicMenuItem | null>(null);
   const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
@@ -305,7 +311,8 @@ export default function TableOrderPage() {
     <Box
       sx={{
         minHeight: "100vh",
-        backgroundColor: "var(--background)",
+        backgroundColor: "transparent",
+        backgroundImage: "none",
         color: "var(--foreground)",
         p: { xs: 1.5, md: 3 },
         pb: { xs: cartItems.length ? 13 : 1.5, lg: 3 },
@@ -313,7 +320,15 @@ export default function TableOrderPage() {
         gap: 2,
       }}
     >
-      <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "24px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <Paper
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: "24px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          boxShadow: "0 14px 34px color-mix(in srgb, var(--foreground) 8%, transparent)",
+        }}
+      >
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
           {/* Left Side */}
           <Stack spacing={1} sx={{ flex: 1 }}>
@@ -439,7 +454,13 @@ export default function TableOrderPage() {
             menu?.categories.map((category) => (
               <Paper
                 key={category.id}
-                sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
+                sx={{
+                  p: { xs: 2, md: 3 },
+                  borderRadius: "22px",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--card)",
+                  boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
+                }}
               >
                 <Stack spacing={2}>
                   <Box>
@@ -472,12 +493,19 @@ export default function TableOrderPage() {
                             p: 2,
                             borderRadius: "18px",
                             border: "1px solid var(--border)",
-                            backgroundColor: "var(--background)",
+                            backgroundColor: "color-mix(in srgb, var(--card) 86%, var(--background) 14%)",
                           }}
                         >
                           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                             <Box
+                              component="button"
+                              type="button"
+                              onClick={() => setSelectedItem(item)}
+                              aria-label={`View details for ${item.name}`}
                               sx={{
+                                border: 0,
+                                p: 0,
+                                cursor: "pointer",
                                 width: { xs: "100%", sm: 108 },
                                 minWidth: { sm: 108 },
                                 height: 108,
@@ -487,6 +515,15 @@ export default function TableOrderPage() {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
+                                transition: "transform 180ms ease, box-shadow 180ms ease",
+                                "&:hover": {
+                                  transform: "translateY(-2px)",
+                                  boxShadow: "0 12px 24px color-mix(in srgb, var(--foreground) 12%, transparent)",
+                                },
+                                "&:focus-visible": {
+                                  outline: "3px solid color-mix(in srgb, var(--ring) 45%, transparent)",
+                                  outlineOffset: "3px",
+                                },
                               }}
                             >
                               {imageSrc ? (
@@ -509,9 +546,9 @@ export default function TableOrderPage() {
                                 <Typography sx={{ fontWeight: 800 }}>Rs. {item.price}</Typography>
                               </Stack>
 
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                                 <Chip label={getFoodTypeLabel(item.foodType)} sx={{ fontWeight: 700 }} />
-                                <Stack direction="row" spacing={1}>
+                                <Stack direction="row" spacing={1} alignItems="center">
                                   <Button onClick={() => updateQuantity(item.id, quantity - 1)} sx={{ minWidth: 42, borderRadius: "12px" }}>
                                     -
                                   </Button>
@@ -716,6 +753,86 @@ export default function TableOrderPage() {
           </Paper>
         </Box>
       ) : null}
+
+      <Dialog
+        open={Boolean(selectedItem)}
+        onClose={() => setSelectedItem(null)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            overflow: "hidden",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          },
+        }}
+      >
+        {selectedItem ? (
+          <>
+            <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>
+              {selectedItem.name}
+            </DialogTitle>
+            <DialogContent sx={{ display: "grid", gap: 2, pt: 1 }}>
+              <Box
+                sx={{
+                  minHeight: { xs: 240, sm: 340 },
+                  maxHeight: { xs: "58vh", sm: "64vh" },
+                  borderRadius: "20px",
+                  overflow: "auto",
+                  backgroundColor: "var(--background)",
+                  display: "grid",
+                  placeItems: "center",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {resolveMenuImageUrl(selectedItem.imageUrl) ? (
+                  <Box
+                    component="img"
+                    src={resolveMenuImageUrl(selectedItem.imageUrl) ?? undefined}
+                    alt={selectedItem.name}
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      maxHeight: { xs: "58vh", sm: "64vh" },
+                      objectFit: "contain",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  <Typography sx={{ color: "var(--muted-foreground)", fontWeight: 800 }}>
+                    {getFoodTypeLabel(selectedItem.foodType)}
+                  </Typography>
+                )}
+              </Box>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip label={getFoodTypeLabel(selectedItem.foodType)} sx={{ fontWeight: 800 }} />
+                <Chip label={`Rs. ${selectedItem.price}`} color="primary" sx={{ fontWeight: 900 }} />
+              </Stack>
+
+              <Typography sx={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
+                {selectedItem.description || "Freshly prepared after you place the order."}
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, pt: 0 }}>
+              <Button onClick={() => setSelectedItem(null)} sx={{ borderRadius: "12px" }}>
+                Close
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  updateQuantity(selectedItem.id, (cart[selectedItem.id] ?? 0) + 1);
+                  setSelectedItem(null);
+                }}
+                sx={{ borderRadius: "12px" }}
+              >
+                Add to Cart
+              </Button>
+            </DialogActions>
+          </>
+        ) : null}
+      </Dialog>
     </Box>
   );
 }
