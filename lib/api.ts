@@ -52,6 +52,21 @@ const redirectToLogin = async () => {
   window.location.replace(`${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`);
 };
 
+export const toTitleCase = (value: string | null | undefined) =>
+  (value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part ? `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}` : part,
+        )
+        .join("-"),
+    )
+    .join(" ");
+
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   config.headers.Accept = "application/json";
@@ -473,7 +488,7 @@ export const getCategories = async (): Promise<CategoryOption[]> => {
 
   return unwrapApiData<CategoryResponse[]>(res.data).map((category) => ({
     id: category.id,
-    name: category.name,
+    name: toTitleCase(category.name),
     isActive: parseAvailability(category.is_active ?? true),
     createdAt: category.created_at,
   }));
@@ -544,7 +559,7 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
   items: order.items.map((item) => ({
     id: item.id,
     menuItemId: item.menu_item_id,
-    name: item.menu_item?.name ?? "Menu Item",
+    name: toTitleCase(item.menu_item?.name ?? "Menu Item"),
     quantity: item.quantity,
     price: item.price,
   })),
@@ -569,6 +584,25 @@ export const updateAdminOrderStatus = async (
   return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
 };
 
+export const updateAdminOrder = async (payload: {
+  id: number;
+  remarks: string;
+  items: Array<{ id: number; quantity: number }>;
+}) => {
+  const res = await api.put<{ status: number; data: AdminOrderResponse }>(
+    `/admin/orders/${payload.id}`,
+    {
+      remarks: payload.remarks.trim(),
+      items: payload.items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+      })),
+    },
+  );
+
+  return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
+};
+
 export const getPublicMenu = async (
   tableCode: string,
 ): Promise<PublicTableMenu> => {
@@ -587,11 +621,11 @@ export const getPublicMenu = async (
     },
     categories: payload.categories.map((category) => ({
       id: category.id,
-      name: category.name,
+      name: toTitleCase(category.name),
       description: category.description ?? "",
       items: category.items.map((item) => ({
         id: item.id,
-        name: item.name,
+        name: toTitleCase(item.name),
         description: item.description ?? "",
         price: item.price,
         foodType: normalizeFoodType(item.food_type),
@@ -705,9 +739,9 @@ export const getMenus = async (
           id: item.id,
           categoryId: category.id,
           categoryIsActive,
-          name: item.name,
+          name: toTitleCase(item.name),
           description: item.description ?? category.description ?? "",
-          category: category.name,
+          category: toTitleCase(category.name),
           price: item.price,
           prep: "N/A",
           veg: foodType === "veg",

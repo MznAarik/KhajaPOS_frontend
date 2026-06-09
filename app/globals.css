@@ -81,35 +81,35 @@
 
 .dark {
   /* =========================
-     DARK MODE - ESPRESSO KITCHEN
+     DARK MODE - ESPRESSO POS
      ========================= */
 
   /* Base */
-  --background: #120f0c;
-  --foreground: #f8efe7;
+  --background: #0b100c;
+  --foreground: #f8efe4;
 
   /* Surfaces */
-  --card: #1f1a16;
-  --card-foreground: #f8efe7;
+  --card: #121b15;
+  --card-foreground: #f8efe4;
 
-  --popover: #251d18;
-  --popover-foreground: #f8efe7;
+  --popover: #151f18;
+  --popover-foreground: #f8efe4;
 
   /* Brand */
-  --primary: #f59e0b;
-  --primary-foreground: #17100b;
+  --primary: #f6a313;
+  --primary-foreground: #1d1204;
 
-  --secondary: #33241b;
-  --secondary-foreground: #f6dfc8;
+  --secondary: #241d12;
+  --secondary-foreground: #f1ddbf;
 
-  --accent: #86a873;
-  --accent-foreground: #10180d;
+  --accent: #1d4a34;
+  --accent-foreground: #eafff1;
 
   /* Utility */
-  --muted: #2a211b;
-  --muted-foreground: #d8c0aa;
+  --muted: #1b261e;
+  --muted-foreground: #d0c0ad;
 
-  --destructive: #f87171;
+  --destructive: #ef6f5c;
 
   --status-active-bg: rgba(34, 197, 94, 0.18);
   --status-active-fg: #bbf7d0;
@@ -121,35 +121,37 @@
   --status-neutral-fg: #fed7aa;
   --status-neutral-border: rgba(251, 146, 60, 0.42);
 
-  --border: #4d3a2d;
-  --input: #6a5241;
-  --ring: #f59e0b;
+  --border: #334338;
+  --input: #526358;
+  --ring: #f6a313;
 
   /* Charts */
-  --chart-1: #f59e0b;
-  --chart-2: #facc15;
-  --chart-3: #a3b18a;
-  --chart-4: #c084fc;
-  --chart-5: #5eead4;
+  --chart-1: #f6a313;
+  --chart-2: #e45f2b;
+  --chart-3: #3f8f5f;
+  --chart-4: #b85a7a;
+  --chart-5: #3fa7a0;
 
   /* Sidebar */
-  --sidebar: #0c0907;
-  --sidebar-foreground: #fff8ef;
-  --sidebar-primary: #f59e0b;
-  --sidebar-primary-foreground: #17100b;
-  --sidebar-accent: #231812;
-  --sidebar-accent-foreground: #f6dfc8;
-  --sidebar-border: #3b2a20;
-  --sidebar-ring: #f59e0b;
+  --sidebar: #090e0a;
+  --sidebar-foreground: #f8efe4;
+  --sidebar-primary: #f6a313;
+  --sidebar-primary-foreground: #1d1204;
+  --sidebar-accent: #142319;
+  --sidebar-accent-foreground: #f1ddbf;
+  --sidebar-border: #38442e;
+  --sidebar-ring: #f6a313;
 
   --page-gradient:
-    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 340px),
-    radial-gradient(circle at 96% 12%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 380px),
-    linear-gradient(180deg, color-mix(in srgb, var(--card) 46%, transparent) 0%, transparent 280px),
-    linear-gradient(135deg, var(--background), color-mix(in srgb, var(--background) 82%, black 18%));
+    radial-gradient(circle at 7% 3%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 340px),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 390px),
+    radial-gradient(circle at 18% 86%, color-mix(in srgb, #b85a7a 10%, transparent), transparent 360px),
+    radial-gradient(circle at 52% 100%, color-mix(in srgb, #b45309 18%, transparent), transparent 440px),
+    radial-gradient(circle at 84% 72%, color-mix(in srgb, #3fa7a0 8%, transparent), transparent 340px),
+    linear-gradient(135deg, var(--background), #071009);
   --surface-gradient:
-    linear-gradient(145deg, color-mix(in srgb, var(--card) 96%, transparent), color-mix(in srgb, var(--card) 82%, var(--muted) 18%));
-  --soft-shadow: 0 18px 44px color-mix(in srgb, black 38%, transparent);
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 98%, transparent), color-mix(in srgb, #1b2618 36%, var(--card)));
+  --soft-shadow: 0 18px 44px color-mix(in srgb, black 44%, transparent);
 }
 
 @theme inline {
@@ -250,6 +252,34 @@
     color: var(--primary);
   }
 
+  .MuiFormControl-root,
+  .MuiOutlinedInput-root {
+    overflow: visible;
+  }
+
+  .MuiInputLabel-root {
+    line-height: 1.25;
+    overflow: visible;
+    z-index: 1;
+  }
+
+  .MuiInputLabel-root.MuiInputLabel-shrink {
+    padding: 0 6px;
+    background-color: var(--card);
+    border-radius: 999px;
+    transform: translate(14px, -8px) scale(0.75);
+  }
+
+  .MuiOutlinedInput-notchedOutline legend {
+    height: 12px;
+    line-height: 12px;
+  }
+
+  .MuiOutlinedInput-notchedOutline legend > span {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
   .MuiOutlinedInput-notchedOutline {
     border-color: var(--input);
   }
@@ -257,6 +287,38 @@
   .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
   .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
     border-color: var(--primary);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  .MuiInputBase-input:-webkit-autofill,
+  .MuiInputBase-input:-webkit-autofill:hover,
+  .MuiInputBase-input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    box-shadow: 0 0 0 1000px color-mix(in srgb, var(--primary) 10%, var(--card)) inset !important;
+    transition: background-color 9999s ease-out 0s;
+    border-radius: inherit;
+  }
+
+  .MuiOutlinedInput-root:has(input:-webkit-autofill),
+  .MuiOutlinedInput-root:has(textarea:-webkit-autofill) {
+    background-color: color-mix(in srgb, var(--primary) 10%, var(--card)) !important;
+  }
+
+  input:autofill,
+  textarea:autofill,
+  select:autofill {
+    color: var(--foreground);
+    caret-color: var(--foreground);
+    background-color: color-mix(in srgb, var(--primary) 10%, var(--card));
   }
 
   .MuiTableHead-root .MuiTableCell-root {
@@ -305,6 +367,45 @@
   @supports (height: 100dvh) {
     body {
       min-height: 100dvh;
+    }
+  }
+
+  @media (max-width: 768px) {
+    body {
+      background-size: 100% 100%;
+    }
+
+    .MuiPaper-root,
+    .MuiCard-root,
+    .MuiDialog-paper,
+    .MuiDrawer-paper,
+    [style*="backdrop-filter"] {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    .MuiPaper-root,
+    .MuiCard-root,
+    .MuiTableContainer-root,
+    .MuiDialog-paper {
+      box-shadow: 0 10px 24px color-mix(in srgb, black 24%, transparent) !important;
+    }
+
+    .MuiButtonBase-root,
+    .MuiPaper-root,
+    .MuiCard-root,
+    .MuiChip-root,
+    .MuiIconButton-root {
+      transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease,
+        opacity 120ms ease !important;
+    }
+
+    .MuiDialogContent-root,
+    .MuiTableContainer-root {
+      contain: content;
     }
   }
 

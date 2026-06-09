@@ -5,20 +5,27 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Paper,
   Skeleton,
   Stack,
+  TextField,
   Typography,
   Divider,
 } from "@mui/material";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { getAdminOrders, type KitchenOrder, type OrderStatus, updateAdminOrderStatus } from "@/lib/api";
+import { getAdminOrders, type KitchenOrder, type OrderStatus, updateAdminOrder, updateAdminOrderStatus } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 
 const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled"];
 const lockedStatuses: OrderStatus[] = ["served", "cancelled"];
+const MAX_ORDER_QUANTITY = 10;
 type OrderFilter = "active" | "all" | OrderStatus;
 
 const getStatusStyle = (status: OrderStatus) => {
@@ -67,6 +74,10 @@ export default function OrdersPage() {
   const [loading, setLoading] = React.useState(true);
   const [updatingId, setUpdatingId] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState<OrderFilter>("active");
+  const [editingOrder, setEditingOrder] = React.useState<KitchenOrder | null>(null);
+  const [editRemarks, setEditRemarks] = React.useState("");
+  const [editItems, setEditItems] = React.useState<Array<{ id: number; name: string; quantity: number; price: string }>>([]);
+  const [editSaving, setEditSaving] = React.useState(false);
   const { showSnackbar } = useAppSnackbar();
 
   const fetchOrders = React.useCallback(async () => {
@@ -105,6 +116,63 @@ export default function OrdersPage() {
       showSnackbar(safeError(error, "Failed to update order status."), "error");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openEditDialog = (order: KitchenOrder) => {
+    if (isLocked(order.status)) return;
+
+    setEditingOrder(order);
+    setEditRemarks(order.remarks ?? "");
+    setEditItems(order.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })));
+  };
+
+  const closeEditDialog = () => {
+    if (editSaving) return;
+
+    setEditingOrder(null);
+    setEditRemarks("");
+    setEditItems([]);
+  };
+
+  const updateEditItemQuantity = (itemId: number, quantity: number) => {
+    setEditItems((current) =>
+      current.map((item) =>
+        item.id === itemId
+          ? { ...item, quantity: Math.max(1, Math.min(MAX_ORDER_QUANTITY, quantity || 1)) }
+          : item,
+      ),
+    );
+  };
+
+  const handleOrderSave = async () => {
+    if (!editingOrder) return;
+
+    setEditSaving(true);
+    try {
+      const updatedOrder = await updateAdminOrder({
+        id: editingOrder.id,
+        remarks: editRemarks,
+        items: editItems.map((item) => ({ id: item.id, quantity: item.quantity })),
+      });
+
+      setOrders((current) =>
+        current.map((item) => (item.id === updatedOrder.id ? updatedOrder : item)),
+      );
+      showSnackbar(`Order #${updatedOrder.id} updated successfully.`, "success");
+      setEditingOrder(null);
+      setEditRemarks("");
+      setEditItems([]);
+    } catch (error) {
+      console.error("Failed to update order:", error);
+      showSnackbar(safeError(error, "Failed to update order."), "error");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -398,19 +466,22 @@ export default function OrdersPage() {
                     </Paper>
                   ) : (
                     <Stack
-                      direction={{ xs: "column", sm: "row" }}
+                      direction="row"
                       spacing={1}
                       sx={{ width: "100%" }}
                     >
                       {nextAction ? (
                         <Button
                           fullWidth
+                          size="small"
                           variant="contained"
                           disabled={isUpdating}
                           onClick={() => handleStatusChange(order.id, nextAction.status)}
                           sx={{
-                            minHeight: 44,
-                            borderRadius: "14px",
+                            minHeight: { xs: 38, sm: 44 },
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            fontSize: { xs: "0.76rem", sm: "0.875rem" },
                             fontWeight: 850,
                             textTransform: "none",
                             backgroundColor: order.status === "ready" ? "#166534" : "var(--primary)",
@@ -422,19 +493,38 @@ export default function OrdersPage() {
                       ) : null}
                       <Button
                         fullWidth
+                        size="small"
                         variant="outlined"
                         color="error"
                         disabled={isUpdating}
                         onClick={() => handleStatusChange(order.id, "cancelled")}
                         sx={{
-                          minHeight: 44,
-                          borderRadius: "14px",
+                          minHeight: { xs: 38, sm: 44 },
+                          px: { xs: 1, sm: 2 },
+                          borderRadius: { xs: "12px", sm: "14px" },
+                          fontSize: { xs: "0.76rem", sm: "0.875rem" },
                           fontWeight: 850,
                           textTransform: "none",
                         }}
                       >
-                        Cancel Order
+                        Cancel
                       </Button>
+                      <IconButton
+                        aria-label={`edit order ${order.id}`}
+                        disabled={isUpdating}
+                        onClick={() => openEditDialog(order)}
+                        sx={{
+                          width: { xs: 38, sm: 44 },
+                          height: { xs: 38, sm: 44 },
+                          flexShrink: 0,
+                          borderRadius: { xs: "12px", sm: "14px" },
+                          border: "1px solid var(--border)",
+                          color: "var(--primary)",
+                          backgroundColor: "var(--card)",
+                        }}
+                      >
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
                     </Stack>
                   )}
                   {locked ? (
@@ -448,6 +538,69 @@ export default function OrdersPage() {
           })
         )}
       </Box>
+
+      <Dialog open={Boolean(editingOrder)} onClose={closeEditDialog} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          Edit Order {editingOrder ? `#${editingOrder.id}` : ""}
+          <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem", fontWeight: 600 }}>
+            Quantity is limited to {MAX_ORDER_QUANTITY} per item.
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2.25} sx={{ pt: 1 }}>
+            {editItems.map((item) => (
+              <Paper
+                key={item.id}
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  borderRadius: "16px",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--background)",
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 850, overflowWrap: "anywhere" }}>
+                      {item.name}
+                    </Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.86rem" }}>
+                      Rs. {item.price} each
+                    </Typography>
+                  </Box>
+                  <TextField
+                    label="Qty"
+                    type="number"
+                    value={item.quantity}
+                    onChange={(event) => updateEditItemQuantity(item.id, Number(event.target.value))}
+                    inputProps={{ min: 1, max: MAX_ORDER_QUANTITY }}
+                    helperText={`Max ${MAX_ORDER_QUANTITY}`}
+                    sx={{ width: { xs: 86, sm: 96 } }}
+                  />
+                </Stack>
+              </Paper>
+            ))}
+
+            <TextField
+              label="Remarks"
+              value={editRemarks}
+              onChange={(event) => setEditRemarks(event.target.value)}
+              multiline
+              minRows={3}
+              fullWidth
+              inputProps={{ maxLength: 500 }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeEditDialog} disabled={editSaving} sx={{ borderRadius: "12px" }}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleOrderSave} disabled={editSaving} sx={{ borderRadius: "12px" }}>
+            {editSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

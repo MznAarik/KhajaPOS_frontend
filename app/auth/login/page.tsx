@@ -16,6 +16,7 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { useAppSnackbar } from "@/components/common/SnackBar";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { apiRequest } from "@/lib/api";
 import { safeError } from "@/lib/safeError";
 import { useRouter } from "next/navigation";
@@ -134,12 +135,24 @@ export default function AuthPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                position: "relative",
                 px: { xs: 1.5, sm: 2, md: 4 },
                 py: { xs: 2, md: 4 },
                 backgroundColor: "var(--background)",
                 backgroundImage: "var(--page-gradient)",
             }}
         >
+            <Box
+                sx={{
+                    position: "fixed",
+                    top: { xs: 14, sm: 22 },
+                    right: { xs: 14, sm: 22 },
+                    zIndex: 20,
+                }}
+            >
+                <ThemeToggle />
+            </Box>
+
             <Paper
                 sx={{
                     width: "min(100%, 980px)",

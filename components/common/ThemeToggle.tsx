@@ -45,15 +45,15 @@ export default function ThemeToggle() {
                 pointerEvents: "auto",
                 border: "1px solid var(--sidebar-border)",
                 backgroundImage:
-                    "linear-gradient(135deg, rgba(79, 139, 255, 0.18), rgba(18, 214, 255, 0.05))",
-                backgroundColor: "color-mix(in oklab, var(--sidebar-accent) 90%, black)",
+                    "linear-gradient(135deg, color-mix(in srgb, var(--primary) 22%, transparent), color-mix(in srgb, var(--accent) 10%, transparent))",
+                backgroundColor: "color-mix(in srgb, var(--card) 84%, transparent)",
                 color: "var(--primary)",
-                boxShadow: "0 12px 26px rgba(79, 139, 255, 0.2)",
+                boxShadow: "0 12px 26px color-mix(in srgb, var(--primary) 18%, transparent)",
                 transition: "all 200ms ease",
                 "&:hover": {
-                    backgroundColor: "color-mix(in oklab, var(--sidebar-accent) 80%, black)",
+                    backgroundColor: "color-mix(in srgb, var(--primary) 16%, var(--card))",
                     color: "var(--primary)",
-                    boxShadow: "0 12px 26px rgba(79, 139, 255, 0.2)",
+                    boxShadow: "0 14px 30px color-mix(in srgb, var(--primary) 24%, transparent)",
                     transform: "translateY(-1px)",
                 },
                 "&:active": {
