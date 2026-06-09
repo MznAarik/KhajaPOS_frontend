@@ -9,7 +9,6 @@ import {
     Card,
     CardContent,
     Divider,
-    Grid,
     IconButton,
     InputAdornment,
     MenuItem,
@@ -112,37 +111,37 @@ export default function RegisterPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                px: 2,
-                py: 4,
+                px: { xs: 1.5, sm: 2, md: 4 },
+                py: { xs: 2, md: 4 },
                 backgroundColor: "var(--background)",
-                backgroundImage:
-                    "radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 40%)",
+                backgroundImage: "var(--page-gradient)",
             }}
         >
             <Card
                 sx={{
-                    width: "100%",
-                    maxWidth: 1150,
-                    borderRadius: "32px",
+                    width: "min(100%, 1120px)",
+                    borderRadius: { xs: "24px", md: "32px" },
                     overflow: "hidden",
-                    backgroundColor: "var(--card)",
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", md: "0.88fr 1.12fr" },
+                    backgroundColor: "color-mix(in srgb, var(--card) 94%, transparent)",
+                    backgroundImage: "var(--surface-gradient)",
                     color: "var(--card-foreground)",
                     border: "1px solid var(--border)",
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+                    boxShadow: "var(--soft-shadow)",
+                    backdropFilter: "blur(14px)",
                 }}
             >
-                <Grid container>
-                    {/* LEFT SIDE */}
-                    <Grid
-                        size={{ xs: 12, md: 5 }}
+                    <Box
                         sx={{
                             background:
-                                "linear-gradient(160deg, var(--sidebar), color-mix(in srgb, var(--sidebar-accent) 38%, var(--sidebar)))",
+                                "radial-gradient(circle at 22% 10%, color-mix(in srgb, var(--sidebar-primary) 34%, transparent), transparent 34%), radial-gradient(circle at 88% 88%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 38%), linear-gradient(160deg, var(--sidebar), color-mix(in srgb, var(--sidebar-accent) 52%, var(--sidebar)))",
                             color: "var(--sidebar-foreground)",
-                            p: { xs: 4, md: 6 },
+                            p: { xs: 3, sm: 4, md: 6 },
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "center",
+                            minHeight: { xs: 280, md: 680 },
                             borderRight: {
                                 xs: "none",
                                 md: "1px solid var(--sidebar-border)",
@@ -187,7 +186,7 @@ export default function RegisterPage() {
                         <Typography
                             sx={{
                                 mt: 2,
-                                color: "var(--muted-foreground)",
+                                color: "color-mix(in srgb, var(--sidebar-foreground) 84%, var(--sidebar-primary) 16%)",
                                 lineHeight: 1.8,
                             }}
                         >
@@ -223,32 +222,34 @@ export default function RegisterPage() {
                                     <Typography
                                         sx={{
                                             color:
-                                                "var(--sidebar-foreground)",
+                                                "color-mix(in srgb, var(--sidebar-foreground) 92%, var(--sidebar-primary) 8%)",
                                         }}
                                     >
                                         {item}
                                     </Typography>
                                 </Box>
                             ))}
-                            <Typography sx={{ mt: 3, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                            <Typography component="div" sx={{ mt: 3, color: "color-mix(in srgb, var(--sidebar-foreground) 80%, var(--sidebar-primary) 20%)", fontSize: "0.9rem" }}>
                                 Get Back to
-                                <Link href="/auth/login"><b> Login!</b></Link>
+                                <Link href="/auth/login" style={{ color: "var(--sidebar-primary)", fontWeight: 700, marginLeft: 4, textDecoration: "underline" }}>
+                                    Login!
+                                </Link>
                             </Typography>
                         </Stack>
-                    </Grid>
+                    </Box>
 
-                    {/* RIGHT SIDE */}
-                    <Grid size={{ xs: 12, md: 7 }}>
+                    <Box>
                         <CardContent
                             sx={{
                                 p: {
-                                    xs: 3,
+                                    xs: 2.25,
                                     sm: 4,
                                     md: 5,
                                 },
+                                backgroundColor: "color-mix(in srgb, var(--card) 74%, transparent)",
                             }}
                         >
-                            <Typography
+                                                <Typography
                                 sx={{
                                     fontSize: {
                                         xs: "1.8rem",
@@ -291,18 +292,19 @@ export default function RegisterPage() {
                                             User Information
                                         </Typography>
 
-                                        <Grid container spacing={2}>
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                                            <Box>
                                                 <TextField
                                                     fullWidth
                                                     label="Full Name"
                                                     name="name"
                                                     value={formData.name}
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Box>
                                                 <TextField
                                                     fullWidth
                                                     label="Email"
@@ -310,10 +312,11 @@ export default function RegisterPage() {
                                                     name="email"
                                                     value={formData.email}
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12 }}>
+                                            <Box sx={{ gridColumn: "1 / -1" }}>
                                                 <TextField
                                                     fullWidth
                                                     label="Password"
@@ -325,10 +328,15 @@ export default function RegisterPage() {
                                                     name="password"
                                                     value={formData.password}
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                     InputProps={{
                                                         endAdornment: (
                                                             <InputAdornment position="end">
                                                                 <IconButton
+                                                                    type="button"
+                                                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                                                    edge="end"
+                                                                    onMouseDown={(event) => event.preventDefault()}
                                                                     onClick={() =>
                                                                         setShowPassword(
                                                                             !showPassword
@@ -345,8 +353,8 @@ export default function RegisterPage() {
                                                         ),
                                                     }}
                                                 />
-                                            </Grid>
-                                        </Grid>
+                                            </Box>
+                                        </Box>
                                     </Box>
 
                                     {/* BUSINESS */}
@@ -361,8 +369,8 @@ export default function RegisterPage() {
                                             Business Information
                                         </Typography>
 
-                                        <Grid container spacing={2}>
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                                            <Box>
                                                 <TextField
                                                     fullWidth
                                                     label="Business Name"
@@ -371,10 +379,11 @@ export default function RegisterPage() {
                                                         formData.business.name
                                                     }
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Box>
                                                 <TextField
                                                     select
                                                     fullWidth
@@ -385,6 +394,7 @@ export default function RegisterPage() {
                                                             .business_type
                                                     }
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 >
                                                     {businessTypes.map(
                                                         (type) => (
@@ -397,9 +407,9 @@ export default function RegisterPage() {
                                                         )
                                                     )}
                                                 </TextField>
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Box>
                                                 <TextField
                                                     fullWidth
                                                     label="Business Email"
@@ -409,10 +419,11 @@ export default function RegisterPage() {
                                                         formData.business.email
                                                     }
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Box>
                                                 <TextField
                                                     fullWidth
                                                     label="Phone Number"
@@ -421,10 +432,11 @@ export default function RegisterPage() {
                                                         formData.business.phone
                                                     }
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
+                                            </Box>
 
-                                            <Grid size={{ xs: 12 }}>
+                                            <Box sx={{ gridColumn: "1 / -1" }}>
                                                 <TextField
                                                     fullWidth
                                                     multiline
@@ -436,9 +448,10 @@ export default function RegisterPage() {
                                                             .address
                                                     }
                                                     onChange={handleChange}
+                                                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
-                                            </Grid>
-                                        </Grid>
+                                            </Box>
+                                        </Box>
                                     </Box>
 
                                     <Button
@@ -475,8 +488,7 @@ export default function RegisterPage() {
                                 </Stack>
                             </form>
                         </CardContent>
-                    </Grid>
-                </Grid>
+                    </Box>
             </Card>
         </Box>
     );

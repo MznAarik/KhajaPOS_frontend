@@ -1,13 +1,14 @@
 import RecentOrderClient from "./recent-client";
 
-export default function RecentOrderPage({
+export default async function RecentOrderPage({
   searchParams,
 }: {
-  searchParams?: { tableCode?: string | string[] };
+  searchParams?: Promise<{ tableCode?: string | string[] }>;
 }) {
-  const tableCode = Array.isArray(searchParams?.tableCode)
-    ? searchParams?.tableCode[0] ?? ""
-    : searchParams?.tableCode ?? "";
+  const resolvedSearchParams = await searchParams;
+  const tableCode = Array.isArray(resolvedSearchParams?.tableCode)
+    ? resolvedSearchParams?.tableCode[0] ?? ""
+    : resolvedSearchParams?.tableCode ?? "";
 
   return <RecentOrderClient tableCode={tableCode} />;
 }
