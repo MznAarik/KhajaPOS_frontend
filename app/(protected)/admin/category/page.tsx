@@ -39,6 +39,15 @@ const createInitialDialogState = (): CategoryDialogState => ({
   name: "",
 });
 
+const formatCreatedAt = (value: string) => {
+  const date = new Date(value);
+
+  return `${date.toLocaleDateString()} • ${date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
+
 export default function CategoryManagementPage() {
   const [categories, setCategories] = React.useState<CategoryOption[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -202,7 +211,7 @@ export default function CategoryManagementPage() {
             Category Management
           </Typography>
           <Typography sx={{ color: "var(--muted-foreground)", mt: 0.5 }}>
-            Keep categories simple: create them, rename them, or soft-delete them when they are no longer needed.
+            Keep categories simple: create them, rename them, or delete them when they are no longer needed.
           </Typography>
         </Box>
         <Button
@@ -326,7 +335,7 @@ export default function CategoryManagementPage() {
                       Created
                     </Typography>
                     <Typography sx={{ fontWeight: 750, mt: 0.35 }}>
-                      {new Date(category.createdAt).toLocaleDateString()}
+                      {formatCreatedAt(category.createdAt)}
                     </Typography>
                   </Paper>
 
@@ -397,7 +406,11 @@ export default function CategoryManagementPage() {
                       }}
                     />
                   </TableCell>
-                  <TableCell>{new Date(category.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600 }}>
+                      {formatCreatedAt(category.createdAt)}
+                    </Typography>
+                  </TableCell>
                   <TableCell align="center">
                     <IconButton size="small" sx={{ color: "var(--primary)" }} onClick={() => openEditDialog(category)}>
                       <EditOutlinedIcon />
