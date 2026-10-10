@@ -25,7 +25,7 @@ import { safeError } from "@/lib/safeError";
 
 const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled"];
 const lockedStatuses: OrderStatus[] = ["served", "cancelled"];
-const MAX_ORDER_QUANTITY = 10;
+const MAX_ORDER_QUANTITY = 50;
 type OrderFilter = "active" | "all" | OrderStatus;
 
 const getStatusStyle = (status: OrderStatus) => {

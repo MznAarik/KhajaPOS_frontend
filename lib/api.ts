@@ -25,7 +25,13 @@ const getAuthTokenFromStorage = (): {
 
 export const clearAuthSession = async () => {
   try {
-    await fetch("/api/auth-cookie", { method: "DELETE" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    await fetch("/api/auth-cookie", {
+      method: "DELETE",
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
   } catch {
     // ignore logout cleanup failures
   }
@@ -688,6 +694,66 @@ export const cancelPublicOrder = async (
     `/public/orders/${encodeURIComponent(sessionToken)}/cancel`,
   );
   return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
+};
+
+export type DashboardKpis = {
+  totalRevenue: number;
+  totalOrders: number;
+  itemsSold: number;
+  avgOrderValue: number;
+  activeTables: number;
+  totalTables: number;
+  totalMenuItems: number;
+};
+
+export type TopProduct = {
+  menuItemId: number;
+  name: string;
+  category: string;
+  foodType: MenuRow["foodType"];
+  imageUrl: string | null;
+  quantity: number;
+  revenue: number;
+};
+
+export type SalesTrendPoint = {
+  date: string;
+  label: string;
+  orders: number;
+  revenue: number;
+};
+
+export type DashboardStats = {
+  ownerName: string;
+  businessName: string;
+  businessType: string;
+  generatedAt: string;
+  kpis: DashboardKpis;
+  topProducts: TopProduct[];
+  salesTrend: SalesTrendPoint[];
+  statusBreakdown: Partial<Record<OrderStatus, number>>;
+};
+
+type DashboardResponse = {
+  status: number;
+  data: DashboardStats;
+};
+
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  const res = await api.get<DashboardResponse>("/admin/dashboard");
+  const data = unwrapApiData<DashboardStats>(res.data);
+
+  return {
+    ...data,
+    topProducts: (data.topProducts ?? []).map((product) => ({
+      ...product,
+      name: toTitleCase(product.name),
+      category: toTitleCase(product.category),
+      foodType: normalizeFoodType(product.foodType),
+    })),
+    salesTrend: data.salesTrend ?? [],
+    statusBreakdown: data.statusBreakdown ?? {},
+  };
 };
 
 export type GetMenusParams = {
