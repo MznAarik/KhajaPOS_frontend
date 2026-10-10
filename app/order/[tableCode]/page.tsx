@@ -47,6 +47,7 @@ const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-
 const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
+const MAX_ORDER_QUANTITY = 10;
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
@@ -65,6 +66,7 @@ export default function TableOrderPage() {
   const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
   const [mobileCartOpen, setMobileCartOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PublicMenuItem | null>(null);
+  const [activeCategoryId, setActiveCategoryId] = React.useState<number | "all">("all");
   const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
@@ -210,6 +212,12 @@ export default function TableOrderPage() {
     [menu]
   );
 
+  const visibleCategories = React.useMemo(() => {
+    if (!menu) return [];
+    if (activeCategoryId === "all") return menu.categories;
+    return menu.categories.filter((category) => category.id === activeCategoryId);
+  }, [activeCategoryId, menu]);
+
   const cartItems = React.useMemo(
     () =>
       flatItems
@@ -236,7 +244,13 @@ export default function TableOrderPage() {
         const { [itemId]: _removed, ...rest } = current;
         return rest;
       }
-      return { ...current, [itemId]: nextQuantity };
+
+      if (nextQuantity > MAX_ORDER_QUANTITY) {
+        setMessage(`You can order up to ${MAX_ORDER_QUANTITY} of one item at a time.`);
+        return current;
+      }
+
+      return { ...current, [itemId]: Math.min(nextQuantity, MAX_ORDER_QUANTITY) };
     });
   };
 
@@ -314,16 +328,16 @@ export default function TableOrderPage() {
         backgroundColor: "transparent",
         backgroundImage: "none",
         color: "var(--foreground)",
-        p: { xs: 1.5, md: 3 },
-        pb: { xs: cartItems.length ? 13 : 1.5, lg: 3 },
+        p: { xs: 1, md: 3 },
+        pb: { xs: cartItems.length ? 12 : 1, lg: 3 },
         display: "grid",
-        gap: 2,
+        gap: { xs: 1.25, md: 2 },
       }}
     >
       <Paper
         sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: "24px",
+          p: { xs: 1.5, md: 3 },
+          borderRadius: { xs: "18px", md: "24px" },
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           boxShadow: "0 14px 34px color-mix(in srgb, var(--foreground) 8%, transparent)",
@@ -341,23 +355,24 @@ export default function TableOrderPage() {
               />
             )}
 
-            <Typography variant="h4" sx={{ fontWeight: 800, fontSize: { xs: "1.5rem", md: "2.4rem" } }}>
-              Order From Your Table
+            <Typography variant="h4" sx={{ fontWeight: 800, fontSize: { xs: "1.28rem", md: "2.4rem" } }}>
+              Order from your table
             </Typography>
 
-            <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 720 }}>
-              Scan once, browse the full menu, add what you want, and send the order straight to the restaurant staff.
+            <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 720, fontSize: { xs: "0.84rem", md: "1rem" } }}>
+              Pick a category, add items, place order.
             </Typography>
           </Stack>
           
           <ThemeToggle />
         </Stack>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 2 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: { xs: 1.25, md: 2 } }}>
           <Button
             variant="outlined"
             onClick={() => router.push(`/order/recent?tableCode=${encodeURIComponent(tableCode)}`)}
-            sx={{ borderRadius: "14px", width: { xs: "100%", sm: "fit-content" } }}
+            size="small"
+            sx={{ borderRadius: "12px", width: { xs: "100%", sm: "fit-content" } }}
           >
             Recent Order Status
           </Button>
@@ -379,7 +394,7 @@ export default function TableOrderPage() {
                 Your Orders
               </Typography>
               <Typography sx={{ color: "var(--muted-foreground)" }}>
-                Live status updates for every order placed on this table.
+                Live status
               </Typography>
             </Box>
 
@@ -435,8 +450,8 @@ export default function TableOrderPage() {
         </Paper>
       ) : null}
 
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 360px" } }}>
-        <Box sx={{ display: "grid", gap: 2 }}>
+      <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 360px" } }}>
+        <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, minWidth: 0 }}>
           {loading ? (
             // Skeleton remains same
             Array.from({ length: 2 }, (_, categoryIndex) => (
@@ -450,25 +465,91 @@ export default function TableOrderPage() {
             </Paper>
           ) : null}
 
+          {!loading && menu?.categories.length ? (
+            <Paper
+              elevation={0}
+              sx={{
+                position: { xs: "static", md: "sticky" },
+                top: { md: 12 },
+                zIndex: 5,
+                p: { xs: 0.75, md: 1 },
+                borderRadius: { xs: "16px", md: "18px" },
+                border: "1px solid var(--border)",
+                backgroundColor: "color-mix(in srgb, var(--card) 92%, transparent)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={0.75}
+                useFlexGap
+                flexWrap="wrap"
+                sx={{
+                  justifyContent: "flex-start",
+                  maxHeight: { xs: 72, md: "none" },
+                  overflowX: { xs: "auto", md: "visible" },
+                  overflowY: "hidden",
+                  alignContent: "flex-start",
+                  scrollbarWidth: "none",
+                  "&::-webkit-scrollbar": { display: "none" },
+                }}
+              >
+                <Chip
+                  clickable
+                  label={`All (${flatItems.length})`}
+                  onClick={() => setActiveCategoryId("all")}
+                  sx={{
+                    flexShrink: 0,
+                    height: { xs: 32, md: 38 },
+                    borderRadius: "999px",
+                    fontWeight: 900,
+                    fontSize: { xs: "0.76rem", md: "0.875rem" },
+                    color: activeCategoryId === "all" ? "var(--primary-foreground)" : "var(--foreground)",
+                    backgroundColor: activeCategoryId === "all" ? "var(--primary)" : "var(--background)",
+                    border: "1px solid var(--border)",
+                  }}
+                />
+                {menu.categories.map((category) => (
+                  <Chip
+                    key={category.id}
+                    clickable
+                    label={`${category.name} (${category.items.length})`}
+                    onClick={() => setActiveCategoryId(category.id)}
+                    sx={{
+                      flexShrink: 0,
+                      height: { xs: 32, md: 38 },
+                      borderRadius: "999px",
+                      fontWeight: 900,
+                      fontSize: { xs: "0.76rem", md: "0.875rem" },
+                      color: activeCategoryId === category.id ? "var(--primary-foreground)" : "var(--foreground)",
+                      backgroundColor: activeCategoryId === category.id ? "var(--primary)" : "var(--background)",
+                      border: "1px solid var(--border)",
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Paper>
+          ) : null}
+
           {!loading &&
-            menu?.categories.map((category) => (
+            visibleCategories.map((category) => (
               <Paper
                 key={category.id}
                 sx={{
-                  p: { xs: 2, md: 3 },
-                  borderRadius: "22px",
+                  p: { xs: 1.25, md: 3 },
+                  borderRadius: { xs: "18px", md: "22px" },
                   border: "1px solid var(--border)",
                   backgroundColor: "var(--card)",
                   boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
                 }}
               >
-                <Stack spacing={2}>
+                <Stack spacing={{ xs: 1.25, md: 2 }}>
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 800, fontSize: { xs: "1.05rem", md: "1.5rem" } }}>
                       {category.name}
                     </Typography>
                     {category.description && (
-                      <Typography sx={{ color: "var(--muted-foreground)", mt: 0.5 }}>
+                      <Typography sx={{ color: "var(--muted-foreground)", mt: 0.35, fontSize: { xs: "0.82rem", md: "1rem" } }}>
                         {category.description}
                       </Typography>
                     )}
@@ -479,7 +560,7 @@ export default function TableOrderPage() {
                     sx={{
                       display: "grid",
                       gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" },
-                      gap: 2,
+                      gap: { xs: 1, md: 2 },
                     }}
                   >
                     {category.items.map((item) => {
@@ -490,13 +571,13 @@ export default function TableOrderPage() {
                         <Paper
                           key={item.id}
                           sx={{
-                            p: 2,
-                            borderRadius: "18px",
+                            p: { xs: 1, md: 2 },
+                            borderRadius: { xs: "15px", md: "18px" },
                             border: "1px solid var(--border)",
                             backgroundColor: "color-mix(in srgb, var(--card) 86%, var(--background) 14%)",
                           }}
                         >
-                          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                          <Stack direction="row" spacing={{ xs: 1, md: 2 }} alignItems="stretch">
                             <Box
                               component="button"
                               type="button"
@@ -506,10 +587,10 @@ export default function TableOrderPage() {
                                 border: 0,
                                 p: 0,
                                 cursor: "pointer",
-                                width: { xs: "100%", sm: 108 },
-                                minWidth: { sm: 108 },
-                                height: 108,
-                                borderRadius: "16px",
+                                width: { xs: 82, sm: 108 },
+                                minWidth: { xs: 82, sm: 108 },
+                                height: { xs: 82, sm: 108 },
+                                borderRadius: { xs: "13px", sm: "16px" },
                                 overflow: "hidden",
                                 backgroundColor: "var(--card)",
                                 display: "flex",
@@ -535,27 +616,33 @@ export default function TableOrderPage() {
                               )}
                             </Box>
 
-                            <Stack flex={1} spacing={1.1}>
-                              <Stack direction="row" justifyContent="space-between" spacing={2}>
-                                <Box>
-                                  <Typography sx={{ fontWeight: 700 }}>{item.name}</Typography>
-                                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.92rem", mt: 0.35 }}>
+                            <Stack flex={1} spacing={0.85} sx={{ minWidth: 0 }}>
+                              <Stack direction="row" justifyContent="space-between" spacing={1}>
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography sx={{ fontWeight: 800, fontSize: { xs: "0.92rem", md: "1rem" }, overflowWrap: "anywhere" }}>{item.name}</Typography>
+                                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem", mt: 0.25, display: { xs: "none", md: "block" } }}>
                                     {item.description || "Freshly prepared when ordered."}
                                   </Typography>
                                 </Box>
-                                <Typography sx={{ fontWeight: 800 }}>Rs. {item.price}</Typography>
+                                <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.86rem", md: "1rem" }, whiteSpace: "nowrap" }}>Rs. {item.price}</Typography>
                               </Stack>
 
                               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                                <Chip label={getFoodTypeLabel(item.foodType)} sx={{ fontWeight: 700 }} />
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                  <Button onClick={() => updateQuantity(item.id, quantity - 1)} sx={{ minWidth: 42, borderRadius: "12px" }}>
+                                <Chip label={getFoodTypeLabel(item.foodType)} size="small" sx={{ fontWeight: 800, height: 26 }} />
+                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                  <Button size="small" onClick={() => updateQuantity(item.id, quantity - 1)} sx={{ minWidth: 32, height: 32, borderRadius: "10px", px: 0 }}>
                                     -
                                   </Button>
-                                  <Paper sx={{ px: 2, py: 1, borderRadius: "12px", minWidth: 48, textAlign: "center" }}>
+                                  <Paper sx={{ px: 1, py: 0.55, borderRadius: "10px", minWidth: 34, textAlign: "center", fontWeight: 800 }}>
                                     {quantity}
                                   </Paper>
-                                  <Button variant="contained" onClick={() => updateQuantity(item.id, quantity + 1)} sx={{ minWidth: 42, borderRadius: "12px" }}>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    disabled={quantity >= MAX_ORDER_QUANTITY}
+                                    onClick={() => updateQuantity(item.id, quantity + 1)}
+                                    sx={{ minWidth: 32, height: 32, borderRadius: "10px", px: 0 }}
+                                  >
                                     +
                                   </Button>
                                 </Stack>
@@ -821,6 +908,7 @@ export default function TableOrderPage() {
               </Button>
               <Button
                 variant="contained"
+                disabled={(cart[selectedItem.id] ?? 0) >= MAX_ORDER_QUANTITY}
                 onClick={() => {
                   updateQuantity(selectedItem.id, (cart[selectedItem.id] ?? 0) + 1);
                   setSelectedItem(null);

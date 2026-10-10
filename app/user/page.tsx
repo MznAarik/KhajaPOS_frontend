@@ -27,7 +27,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
@@ -82,7 +82,6 @@ export default function UserProfilePage() {
   const menuIconRef = React.useRef<LayoutListIconHandle | null>(null);
   const ordersIconRef = React.useRef<CoffeeIconHandle | null>(null);
   const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
-  const [mobileOpen, setMobileOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [user, setUser] = React.useState<CurrentUserResponse | null>(null);
@@ -141,6 +140,15 @@ export default function UserProfilePage() {
     router.push("/auth/login");
   };
 
+  const handleReturn = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/admin/dashboard");
+  };
+
   const navItems = [
     { label: "Home", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
     { label: "Profile", href: "/user", icon: DashboardIcon, ref: profileIconRef },
@@ -176,30 +184,39 @@ export default function UserProfilePage() {
   }, []);
 
   const drawer = (
-    <Box sx={{ px: 2, py: { xs: 2, sm: 15 } }}>
+    <Box
+      sx={{
+        px: { xs: 1.25, sm: 2 },
+        py: { xs: 1.25, sm: 15 },
+        minHeight: "100%",
+        display: "flex",
+        flexDirection: "column",
+        color: "var(--sidebar-foreground)",
+      }}
+    >
       <Box
         sx={{
-          p: { xs: 2, sm: 3 },
-          borderRadius: "20px",
+          p: { xs: 1.4, sm: 3 },
+          borderRadius: { xs: "16px", sm: "20px" },
           border: "1px solid var(--sidebar-border)",
-          backgroundColor: "color-mix(in srgb, var(--sidebar) 82%, white 18%)",
-          mb: 2,
+          backgroundColor: "color-mix(in srgb, var(--sidebar-accent) 72%, transparent)",
+          mb: { xs: 1.25, sm: 2 },
         }}
       >
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <Avatar sx={{ bgcolor: "var(--primary)", color: "var(--primary-foreground)" }}>
+          <Avatar sx={{ width: { xs: 38, sm: 40 }, height: { xs: 38, sm: 40 }, bgcolor: "var(--primary)", color: "var(--primary-foreground)" }}>
             <PersonOutlineRoundedIcon />
           </Avatar>
-          <Box>
-            <Typography sx={{ fontWeight: 800 }}>KhajaPOS</Typography>
-            <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 850, color: "var(--sidebar-foreground)" }}>KhajaPOS</Typography>
+            <Typography sx={{ fontSize: "0.78rem", color: "var(--sidebar-accent-foreground)" }}>
               Account center
             </Typography>
           </Box>
         </Stack>
       </Box>
 
-      <List sx={{ display: "grid", gap: 1 }}>
+      <List sx={{ display: "grid", gap: { xs: 0.65, sm: 1 }, flex: 1 }}>
         {navItems.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
@@ -209,7 +226,6 @@ export default function UserProfilePage() {
               key={item.href}
               onClick={() => {
                 router.push(item.href);
-                setMobileOpen(false);
               }}
               onMouseEnter={() => {
                 setHoveredItem(item.label);
@@ -220,17 +236,19 @@ export default function UserProfilePage() {
                 item.ref.current?.stopAnimation();
               }}
               sx={{
-                px: 1.5,
-                py: 1.25,
-                borderRadius: "16px",
-                minHeight: 52,
+                px: { xs: 1.1, sm: 1.5 },
+                py: { xs: 0.8, sm: 1.25 },
+                borderRadius: { xs: "13px", sm: "16px" },
+                minHeight: { xs: 44, sm: 52 },
                 alignItems: "center",
                 border: "1px solid",
                 borderColor: active ? "var(--primary)" : "var(--sidebar-border)",
-                backgroundColor: active ? "rgba(79, 139, 255, 0.12)" : "transparent",
+                color: active ? "var(--primary)" : "var(--sidebar-foreground)",
+                backgroundColor: active ? "color-mix(in srgb, var(--primary) 14%, transparent)" : "transparent",
                 "& .MuiListItemText-primary": {
                   whiteSpace: "normal",
                   lineHeight: 1.15,
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
                 },
                 "& .account-nav-icon svg": {
                   color: active ? "var(--primary)" : "inherit",
@@ -241,8 +259,8 @@ export default function UserProfilePage() {
                 className="account-nav-icon"
                 sx={{
                   minWidth: 38,
-                  width: 32,
-                  height: 32,
+                  width: { xs: 30, sm: 32 },
+                  height: { xs: 30, sm: 32 },
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -252,7 +270,7 @@ export default function UserProfilePage() {
                 <Box
                   sx={{
                     width: 32,
-                    height: 32,
+                    height: { xs: 30, sm: 32 },
                     display: "grid",
                     placeItems: "center",
                     borderRadius: "10px",
@@ -288,7 +306,12 @@ export default function UserProfilePage() {
         variant="outlined"
         startIcon={<LogoutRoundedIcon />}
         onClick={handleLogout}
-        sx={{ mt: 2.5, borderRadius: "14px" }}
+        sx={{
+          mt: { xs: 1.5, sm: 2.5 },
+          borderRadius: "14px",
+          color: "var(--sidebar-foreground)",
+          borderColor: "var(--sidebar-border)",
+        }}
       >
         Logout
       </Button>
@@ -318,10 +341,20 @@ export default function UserProfilePage() {
           }}
         >
           <IconButton
-            onClick={() => setMobileOpen(true)}
-            sx={{ display: { xs: "inline-flex", md: "none" }, mr: 0.5 }}
+            aria-label="Back to dashboard"
+            onClick={handleReturn}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              mr: 0.5,
+              width: 42,
+              height: 42,
+              borderRadius: "14px",
+              border: "1px solid var(--border)",
+              color: "var(--foreground)",
+              backgroundColor: "color-mix(in srgb, var(--card) 72%, transparent)",
+            }}
           >
-            <MenuIcon />
+            <ArrowBackRoundedIcon />
           </IconButton>
 
           <Box sx={{ flex: 1, minWidth: 0, pl: { xs: 0, sm: 1, md: 2 } }}>
@@ -355,22 +388,6 @@ export default function UserProfilePage() {
           <ProfileComponent />
         </Toolbar>
       </AppBar>
-
-      <Drawer
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        variant="temporary"
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            bgcolor: "var(--sidebar)",
-          },
-        }}
-      >
-        {drawer}
-      </Drawer>
 
       <Drawer
         variant="permanent"

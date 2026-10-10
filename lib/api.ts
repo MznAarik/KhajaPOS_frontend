@@ -25,7 +25,13 @@ const getAuthTokenFromStorage = (): {
 
 export const clearAuthSession = async () => {
   try {
-    await fetch("/api/auth-cookie", { method: "DELETE" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    await fetch("/api/auth-cookie", {
+      method: "DELETE",
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
   } catch {
     // ignore logout cleanup failures
   }
@@ -51,6 +57,21 @@ const redirectToLogin = async () => {
 
   window.location.replace(`${loginPath}?message=Session%20expired&redirect=${encodeURIComponent(currentPath)}`);
 };
+
+export const toTitleCase = (value: string | null | undefined) =>
+  (value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part ? `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}` : part,
+        )
+        .join("-"),
+    )
+    .join(" ");
 
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
@@ -473,7 +494,7 @@ export const getCategories = async (): Promise<CategoryOption[]> => {
 
   return unwrapApiData<CategoryResponse[]>(res.data).map((category) => ({
     id: category.id,
-    name: category.name,
+    name: toTitleCase(category.name),
     isActive: parseAvailability(category.is_active ?? true),
     createdAt: category.created_at,
   }));
@@ -544,7 +565,7 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
   items: order.items.map((item) => ({
     id: item.id,
     menuItemId: item.menu_item_id,
-    name: item.menu_item?.name ?? "Menu Item",
+    name: toTitleCase(item.menu_item?.name ?? "Menu Item"),
     quantity: item.quantity,
     price: item.price,
   })),
@@ -569,6 +590,25 @@ export const updateAdminOrderStatus = async (
   return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
 };
 
+export const updateAdminOrder = async (payload: {
+  id: number;
+  remarks: string;
+  items: Array<{ id: number; quantity: number }>;
+}) => {
+  const res = await api.put<{ status: number; data: AdminOrderResponse }>(
+    `/admin/orders/${payload.id}`,
+    {
+      remarks: payload.remarks.trim(),
+      items: payload.items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+      })),
+    },
+  );
+
+  return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
+};
+
 export const getPublicMenu = async (
   tableCode: string,
 ): Promise<PublicTableMenu> => {
@@ -587,11 +627,11 @@ export const getPublicMenu = async (
     },
     categories: payload.categories.map((category) => ({
       id: category.id,
-      name: category.name,
+      name: toTitleCase(category.name),
       description: category.description ?? "",
       items: category.items.map((item) => ({
         id: item.id,
-        name: item.name,
+        name: toTitleCase(item.name),
         description: item.description ?? "",
         price: item.price,
         foodType: normalizeFoodType(item.food_type),
@@ -656,6 +696,66 @@ export const cancelPublicOrder = async (
   return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
 };
 
+export type DashboardKpis = {
+  totalRevenue: number;
+  totalOrders: number;
+  itemsSold: number;
+  avgOrderValue: number;
+  activeTables: number;
+  totalTables: number;
+  totalMenuItems: number;
+};
+
+export type TopProduct = {
+  menuItemId: number;
+  name: string;
+  category: string;
+  foodType: MenuRow["foodType"];
+  imageUrl: string | null;
+  quantity: number;
+  revenue: number;
+};
+
+export type SalesTrendPoint = {
+  date: string;
+  label: string;
+  orders: number;
+  revenue: number;
+};
+
+export type DashboardStats = {
+  ownerName: string;
+  businessName: string;
+  businessType: string;
+  generatedAt: string;
+  kpis: DashboardKpis;
+  topProducts: TopProduct[];
+  salesTrend: SalesTrendPoint[];
+  statusBreakdown: Partial<Record<OrderStatus, number>>;
+};
+
+type DashboardResponse = {
+  status: number;
+  data: DashboardStats;
+};
+
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  const res = await api.get<DashboardResponse>("/admin/dashboard");
+  const data = unwrapApiData<DashboardStats>(res.data);
+
+  return {
+    ...data,
+    topProducts: (data.topProducts ?? []).map((product) => ({
+      ...product,
+      name: toTitleCase(product.name),
+      category: toTitleCase(product.category),
+      foodType: normalizeFoodType(product.foodType),
+    })),
+    salesTrend: data.salesTrend ?? [],
+    statusBreakdown: data.statusBreakdown ?? {},
+  };
+};
+
 export type GetMenusParams = {
   search?: string;
   categoryId?: number;
@@ -705,9 +805,9 @@ export const getMenus = async (
           id: item.id,
           categoryId: category.id,
           categoryIsActive,
-          name: item.name,
+          name: toTitleCase(item.name),
           description: item.description ?? category.description ?? "",
-          category: category.name,
+          category: toTitleCase(category.name),
           price: item.price,
           prep: "N/A",
           veg: foodType === "veg",

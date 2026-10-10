@@ -25,6 +25,7 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAppSnackbar } from "@/components/common/SnackBar";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { safeError } from "@/lib/safeError";
 
 const businessTypes = [
@@ -111,12 +112,24 @@ export default function RegisterPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                position: "relative",
                 px: { xs: 1.5, sm: 2, md: 4 },
                 py: { xs: 2, md: 4 },
                 backgroundColor: "var(--background)",
                 backgroundImage: "var(--page-gradient)",
             }}
         >
+            <Box
+                sx={{
+                    position: "fixed",
+                    top: { xs: 14, sm: 22 },
+                    right: { xs: 14, sm: 22 },
+                    zIndex: 20,
+                }}
+            >
+                <ThemeToggle />
+            </Box>
+
             <Card
                 sx={{
                     width: "min(100%, 1120px)",

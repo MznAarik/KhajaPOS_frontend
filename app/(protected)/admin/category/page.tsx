@@ -48,6 +48,26 @@ const formatCreatedAt = (value: string) => {
   })}`;
 };
 
+const floatingFieldSx = {
+  mt: 1,
+  "& .MuiInputLabel-root": {
+    backgroundColor: "transparent",
+    px: 0.75,
+    borderRadius: "6px",
+    lineHeight: 1.15,
+    overflow: "visible",
+  },
+  "& .MuiInputLabel-root.MuiInputLabel-shrink": {
+    transform: "translate(10px, -7px) scale(0.75)",
+  },
+  "& .MuiOutlinedInput-root": {
+    overflow: "visible",
+  },
+  "& .MuiOutlinedInput-notchedOutline legend": {
+    height: 12,
+  },
+};
+
 export default function CategoryManagementPage() {
   const [categories, setCategories] = React.useState<CategoryOption[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -204,13 +224,13 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        <Box sx={{ maxWidth: 760 }}>
+    <Box sx={{ p: { xs: 1.25, md: 2 }, display: "grid", gap: { xs: 1.75, md: 3 }, minWidth: 0, overflow: "hidden" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 2, flexWrap: "wrap" }}>
+        <Box sx={{ maxWidth: 760, width: { xs: "100%", md: "auto" }, textAlign: { xs: "center", md: "left" } }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: "1.25rem", md: "2.125rem" } }}>
             Category Management
           </Typography>
-          <Typography sx={{ color: "var(--muted-foreground)", mt: 0.5 }}>
+          <Typography sx={{ color: "var(--muted-foreground)", mt: 0.5, fontSize: { xs: "0.88rem", md: "1rem" }, lineHeight: 1.6 }}>
             Keep categories simple: create them, rename them, or delete them when they are no longer needed.
           </Typography>
         </Box>
@@ -238,20 +258,20 @@ export default function CategoryManagementPage() {
           overflow: "hidden",
         }}
       >
-        <Box sx={{ p: { xs: 1.75, md: 2.5 }, borderBottom: "1px solid var(--border)" }}>
+        <Box sx={{ p: { xs: 1.5, md: 2.5 }, borderBottom: "1px solid var(--border)" }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={2}
-            alignItems={{ xs: "flex-start", md: "center" }}
+            alignItems={{ xs: "center", md: "center" }}
             justifyContent="space-between"
           >
-            <Box sx={{ maxWidth: 760 }}>
+            <Box sx={{ maxWidth: 760, textAlign: { xs: "center", md: "left" } }}>
               <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>Categories</Typography>
-              <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.92rem", mt: 0.75, lineHeight: 1.7 }}>
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, mt: 0.75, lineHeight: 1.6 }}>
                 Menu availability is managed at the item level. Categories stay focused on structure, naming, and quick availability control.
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="center" sx={{ width: { xs: "100%", md: "auto" } }}>
               <Chip
                 label={`${categories.length} Total`}
                 sx={{
@@ -274,7 +294,7 @@ export default function CategoryManagementPage() {
           </Stack>
         </Box>
 
-        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1.5, p: 1.5 }}>
+        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1.25, p: 1.25 }}>
           {loading ? (
             skeletonRows.map((row) => (
               <Paper key={`mobile-category-skeleton-${row}`} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
@@ -289,8 +309,8 @@ export default function CategoryManagementPage() {
             ))
           ) : paginatedCategories.length ? (
             paginatedCategories.map((category) => (
-              <Paper key={category.id} sx={{ p: 1.75, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
-                <Stack spacing={1.5}>
+              <Paper key={category.id} sx={{ p: 1.5, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
+                <Stack spacing={1.35}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography sx={{ fontWeight: 850, fontSize: "1.05rem", overflowWrap: "anywhere" }}>
@@ -339,11 +359,20 @@ export default function CategoryManagementPage() {
                     </Typography>
                   </Paper>
 
-                  <Stack direction="row" spacing={0.75} alignItems="center">
-                    <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}>
                       Edit
                     </Button>
-                    <IconButton color="error" onClick={() => openDeleteDialog(category)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => openDeleteDialog(category)}
+                      startIcon={<DeleteOutlineOutlinedIcon fontSize="small" />}
+                      sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}
+                    >
+                      Delete
+                    </Button>
+                    <IconButton color="error" onClick={() => openDeleteDialog(category)} sx={{ display: "none" }}>
                       <DeleteOutlineOutlinedIcon fontSize="small" />
                     </IconButton>
                   </Stack>
@@ -461,7 +490,7 @@ export default function CategoryManagementPage() {
         }}
       >
         <DialogTitle>{dialogState.id ? "Edit Category" : "Add Category"}</DialogTitle>
-        <DialogContent sx={{ pt: 2.5 }}>
+        <DialogContent sx={{ pt: 3.25 }}>
           <Stack spacing={2}>
             <TextField
               label="Category Name"
@@ -469,6 +498,7 @@ export default function CategoryManagementPage() {
               onChange={(event) => setDialogState((current) => ({ ...current, name: event.target.value }))}
               fullWidth
               autoFocus
+              sx={floatingFieldSx}
             />
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
               Keep category names short and reusable. You can update availability directly from the table whenever needed.
