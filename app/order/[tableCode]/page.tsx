@@ -14,17 +14,23 @@ import {
   Skeleton,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { useParams, useRouter } from "next/navigation";
 import {
+  canCustomerConfirmOrder,
+  confirmPublicOrder,
   getFoodTypeLabel,
+  getOrderTypeLabel,
   getPublicMenu,
   getPublicTableOrders,
   isOrderLocked,
   placePublicOrder,
   resolveMenuImageUrl,
   type KitchenOrder,
+  type OrderType,
   type PublicMenuItem,
   type PublicTableMenu,
 } from "@/lib/api";
@@ -47,7 +53,14 @@ const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-
 const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
+const getOrderTypeStorageKey = (tableCode: string) => `khajapos-order-type:${tableCode}`;
 const MAX_ORDER_QUANTITY = 10;
+
+const formatOrderStatusLabel = (status: string) =>
+  status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
@@ -58,6 +71,7 @@ export default function TableOrderPage() {
   const [menu, setMenu] = React.useState<PublicTableMenu | null>(null);
   const [cart, setCart] = React.useState<CartState>({});
   const [remarks, setRemarks] = React.useState("");
+  const [orderType, setOrderType] = React.useState<OrderType>("dine_in");
   const [loading, setLoading] = React.useState(true);
   const [placing, setPlacing] = React.useState(false);
   const [message, setMessage] = React.useState("");
@@ -67,6 +81,8 @@ export default function TableOrderPage() {
   const [mobileCartOpen, setMobileCartOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PublicMenuItem | null>(null);
   const [activeCategoryId, setActiveCategoryId] = React.useState<number | "all">("all");
+  const [confirmingToken, setConfirmingToken] = React.useState<string | null>(null);
+  const [mySessionTokens, setMySessionTokens] = React.useState<string[]>([]);
   const tableId = menu?.table.id ?? 0;
 
   React.useEffect(() => {
@@ -83,6 +99,17 @@ export default function TableOrderPage() {
   React.useEffect(() => {
     window.localStorage.setItem(getCartStorageKey(tableCode), JSON.stringify(cart));
   }, [cart, tableCode]);
+
+  React.useEffect(() => {
+    const savedType = window.localStorage.getItem(getOrderTypeStorageKey(tableCode));
+    if (savedType === "dine_in" || savedType === "takeaway") {
+      setOrderType(savedType);
+    }
+  }, [tableCode]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(getOrderTypeStorageKey(tableCode), orderType);
+  }, [orderType, tableCode]);
 
   React.useEffect(() => {
     const loadMenu = async () => {
@@ -207,6 +234,25 @@ export default function TableOrderPage() {
     };
   }, [tableId]);
 
+  React.useEffect(() => {
+    const prefix = "khajapos-order-session-table:";
+    const tokens: string[] = [];
+    try {
+      for (let index = 0; index < window.localStorage.length; index += 1) {
+        const key = window.localStorage.key(index);
+        if (key && key.startsWith(prefix)) {
+          const token = key.slice(prefix.length);
+          if (window.localStorage.getItem(key) === tableCode) {
+            tokens.push(token);
+          }
+        }
+      }
+    } catch {
+      // ignore storage access errors
+    }
+    setMySessionTokens(tokens);
+  }, [tableCode, recentOrders, recentOrderStatuses]);
+
   const flatItems = React.useMemo(
     () => menu?.categories.flatMap((category) => category.items) ?? [],
     [menu]
@@ -238,6 +284,34 @@ export default function TableOrderPage() {
     [cartItems]
   );
 
+  const pendingOrder = React.useMemo(() => {
+    const mine = recentOrders.filter((order) => mySessionTokens.includes(order.sessionToken));
+    return (
+      mine
+        .map((order) => recentOrderStatuses[order.sessionToken])
+        .filter((order): order is KitchenOrder => order?.status === "pending")
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0] ?? null
+    );
+  }, [mySessionTokens, recentOrderStatuses, recentOrders]);
+
+  const orderedOrders = React.useMemo(() => {
+    const rankOf = (status: string) => (status === "pending" ? 0 : 1);
+    return [...recentOrders].sort((a, b) => {
+      const statusA = recentOrderStatuses[a.sessionToken]?.status ?? "pending";
+      const statusB = recentOrderStatuses[b.sessionToken]?.status ?? "pending";
+      if (rankOf(statusA) !== rankOf(statusB)) {
+        return rankOf(statusA) - rankOf(statusB);
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [recentOrders, recentOrderStatuses]);
+
+  const cartActionLabel = pendingOrder ? "Add to Order" : "Place Order";
+  const cartActionBusyLabel = pendingOrder ? "Adding..." : "Placing...";
+
   const updateQuantity = (itemId: number, nextQuantity: number) => {
     setCart((current) => {
       if (nextQuantity <= 0) {
@@ -260,6 +334,8 @@ export default function TableOrderPage() {
     setPlacing(true);
     setMessage("");
 
+    const appendToToken = pendingOrder?.sessionToken;
+
     try {
       const order = await placePublicOrder({
         tableId: menu.table.id,
@@ -268,6 +344,8 @@ export default function TableOrderPage() {
           menuItemId: item.id,
           quantity: item.quantity,
         })),
+        sessionToken: appendToToken,
+        orderType,
       });
 
       setCart({});
@@ -307,8 +385,14 @@ export default function TableOrderPage() {
       window.localStorage.setItem(getOrderListStorageKey(tableCode), JSON.stringify(nextOrders));
       window.localStorage.setItem(getOrderSessionTableCodeKey(order.sessionToken), tableCode);
       setRecentOrders(nextOrders);
-      setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: null }));
+      setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: order }));
       setOrderRefreshKey((current) => current + 1);
+      showSnackbar(
+        appendToToken
+          ? "Items added to your order. Confirm whenever you are ready."
+          : "Order placed. Confirm it whenever you are ready.",
+        "success"
+      );
       window.location.assign(`/order/track/${encodeURIComponent(order.sessionToken)}`);
       return;
     } catch (error) {
@@ -320,6 +404,53 @@ export default function TableOrderPage() {
       setPlacing(false);
     }
   };
+
+  const handleConfirmPending = async (sessionToken: string) => {
+    if (confirmingToken) return;
+
+    setConfirmingToken(sessionToken);
+    try {
+      const updated = await confirmPublicOrder(sessionToken);
+      setRecentOrderStatuses((current) => ({ ...current, [sessionToken]: updated }));
+      showSnackbar("Order confirmed. The kitchen has been notified.", "success");
+    } catch (error) {
+      console.error("Failed to confirm order:", error);
+      showSnackbar("This order can no longer be confirmed.", "warning");
+    } finally {
+      setConfirmingToken(null);
+    }
+  };
+
+  const orderTypeSelector = (
+    <Stack spacing={0.75}>
+      <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>
+        How would you like your order?
+      </Typography>
+      <ToggleButtonGroup
+        exclusive
+        fullWidth
+        size="small"
+        value={orderType}
+        onChange={(_event, next: OrderType | null) => {
+          if (next) setOrderType(next);
+        }}
+        sx={{ borderRadius: "14px" }}
+      >
+        <ToggleButton value="dine_in" sx={{ fontWeight: 800, textTransform: "none", py: 1 }}>
+          Eat here
+        </ToggleButton>
+        <ToggleButton value="takeaway" sx={{ fontWeight: 800, textTransform: "none", py: 1 }}>
+          Pack
+        </ToggleButton>
+      </ToggleButtonGroup>
+      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
+        {orderType === "takeaway"
+          ? "We will pack your order to take away."
+          : "Your order will be served at the table."}
+      </Typography>
+    </Stack>
+  );
+
 
   return (
     <Box
@@ -360,7 +491,9 @@ export default function TableOrderPage() {
             </Typography>
 
             <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 720, fontSize: { xs: "0.84rem", md: "1rem" } }}>
-              Pick a category, add items, place order.
+              {pendingOrder
+                ? `Order #${pendingOrder.id} is waiting. Add more items, then confirm when you are ready.`
+                : "Pick a category, add items, place order."}
             </Typography>
           </Stack>
           
@@ -394,21 +527,28 @@ export default function TableOrderPage() {
                 Your Orders
               </Typography>
               <Typography sx={{ color: "var(--muted-foreground)" }}>
-                Live status
+                {pendingOrder
+                  ? "Add more items below, then confirm when you are ready."
+                  : "Live status"}
               </Typography>
             </Box>
 
             <Stack spacing={1.5}>
-              {recentOrders.map((item) => {
+              {orderedOrders.map((item) => {
                 const current = recentOrderStatuses[item.sessionToken];
                 const status = current?.status ?? "pending";
+                const isPending = status === "pending";
+                const canConfirm = current ? canCustomerConfirmOrder(current.status) : isPending;
+
                 return (
                   <Paper
                     key={item.sessionToken}
                     sx={{
                       p: 2,
                       borderRadius: "16px",
-                      border: "1px solid var(--border)",
+                      border: isPending
+                        ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))"
+                        : "1px solid var(--border)",
                       backgroundColor: "var(--background)",
                     }}
                   >
@@ -418,24 +558,60 @@ export default function TableOrderPage() {
                       alignItems={{ xs: "flex-start", md: "center" }}
                       spacing={1.25}
                     >
-                      <Box>
-                        <Typography sx={{ fontWeight: 800 }}>
-                          Order #{item.orderId}
-                        </Typography>
-                        <Typography sx={{ color: "var(--muted-foreground)" }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Typography sx={{ fontWeight: 800 }}>
+                            Order #{item.orderId}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={formatOrderStatusLabel(status)}
+                            color={isPending ? "warning" : status === "served" ? "success" : "default"}
+                            sx={{ fontWeight: 800 }}
+                          />
+                          {current ? (
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={getOrderTypeLabel(current.orderType)}
+                              sx={{ fontWeight: 800 }}
+                            />
+                          ) : null}
+                        </Stack>
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
                           Placed at {new Date(item.createdAt).toLocaleString()}
                         </Typography>
-                        <Typography sx={{ color: "var(--muted-foreground)" }}>
-                          Status: {status}
-                        </Typography>
+                        {current ? (
+                          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+                            {current.items.length} item{current.items.length === 1 ? "" : "s"} • Rs.{" "}
+                            {Number.parseFloat(current.totalAmount).toFixed(2)}
+                          </Typography>
+                        ) : null}
+                        {isPending ? (
+                          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+                            Not sent to the kitchen yet — you can still add items.
+                          </Typography>
+                        ) : null}
                       </Box>
-                      <Button
-                        variant="outlined"
-                        onClick={() => router.push(`/order/track/${item.sessionToken}`)}
-                        sx={{ borderRadius: "14px" }}
-                      >
-                        Open
-                      </Button>
+                      <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                        {canConfirm ? (
+                          <Button
+                            variant="contained"
+                            disabled={confirmingToken === item.sessionToken}
+                            onClick={() => handleConfirmPending(item.sessionToken)}
+                            sx={{ borderRadius: "14px" }}
+                          >
+                            {confirmingToken === item.sessionToken ? "Confirming..." : "Confirm"}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outlined"
+                          onClick={() => router.push(`/order/track/${item.sessionToken}`)}
+                          sx={{ borderRadius: "14px" }}
+                        >
+                          Open
+                        </Button>
+                      </Stack>
                     </Stack>
                   </Paper>
                 );
@@ -688,6 +864,7 @@ export default function TableOrderPage() {
             )}
 
             <Divider />
+            {orderTypeSelector}
             <TextField
               label="Remarks"
               multiline
@@ -700,13 +877,18 @@ export default function TableOrderPage() {
               <Typography sx={{ fontWeight: 700 }}>Total</Typography>
               <Typography sx={{ fontWeight: 800 }}>Rs. {totalAmount.toFixed(2)}</Typography>
             </Stack>
+            {pendingOrder ? (
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+                These items will be added to Order #{pendingOrder.id}.
+              </Typography>
+            ) : null}
             <Button
               variant="contained"
               disabled={placing || cartItems.length === 0}
               onClick={handlePlaceOrder}
               sx={{ borderRadius: "14px", py: 1.25 }}
             >
-              {placing ? "Placing Order..." : "Place Order"}
+              {placing ? cartActionBusyLabel : cartActionLabel}
             </Button>
           </Stack>
         </Paper>
@@ -775,6 +957,8 @@ export default function TableOrderPage() {
                   ))}
                 </Stack>
 
+                {orderTypeSelector}
+
                 <TextField
                   label="Remarks"
                   size="small"
@@ -834,7 +1018,7 @@ export default function TableOrderPage() {
                   textTransform: "none",
                 }}
               >
-                {placing ? "Placing..." : "Place Order"}
+                {placing ? cartActionBusyLabel : cartActionLabel}
               </Button>
             </Stack>
           </Paper>

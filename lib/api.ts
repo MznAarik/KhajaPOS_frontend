@@ -201,6 +201,11 @@ export type OrderStatus =
   | "served"
   | "cancelled";
 
+export type OrderType = "dine_in" | "takeaway";
+
+export const getOrderTypeLabel = (orderType: OrderType) =>
+  orderType === "takeaway" ? "Pack" : "Eat here";
+
 export const isOrderLocked = (status: OrderStatus) =>
   status === "served" || status === "cancelled";
 
@@ -216,6 +221,7 @@ export type KitchenOrder = {
   tableNo: string;
   sessionToken: string;
   status: OrderStatus;
+  orderType: OrderType;
   totalAmount: string;
   remarks: string;
   createdAt: string;
@@ -303,6 +309,7 @@ type AdminOrderResponse = {
   table_id: number;
   session_token: string;
   order_status: OrderStatus;
+  order_type: OrderType | null;
   total_amount: string;
   remarks: string | null;
   created_at: string;
@@ -559,6 +566,7 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
   tableNo: order.table?.table_no ?? `Table ${order.table_id}`,
   sessionToken: order.session_token,
   status: order.order_status,
+  orderType: order.order_type ?? "dine_in",
   totalAmount: order.total_amount,
   remarks: order.remarks ?? "",
   createdAt: order.created_at,
@@ -594,6 +602,7 @@ export const updateAdminOrder = async (payload: {
   id: number;
   remarks: string;
   items: Array<{ id: number; quantity: number }>;
+  orderType?: OrderType;
 }) => {
   const res = await api.put<{ status: number; data: AdminOrderResponse }>(
     `/admin/orders/${payload.id}`,
@@ -603,6 +612,7 @@ export const updateAdminOrder = async (payload: {
         id: item.id,
         quantity: item.quantity,
       })),
+      ...(payload.orderType ? { order_type: payload.orderType } : {}),
     },
   );
 
@@ -645,6 +655,8 @@ export const placePublicOrder = async (payload: {
   tableId: number;
   remarks?: string;
   items: Array<{ menuItemId: number; quantity: number }>;
+  sessionToken?: string;
+  orderType?: OrderType;
 }) => {
   const res = await api.post<PlaceOrderResponse>("/public/orders", {
     table_id: payload.tableId,
@@ -653,6 +665,8 @@ export const placePublicOrder = async (payload: {
       menu_item_id: item.menuItemId,
       quantity: item.quantity,
     })),
+    ...(payload.orderType ? { order_type: payload.orderType } : {}),
+    ...(payload.sessionToken ? { session_token: payload.sessionToken } : {}),
   });
 
   return normalizeOrder(unwrapApiData<PlaceOrderResponse["data"]>(res.data));

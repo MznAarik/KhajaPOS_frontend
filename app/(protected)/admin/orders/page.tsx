@@ -14,12 +14,14 @@ import {
   Skeleton,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   Divider,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { getAdminOrders, type KitchenOrder, type OrderStatus, updateAdminOrder, updateAdminOrderStatus } from "@/lib/api";
+import { getAdminOrders, getOrderTypeLabel, type KitchenOrder, type OrderStatus, type OrderType, updateAdminOrder, updateAdminOrderStatus } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 
@@ -76,6 +78,7 @@ export default function OrdersPage() {
   const [filter, setFilter] = React.useState<OrderFilter>("active");
   const [editingOrder, setEditingOrder] = React.useState<KitchenOrder | null>(null);
   const [editRemarks, setEditRemarks] = React.useState("");
+  const [editOrderType, setEditOrderType] = React.useState<OrderType>("dine_in");
   const [editItems, setEditItems] = React.useState<Array<{ id: number; name: string; quantity: number; price: string }>>([]);
   const [editSaving, setEditSaving] = React.useState(false);
   const { showSnackbar } = useAppSnackbar();
@@ -124,6 +127,7 @@ export default function OrdersPage() {
 
     setEditingOrder(order);
     setEditRemarks(order.remarks ?? "");
+    setEditOrderType(order.orderType);
     setEditItems(order.items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -137,6 +141,7 @@ export default function OrdersPage() {
 
     setEditingOrder(null);
     setEditRemarks("");
+    setEditOrderType("dine_in");
     setEditItems([]);
   };
 
@@ -158,6 +163,7 @@ export default function OrdersPage() {
       const updatedOrder = await updateAdminOrder({
         id: editingOrder.id,
         remarks: editRemarks,
+        orderType: editOrderType,
         items: editItems.map((item) => ({ id: item.id, quantity: item.quantity })),
       });
 
@@ -167,6 +173,7 @@ export default function OrdersPage() {
       showSnackbar(`Order #${updatedOrder.id} updated successfully.`, "success");
       setEditingOrder(null);
       setEditRemarks("");
+      setEditOrderType("dine_in");
       setEditItems([]);
     } catch (error) {
       console.error("Failed to update order:", error);
@@ -408,6 +415,12 @@ export default function OrdersPage() {
 
                   <Stack spacing={0.75} alignItems="flex-end" sx={{ flexShrink: 0 }}>
                     <Chip label={statusLabel(order.status)} sx={{ height: 30, fontWeight: 900, color: statusStyle.color, bgcolor: statusStyle.bgcolor }} />
+                    <Chip
+                      label={getOrderTypeLabel(order.orderType)}
+                      variant="outlined"
+                      size="small"
+                      sx={{ fontWeight: 900, height: 26 }}
+                    />
                     <Typography sx={{ fontWeight: 900, fontSize: { xs: "1rem", md: "1.1rem" }, whiteSpace: "nowrap" }}>
                       Rs. {order.totalAmount}
                     </Typography>
@@ -580,6 +593,27 @@ export default function OrdersPage() {
                 </Stack>
               </Paper>
             ))}
+
+            <Box>
+              <Typography sx={{ fontWeight: 800, mb: 1 }}>Order type</Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={editOrderType}
+                onChange={(_event, next: OrderType | null) => {
+                  if (next) setEditOrderType(next);
+                }}
+                sx={{ borderRadius: "12px" }}
+              >
+                <ToggleButton value="dine_in" sx={{ fontWeight: 800, textTransform: "none" }}>
+                  Eat here
+                </ToggleButton>
+                <ToggleButton value="takeaway" sx={{ fontWeight: 800, textTransform: "none" }}>
+                  Pack
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
             <TextField
               label="Remarks"
