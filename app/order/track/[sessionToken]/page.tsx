@@ -17,6 +17,7 @@ import {
   canCustomerCancelOrder,
   canCustomerConfirmOrder,
   confirmPublicOrder,
+  getOrderTypeLabel,
   getPublicOrder,
   isOrderLocked,
   type KitchenOrder,
@@ -236,6 +237,12 @@ export default function TrackOrderPage() {
                 <Typography sx={{ color: "var(--muted-foreground)" }}>
                   Order #{order.id} - {new Date(order.createdAt).toLocaleString()}
                 </Typography>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={getOrderTypeLabel(order.orderType)}
+                  sx={{ fontWeight: 800, mt: 1 }}
+                />
               </Box>
               <Chip label={`Rs. ${order.totalAmount}`} sx={{ fontWeight: 800, width: "fit-content" }} />
             </Stack>
