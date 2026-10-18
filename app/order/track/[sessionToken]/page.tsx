@@ -47,6 +47,7 @@ const statusCopy: Record<OrderStatus, string> = {
   ready: "Your order is ready.",
   served: "Your order has been served.",
   cancelled: "This order has been cancelled.",
+  closed: "This order was closed at the end of the business day.",
 };
 
 const parseRecentOrders = (raw: string | null): RecentOrderSummary[] => {

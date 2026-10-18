@@ -287,19 +287,19 @@ export default function MenuManagementPage() {
     []
   );
 
-  React.useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await getCategories();
-        setCategories(data);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        showSnackbar(safeError(error, "Unable to load categories."), "warning");
-      }
-    };
+  const loadCategories = React.useCallback(async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      showSnackbar(safeError(error, "Unable to load categories."), "warning");
+    }
+  }, [showSnackbar]);
 
+  React.useEffect(() => {
     loadCategories();
-  }, []);
+  }, [loadCategories]);
 
   React.useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -734,6 +734,7 @@ export default function MenuManagementPage() {
               availability: availabilityFilter,
             })
           }
+          onCategoryCreated={loadCategories}
         />
 
         <MenuViewDialog

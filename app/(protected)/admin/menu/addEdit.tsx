@@ -4,10 +4,13 @@ import * as React from "react";
 import {
     Box,
     Button,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
+    IconButton,
+    InputAdornment,
     MenuItem,
     Stack,
     TextField,
@@ -16,7 +19,9 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import {
+    createCategory,
     createMenu,
     getFoodTypeLabel,
     getCategories,
@@ -34,7 +39,10 @@ type MenuEditDialogProps = {
     onClose: () => void;
     onSaved: () => Promise<void> | void;
     initialData?: MenuRow | null;
+    onCategoryCreated?: () => Promise<void> | void;
 };
+
+const NEW_CATEGORY_VALUE = "__create_new_category__";
 
 type FormState = {
     categoryId: string;
@@ -84,6 +92,7 @@ export default function AddEditMenuDialog({
     onClose,
     onSaved,
     initialData,
+    onCategoryCreated,
 }: MenuEditDialogProps) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -91,6 +100,9 @@ export default function AddEditMenuDialog({
     const [categories, setCategories] = React.useState<CategoryOption[]>([]);
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string>("");
+    const [creatingCategory, setCreatingCategory] = React.useState(false);
+    const [newCategoryName, setNewCategoryName] = React.useState("");
+    const [creatingCategoryBusy, setCreatingCategoryBusy] = React.useState(false);
     const imageInputRef = React.useRef<HTMLInputElement | null>(null);
     const { showSnackbar } = useAppSnackbar();
 
@@ -98,6 +110,8 @@ export default function AddEditMenuDialog({
         if (open) {
             setForm(createInitialState(initialData));
             setError("");
+            setCreatingCategory(false);
+            setNewCategoryName("");
         }
     }, [initialData, open]);
 
@@ -143,13 +157,91 @@ export default function AddEditMenuDialog({
         event.target.value = "";
     };
 
+    const cancelCategoryCreate = () => {
+        setCreatingCategory(false);
+        setNewCategoryName("");
+    };
+
+    const renderCategoryValue = (value: unknown) => {
+        const option = categories.find(
+            (category) => String(category.id) === String(value),
+        );
+
+        if (option) return option.name;
+
+        return (
+            <Box component="span" sx={{ color: "var(--muted-foreground)" }}>
+                Select a category
+            </Box>
+        );
+    };
+
+    const handleCategoryChange = (value: string) => {
+        if (value === NEW_CATEGORY_VALUE) {
+            setNewCategoryName("");
+            setCreatingCategory(true);
+            return;
+        }
+        handleFieldChange("categoryId")(value);
+    };
+
+    const handleCreateCategory = async () => {
+        const name = newCategoryName.trim();
+        if (!name || creatingCategoryBusy) return;
+
+        const existing = categories.find(
+            (category) => category.name.trim().toLowerCase() === name.toLowerCase(),
+        );
+
+        if (existing) {
+            handleFieldChange("categoryId")(String(existing.id));
+            cancelCategoryCreate();
+            showSnackbar(`"${existing.name}" already exists — it has been selected.`, "info");
+            return;
+        }
+
+        setCreatingCategoryBusy(true);
+        setError("");
+
+        try {
+            const created = await createCategory({ name });
+            const refreshed = await getCategories();
+            setCategories(refreshed);
+
+            const match =
+                refreshed.find((category) => category.id === created.id) ??
+                refreshed.find(
+                    (category) => category.name.toLowerCase() === name.toLowerCase(),
+                );
+
+            if (match) {
+                handleFieldChange("categoryId")(String(match.id));
+            }
+
+            setCreatingCategory(false);
+            setNewCategoryName("");
+            showSnackbar(`Category "${match?.name ?? name}" created.`, "success");
+            await onCategoryCreated?.();
+        } catch (createError) {
+            console.error("Failed to create category:", createError);
+            const message = safeError(
+                createError,
+                "Failed to create category. It may already exist.",
+            );
+            setError(message);
+            showSnackbar(message, "error");
+        } finally {
+            setCreatingCategoryBusy(false);
+        }
+    };
+
     const handleSubmit = async () => {
         const selectedCategory = categories.find((category) => String(category.id) === form.categoryId);
         const categoryName = initialData?.category ?? selectedCategory?.name ?? "";
         const categoryId = initialData?.categoryId ?? selectedCategory?.id;
 
         if (!categoryName.trim() || !form.name.trim() || !form.price.trim()) {
-            const message = "Category, menu name, and price are required.";
+            const message = "Choose or create a category, then enter the menu name and price.";
             setError(message);
             showSnackbar(message, "warning");
             return;
@@ -216,7 +308,7 @@ export default function AddEditMenuDialog({
                     <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.92rem" }}>
                         {initialData
                             ? "Update menu details, availability, and image."
-                            : "Choose an existing category, then add the menu item."}
+                            : "Pick a category, or create one on the spot, then add the menu item."}
                     </Typography>
                 </DialogTitle>
                 <DialogContent
@@ -230,22 +322,85 @@ export default function AddEditMenuDialog({
                 >
                     <Stack spacing={2.5} sx={{ pb: 1.5, overflow: "visible" }}>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 0.75, overflow: "visible" }}>
-                            <TextField
-                                select
-                                fullWidth
-                                disabled={Boolean(initialData)}
-                                sx={floatingFieldSx}
-                                SelectProps={{ displayEmpty: false }}
-                                label="Category"
-                                value={form.categoryId}
-                                onChange={(e) => handleFieldChange("categoryId")(e.target.value)}
-                            >
-                                {categories.map((category) => (
-                                    <MenuItem key={category.id} value={String(category.id)}>
-                                        {category.name}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                            {creatingCategory ? (
+                                <TextField
+                                    fullWidth
+                                    autoFocus
+                                    sx={floatingFieldSx}
+                                    label="New category name"
+                                    value={newCategoryName}
+                                    disabled={creatingCategoryBusy}
+                                    onChange={(event) => setNewCategoryName(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            event.preventDefault();
+                                            void handleCreateCategory();
+                                        }
+                                        if (event.key === "Escape") {
+                                            event.preventDefault();
+                                            cancelCategoryCreate();
+                                        }
+                                    }}
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    edge="end"
+                                                    size="small"
+                                                    aria-label="Create category"
+                                                    disabled={
+                                                        creatingCategoryBusy || !newCategoryName.trim()
+                                                    }
+                                                    onClick={() => void handleCreateCategory()}
+                                                    sx={{ color: "var(--primary)" }}
+                                                >
+                                                    {creatingCategoryBusy ? (
+                                                        <CircularProgress size={18} />
+                                                    ) : (
+                                                        <AddRoundedIcon fontSize="small" />
+                                                    )}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                    helperText="Press Enter to create · Esc to go back"
+                                />
+                            ) : (
+                                <TextField
+                                    select
+                                    fullWidth
+                                    disabled={Boolean(initialData)}
+                                    sx={floatingFieldSx}
+                                    label="Category"
+                                    value={form.categoryId}
+                                    InputLabelProps={{ shrink: true }}
+                                    onChange={(event) => handleCategoryChange(event.target.value)}
+                                    SelectProps={{
+                                        displayEmpty: true,
+                                        renderValue: renderCategoryValue,
+                                    }}
+                                    helperText={
+                                        categories.length === 0
+                                            ? "No categories yet — create one below."
+                                            : undefined
+                                    }
+                                >
+                                    {categories.map((category) => (
+                                        <MenuItem key={category.id} value={String(category.id)}>
+                                            {category.name}
+                                        </MenuItem>
+                                    ))}
+                                    {!initialData && (
+                                        <MenuItem
+                                            value={NEW_CATEGORY_VALUE}
+                                            sx={{ color: "var(--primary)", fontWeight: 700 }}
+                                        >
+                                            <AddRoundedIcon fontSize="small" sx={{ mr: 1 }} />
+                                            Create new category
+                                        </MenuItem>
+                                    )}
+                                </TextField>
+                            )}
                             <TextField
                                 select
                                 fullWidth

@@ -10,13 +10,21 @@ export default function ThemeToggle() {
     const { toggleMode, mode } = useThemeToggle();
     const suppressNextClick = React.useRef(false);
 
+    const originFrom = (element: HTMLElement | null) => {
+        if (!element) return undefined;
+
+        const rect = element.getBoundingClientRect();
+
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+
     const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
         if (event.pointerType === "mouse") return;
 
         event.preventDefault();
         event.stopPropagation();
         suppressNextClick.current = true;
-        toggleMode();
+        toggleMode(originFrom(event.currentTarget));
     };
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -28,7 +36,7 @@ export default function ThemeToggle() {
             return;
         }
 
-        toggleMode();
+        toggleMode(originFrom(event.currentTarget));
     };
 
     return (
