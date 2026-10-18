@@ -40,9 +40,10 @@ const statusMeta: Record<OrderStatus, { label: string; color: string; bg: string
   ready: { label: "Ready", color: "#166534", bg: "#dcfce7" },
   served: { label: "Served", color: "#374151", bg: "#f3f4f6" },
   cancelled: { label: "Cancelled", color: "#b91c1c", bg: "#fee2e2" },
+  closed: { label: "Closed", color: "#475569", bg: "#e2e8f0" },
 };
 
-const statusOrder: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled"];
+const statusOrder: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled", "closed"];
 
 type KpiCardProps = {
   label: string;
@@ -56,13 +57,16 @@ const KpiCard = ({ label, value, helper, icon: Icon, accent }: KpiCardProps) => 
   <Paper
     elevation={0}
     sx={{
-      p: { xs: 1.75, md: 2.5 },
-      borderRadius: "20px",
+      p: { xs: 1.5, md: 2.25 },
+      borderRadius: "18px",
       border: "1px solid var(--border)",
       backgroundColor: "var(--card)",
       position: "relative",
       overflow: "hidden",
       minWidth: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: 1,
       boxShadow: "0 14px 32px rgba(31, 42, 43, 0.08)",
       "&::after": {
         content: '""',
@@ -73,46 +77,47 @@ const KpiCard = ({ label, value, helper, icon: Icon, accent }: KpiCardProps) => 
       },
     }}
   >
-    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-      <Box sx={{ minWidth: 0, position: "relative", zIndex: 1 }}>
-        <Typography
-          sx={{
-            fontSize: { xs: "0.68rem", md: "0.78rem" },
-            fontWeight: 800,
-            color: "var(--muted-foreground)",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          {label}
-        </Typography>
-        <Typography sx={{ fontSize: { xs: "1.18rem", md: "1.6rem" }, fontWeight: 900, mt: 0.5, lineHeight: 1.1, overflowWrap: "anywhere" }}>
-          {value}
-        </Typography>
-        {helper ? (
-          <Typography sx={{ fontSize: { xs: "0.68rem", md: "0.78rem" }, color: "var(--muted-foreground)", mt: 0.5, fontWeight: 650 }}>
-            {helper}
-          </Typography>
-        ) : null}
-      </Box>
+    <Stack direction="row" spacing={{ xs: 1, md: 1.25 }} alignItems="center" sx={{ position: "relative", zIndex: 1, minWidth: 0 }}>
       <Box
         sx={{
-          width: { xs: 38, md: 48 },
-          height: { xs: 38, md: 48 },
-          borderRadius: "14px",
+          width: { xs: 36, md: 46 },
+          height: { xs: 36, md: 46 },
+          borderRadius: "13px",
           display: "grid",
           placeItems: "center",
           flexShrink: 0,
           color: accent,
           backgroundColor: `color-mix(in srgb, ${accent} 16%, transparent)`,
           border: `1px solid color-mix(in srgb, ${accent} 34%, transparent)`,
-          position: "relative",
-          zIndex: 1,
         }}
       >
         <Icon sx={{ fontSize: { xs: 20, md: 24 } }} />
       </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography
+          sx={{
+            fontSize: { xs: "0.62rem", md: "0.76rem" },
+            fontWeight: 800,
+            color: "var(--muted-foreground)",
+            textTransform: "uppercase",
+            letterSpacing: { xs: "0.02em", md: "0.05em" },
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.55rem" }, fontWeight: 900, mt: 0.25, lineHeight: 1.1, overflowWrap: "anywhere" }}>
+          {value}
+        </Typography>
+      </Box>
     </Stack>
+    {helper ? (
+      <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "0.66rem", md: "0.78rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}>
+        {helper}
+      </Typography>
+    ) : null}
   </Paper>
 );
 

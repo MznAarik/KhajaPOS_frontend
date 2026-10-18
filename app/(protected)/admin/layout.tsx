@@ -1,6 +1,7 @@
 import SideNavLayout from "./sideNavLayout";
 import { getTokenFromCookies } from "@/lib/api-server";
 import { redirect } from "next/navigation";
+import type { SessionUser } from "@/lib/auth-context";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function AdminLayout({
     // backend rotated its signing keys). Validate it so we redirect instead of
     // rendering an admin shell that can never load data.
     let unauthorized = !token;
+    let sessionUser: SessionUser | null = null;
 
     if (token && API_BASE) {
         try {
@@ -29,6 +31,11 @@ export default async function AdminLayout({
             });
 
             unauthorized = res.status === 401 || res.status === 403;
+
+            if (!unauthorized) {
+                const body = await res.json().catch(() => null);
+                sessionUser = body?.data ?? null;
+            }
         } catch {
             // Network hiccup: let the client-side 401 interceptor handle it
             // rather than logging the user out on a transient failure.
@@ -41,7 +48,7 @@ export default async function AdminLayout({
     }
 
     return (
-        <SideNavLayout>
+        <SideNavLayout initialUser={sessionUser}>
             {children}
         </SideNavLayout>
     );

@@ -109,7 +109,9 @@ export default function AuthPage() {
 
             const params = new URLSearchParams(window.location.search);
             const redirectTo = params.get("redirect");
-            router.replace(redirectTo?.startsWith("/admin") ? redirectTo : "/admin/dashboard");
+            const role = data?.data?.user?.role;
+            const home = role === "super_admin" ? "/admin/users" : "/admin/dashboard";
+            router.replace(redirectTo?.startsWith("/admin") ? redirectTo : home);
         } catch (err) {
             const message = safeError(err, "Login failed");
             setError(message);

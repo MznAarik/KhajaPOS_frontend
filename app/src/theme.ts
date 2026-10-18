@@ -14,11 +14,11 @@ export function createAppTheme(mode: ThemeMode = "light") {
           error: { main: "#f87171" },
         }
       : {
-          primary: { main: "#b45309", contrastText: "#fffaf3" },
-          secondary: { main: "#f1dfc9", contrastText: "#271812" },
-          background: { default: "#f8f1e7", paper: "#ffffff" },
-          text: { primary: "#1f1712", secondary: "#6d5140" },
-          divider: "#dec9ae",
+          primary: { main: "#b45309", contrastText: "#fff8ef" },
+          secondary: { main: "#f7e7d2", contrastText: "#2b1c10" },
+          background: { default: "#faf6f0", paper: "#ffffff" },
+          text: { primary: "#1b1714", secondary: "#6b6156" },
+          divider: "#e6dccc",
           error: { main: "#dc2626" },
         };
 
