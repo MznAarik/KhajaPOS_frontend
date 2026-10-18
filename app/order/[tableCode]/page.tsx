@@ -788,7 +788,7 @@ export default function TableOrderPage() {
           p: { xs: 1.5, md: 3 },
           borderRadius: { xs: "18px", md: "24px" },
           border: "1px solid var(--border)",
-          backgroundColor: "var(--card)",
+          backgroundColor: "var(--muted)",
           boxShadow: "0 14px 34px color-mix(in srgb, var(--foreground) 8%, transparent)",
         }}
       >
@@ -798,17 +798,34 @@ export default function TableOrderPage() {
             {loading ? (
               <Skeleton variant="rounded" width={140} height={14} sx={{ borderRadius: "999px" }} />
             ) : menu?.business?.name ? (
-              <Typography
-                sx={{
-                  fontSize: { xs: "0.7rem", md: "0.78rem" },
-                  fontWeight: 900,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  color: "var(--primary)",
-                }}
-              >
-                {menu.business.name}
-              </Typography>
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                {menu.business.logo ? (
+                  <Box
+                    component="img"
+                    src={resolveMenuImageUrl(menu.business.logo) ?? undefined}
+                    alt=""
+                    sx={{
+                      width: { xs: 26, md: 30 },
+                      height: { xs: 26, md: 30 },
+                      borderRadius: "8px",
+                      objectFit: "cover",
+                      border: "1px solid var(--border)",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : null}
+                <Typography
+                  sx={{
+                    fontSize: { xs: "0.7rem", md: "0.78rem" },
+                    fontWeight: 900,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "var(--primary)",
+                  }}
+                >
+                  {menu.business.name}
+                </Typography>
+              </Stack>
             ) : null}
             {loading ? (
               <Skeleton variant="rounded" width={124} height={32} sx={{ borderRadius: "999px" }} />
@@ -871,7 +888,7 @@ export default function TableOrderPage() {
             p: { xs: 2, md: 2.5 },
             borderRadius: "18px",
             border: "1px solid var(--border)",
-            backgroundColor: "var(--card)",
+            backgroundColor: "var(--muted)",
           }}
         >
           <Stack spacing={2}>
@@ -913,7 +930,7 @@ export default function TableOrderPage() {
                       borderRadius: "16px",
                       border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
                       borderLeft: `4px solid ${accent}`,
-                      backgroundColor: "var(--card)",
+                      backgroundColor: "var(--muted)",
                       opacity: isCancelled ? 0.82 : 1,
                     }}
                   >
@@ -1025,7 +1042,7 @@ export default function TableOrderPage() {
         </Paper>
       ) : null}
       {message ? (
-        <Paper sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <Paper sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
           <Typography>{message}</Typography>
         </Paper>
       ) : null}
@@ -1039,7 +1056,7 @@ export default function TableOrderPage() {
                   p: { xs: 0.75, md: 1 },
                   borderRadius: { xs: "16px", md: "18px" },
                   border: "1px solid var(--border)",
-                  backgroundColor: "var(--card)",
+                  backgroundColor: "var(--muted)",
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
@@ -1065,7 +1082,7 @@ export default function TableOrderPage() {
                   p: { xs: 0.75, md: 1 },
                   borderRadius: { xs: "16px", md: "18px" },
                   border: "1px solid var(--border)",
-                  backgroundColor: "var(--card)",
+                  backgroundColor: "var(--muted)",
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
@@ -1093,7 +1110,7 @@ export default function TableOrderPage() {
                     p: { xs: 1.25, md: 3 },
                     borderRadius: { xs: "18px", md: "22px" },
                     border: "1px solid var(--border)",
-                    backgroundColor: "var(--card)",
+                    backgroundColor: "var(--muted)",
                     boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
                   }}
                 >
@@ -1155,7 +1172,7 @@ export default function TableOrderPage() {
               ))}
             </Stack>
           ) : !menu || menu.categories.length === 0 ? (
-            <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
               <Stack spacing={1} alignItems="center" sx={{ textAlign: "center" }}>
                 <Typography sx={{ fontSize: "2rem", lineHeight: 1 }}>🍽️</Typography>
                 <Typography sx={{ fontWeight: 800 }}>Menu coming soon</Typography>
@@ -1172,7 +1189,7 @@ export default function TableOrderPage() {
                 p: { xs: 0.75, md: 1 },
                 borderRadius: { xs: "16px", md: "18px" },
                 border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--muted)",
                 backdropFilter: "blur(10px)",
                 mb: { xs: 1, md: 1.5 },
                 display: "flex",
@@ -1254,7 +1271,7 @@ export default function TableOrderPage() {
                 p: { xs: 0.75, md: 1 },
                 borderRadius: { xs: "16px", md: "18px" },
                 border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--muted)",
                 backdropFilter: "blur(10px)",
                 display: "flex",
                 alignItems: "center",
@@ -1335,7 +1352,7 @@ export default function TableOrderPage() {
                   p: { xs: 1.25, md: 3 },
                   borderRadius: { xs: "18px", md: "22px" },
                   border: "1px solid var(--border)",
-                  backgroundColor: "var(--card)",
+                  backgroundColor: "var(--muted)",
                   boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
                 }}
               >
@@ -1419,7 +1436,7 @@ export default function TableOrderPage() {
                                 : "1px solid var(--border)",
                             backgroundColor:
                               quantity > 0
-                                ? "color-mix(in srgb, var(--primary) 6%, var(--card))"
+                                ? "color-mix(in srgb, var(--primary) 8%, var(--muted))"
                                 : "var(--muted)",
                             boxShadow:
                               quantity > 0
@@ -1627,7 +1644,7 @@ export default function TableOrderPage() {
                 p: { xs: 2, md: 3 },
                 borderRadius: { xs: "18px", md: "22px" },
                 border: "1px dashed var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--muted)",
                 textAlign: "center",
               }}
             >
@@ -1650,7 +1667,7 @@ export default function TableOrderPage() {
           ) : null}
         </Box>
 
-        <Paper sx={{ display: { xs: "none", lg: "block" }, p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
+        <Paper sx={{ display: { xs: "none", lg: "block" }, p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
           <Stack spacing={2}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Your Cart
@@ -1746,7 +1763,7 @@ export default function TableOrderPage() {
               pointerEvents: "auto",
               borderRadius: "22px",
               border: "1px solid var(--border)",
-              backgroundColor: "color-mix(in srgb, var(--card) 96%, transparent)",
+                   backgroundColor: "color-mix(in srgb, var(--muted) 96%, transparent)",
               backdropFilter: "blur(18px)",
               boxShadow: "0 18px 46px rgba(31, 42, 43, 0.22)",
               overflow: "hidden",
@@ -1867,7 +1884,7 @@ export default function TableOrderPage() {
             borderRadius: "24px",
             overflow: "hidden",
             border: "1px solid var(--border)",
-            backgroundColor: "var(--card)",
+            backgroundColor: "var(--muted)",
           },
         }}
       >
