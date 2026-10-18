@@ -160,6 +160,24 @@ export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
   }
 };
 
+export type FoodFilterKey = "all" | "veg" | "non-veg" | "others";
+
+export const FOOD_FILTER_LABELS: Record<FoodFilterKey, string> = {
+  all: "All",
+  veg: "Veg",
+  "non-veg": "Non-Veg",
+  others: "Others",
+};
+
+export const FOOD_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg", "others"];
+
+export const matchesFoodFilter = (foodType: MenuRow["foodType"], filter: FoodFilterKey) => {
+  if (filter === "all") return true;
+  if (filter === "veg") return foodType === "veg" || foodType === "vegan";
+  if (filter === "non-veg") return foodType === "non-veg";
+  return foodType === "egg";
+};
+
 export type CategoryOption = {
   id: number;
   name: string;
@@ -181,8 +199,19 @@ type CategoryListResponse = {
 
 type CategoryDetailResponse = {
   status: number;
-  data?: CategoryResponse;
+  data?: CategoryResponse | { category?: CategoryResponse };
   category?: CategoryResponse;
+};
+
+const unwrapCategory = (res: { data: CategoryDetailResponse }): CategoryResponse => {
+  const payload = unwrapApiData<unknown>(res.data);
+
+  if (payload && typeof payload === "object" && "category" in payload) {
+    const nested = (payload as { category?: CategoryResponse }).category;
+    if (nested) return nested;
+  }
+
+  return payload as CategoryResponse;
 };
 
 export type AdminTable = {
@@ -199,15 +228,16 @@ export type OrderStatus =
   | "preparing"
   | "ready"
   | "served"
-  | "cancelled";
+  | "cancelled"
+  | "closed";
 
 export type OrderType = "dine_in" | "takeaway";
 
 export const getOrderTypeLabel = (orderType: OrderType) =>
-  orderType === "takeaway" ? "Pack" : "Eat here";
+  orderType === "takeaway" ? "Takeaway" : "Dine Here";
 
 export const isOrderLocked = (status: OrderStatus) =>
-  status === "served" || status === "cancelled";
+  status === "served" || status === "cancelled" || status === "closed";
 
 export const canCustomerConfirmOrder = (status: OrderStatus) =>
   status === "pending";
@@ -231,6 +261,7 @@ export type KitchenOrder = {
     name: string;
     quantity: number;
     price: string;
+    foodType: MenuRow["foodType"];
   }>;
 };
 
@@ -252,6 +283,7 @@ export type PublicMenuCategory = {
 
 export type PublicTableMenu = {
   table: AdminTable;
+  business: { id: number; name: string } | null;
   categories: PublicMenuCategory[];
 };
 
@@ -322,19 +354,24 @@ type AdminOrderResponse = {
     menu_item: {
       id: number;
       name: string;
+      food_type?: string;
     } | null;
   }>;
 };
 
-type AdminOrderListResponse = {
+type AdminOrderIndexResponse = {
   status: number;
-  data: AdminOrderResponse[];
+  data: {
+    date: string;
+    orders: AdminOrderResponse[];
+  };
 };
 
 type PublicMenuResponse = {
   status: number;
   data: {
     table: AdminTableResponse;
+    business?: { id: number; name: string } | null;
     categories: MenuCategoryResponse[];
   };
 };
@@ -576,12 +613,27 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
     name: toTitleCase(item.menu_item?.name ?? "Menu Item"),
     quantity: item.quantity,
     price: item.price,
+    foodType: normalizeFoodType(item.menu_item?.food_type ?? "non-veg"),
   })),
 });
 
-export const getAdminOrders = async (): Promise<KitchenOrder[]> => {
-  const res = await api.get<AdminOrderListResponse>("/admin/orders");
-  return unwrapApiData<AdminOrderResponse[]>(res.data).map(normalizeOrder);
+export const getAdminOrders = async (
+  date?: string,
+): Promise<{ date: string; orders: KitchenOrder[] }> => {
+  const res = await api.get<AdminOrderIndexResponse>("/admin/orders", {
+    params: date ? { date } : undefined,
+  });
+  const payload = unwrapApiData<AdminOrderIndexResponse["data"]>(res.data);
+
+  return {
+    date: payload.date,
+    orders: payload.orders.map(normalizeOrder),
+  };
+};
+
+export const getAdminOrderDays = async (): Promise<string[]> => {
+  const res = await api.get<{ status: number; data: string[] }>("/admin/orders/days");
+  return unwrapApiData<string[]>(res.data);
 };
 
 export const updateAdminOrderStatus = async (
@@ -635,6 +687,7 @@ export const getPublicMenu = async (
       isActive: parseAvailability(payload.table.is_active ?? true),
       createdAt: payload.table.created_at,
     },
+    business: payload.business ?? null,
     categories: payload.categories.map((category) => ({
       id: category.id,
       name: toTitleCase(category.name),
@@ -894,7 +947,7 @@ export const createCategory = async (payload: {
     is_active: payload.isActive ?? true,
   });
 
-  return unwrapApiData<CategoryResponse>(res.data);
+  return unwrapCategory(res);
 };
 
 export const updateCategory = async (payload: {
@@ -910,7 +963,7 @@ export const updateCategory = async (payload: {
     },
   );
 
-  return unwrapApiData<CategoryResponse>(res.data);
+  return unwrapCategory(res);
 };
 
 export const updateCategoryAvailability = async (
@@ -946,4 +999,306 @@ export const updateMenu = async (payload: MenuEditorPayload) => {
 
 export const deleteMenu = async (menuId: number) => {
   await api.delete(`/admin/menus/items/${menuId}`);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Superadmin: users, owners, restaurants + role-based access                  */
+/* -------------------------------------------------------------------------- */
+
+export type UserRole = "user" | "admin" | "super_admin";
+
+export const USER_ROLES: UserRole[] = ["user", "admin", "super_admin"];
+
+export const USER_ROLE_META: Record<
+  UserRole,
+  { label: string; color: string; bg: string; hint: string }
+> = {
+  super_admin: {
+    label: "Super Admin",
+    color: "#7c3aed",
+    bg: "#f3e8ff",
+    hint: "Full access to users, owners and restaurants",
+  },
+  admin: {
+    label: "Owner",
+    color: "#2563eb",
+    bg: "#dbeafe",
+    hint: "Owns one restaurant, full access to its admin panel",
+  },
+  user: {
+    label: "User",
+    color: "#475569",
+    bg: "#e2e8f0",
+    hint: "Basic account with no restaurant attached",
+  },
+};
+
+export const getRoleLabel = (role: UserRole) =>
+  USER_ROLE_META[role]?.label ?? role;
+
+export type SuperAdminUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  emailVerifiedAt: string | null;
+  createdAt: string;
+  business: {
+    id: number;
+    name: string;
+    businessType: string;
+    isActive: boolean;
+  } | null;
+};
+
+export type SuperAdminCounts = {
+  total: number;
+  super_admin: number;
+  admin: number;
+  user: number;
+};
+
+export type SuperAdminUserPayload = {
+  name: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  businessName?: string;
+  businessType?: string;
+  businessPhone?: string;
+  businessEmail?: string;
+  businessAddress?: string;
+};
+
+export type SuperAdminBusiness = {
+  id: number;
+  userId: number;
+  name: string;
+  businessType: string;
+  phone: string;
+  email: string;
+  address: string;
+  isActive: boolean;
+  createdAt: string;
+  menuItemsCount: number;
+  tablesCount: number;
+  ordersCount: number;
+  owner: { id: number; name: string; email: string; role: UserRole } | null;
+};
+
+export type SuperAdminBusinessCounts = {
+  total: number;
+  active: number;
+  inactive: number;
+};
+
+export type SuperAdminBusinessPayload = {
+  userId?: number;
+  name: string;
+  businessType: string;
+  phone?: string;
+  email: string;
+  address?: string;
+  isActive?: boolean;
+};
+
+export type SuperAdminOverview = {
+  users: SuperAdminCounts;
+  businesses: SuperAdminBusinessCounts;
+};
+
+type RawSuperAdminUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  email_verified_at?: string | null;
+  created_at: string;
+  business?: {
+    id: number;
+    name: string;
+    business_type: string;
+    is_active?: unknown;
+  } | null;
+};
+
+type RawSuperAdminBusiness = {
+  id: number;
+  user_id: number;
+  name: string;
+  business_type: string;
+  phone?: string | null;
+  email: string;
+  address?: string | null;
+  is_active?: unknown;
+  created_at: string;
+  menu_items_count?: number;
+  tables_count?: number;
+  orders_count?: number;
+  user?: { id: number; name: string; email: string; role: UserRole } | null;
+};
+
+const mapSuperAdminUser = (raw: RawSuperAdminUser): SuperAdminUser => ({
+  id: raw.id,
+  name: raw.name,
+  email: raw.email,
+  role: raw.role,
+  emailVerifiedAt: raw.email_verified_at ?? null,
+  createdAt: raw.created_at,
+  business: raw.business
+    ? {
+        id: raw.business.id,
+        name: raw.business.name,
+        businessType: raw.business.business_type,
+        isActive: parseAvailability(raw.business.is_active ?? true),
+      }
+    : null,
+});
+
+const mapSuperAdminBusiness = (raw: RawSuperAdminBusiness): SuperAdminBusiness => ({
+  id: raw.id,
+  userId: raw.user_id,
+  name: raw.name,
+  businessType: raw.business_type,
+  phone: raw.phone ?? "",
+  email: raw.email,
+  address: raw.address ?? "",
+  isActive: parseAvailability(raw.is_active ?? true),
+  createdAt: raw.created_at,
+  menuItemsCount: raw.menu_items_count ?? 0,
+  tablesCount: raw.tables_count ?? 0,
+  ordersCount: raw.orders_count ?? 0,
+  owner: raw.user ?? null,
+});
+
+const toUserPayload = (payload: SuperAdminUserPayload) => ({
+  name: payload.name.trim(),
+  email: payload.email.trim(),
+  role: payload.role,
+  ...(payload.password ? { password: payload.password } : {}),
+  ...(payload.businessName ? { business_name: payload.businessName.trim() } : {}),
+  ...(payload.businessType ? { business_type: payload.businessType.trim() } : {}),
+  ...(payload.businessPhone ? { business_phone: payload.businessPhone.trim() } : {}),
+  ...(payload.businessEmail ? { business_email: payload.businessEmail.trim() } : {}),
+  ...(payload.businessAddress ? { business_address: payload.businessAddress.trim() } : {}),
+});
+
+export const getSuperAdminOverview = async (): Promise<SuperAdminOverview> => {
+  const res = await api.get("/superadmin/overview");
+  return unwrapApiData<SuperAdminOverview>(res.data);
+};
+
+export const getSuperAdminUsers = async (params?: {
+  q?: string;
+  role?: UserRole | "";
+  has_business?: boolean;
+}): Promise<{ items: SuperAdminUser[]; counts: SuperAdminCounts }> => {
+  const res = await api.get("/superadmin/users", {
+    params: {
+      q: params?.q?.trim() || undefined,
+      role: params?.role || undefined,
+      has_business: params?.has_business ? 1 : undefined,
+    },
+  });
+  const data = unwrapApiData<{
+    items: RawSuperAdminUser[];
+    counts: SuperAdminCounts;
+  }>(res.data);
+
+  return {
+    items: (data?.items ?? []).map(mapSuperAdminUser),
+    counts: data?.counts ?? { total: 0, super_admin: 0, admin: 0, user: 0 },
+  };
+};
+
+export const getSuperAdminUser = async (id: number): Promise<SuperAdminUser> => {
+  const res = await api.get(`/superadmin/users/${id}`);
+  const data = unwrapApiData<{ user: RawSuperAdminUser }>(res.data);
+  return mapSuperAdminUser(data.user);
+};
+
+export const createSuperAdminUser = async (payload: SuperAdminUserPayload) => {
+  const res = await api.post("/superadmin/users", toUserPayload(payload));
+  const data = unwrapApiData<{ user: RawSuperAdminUser }>(res.data);
+  return mapSuperAdminUser(data.user);
+};
+
+export const updateSuperAdminUser = async (payload: {
+  id: number;
+} & SuperAdminUserPayload) => {
+  const res = await api.put(`/superadmin/users/${payload.id}`, toUserPayload(payload));
+  const data = unwrapApiData<{ user: RawSuperAdminUser }>(res.data);
+  return mapSuperAdminUser(data.user);
+};
+
+export const deleteSuperAdminUser = async (id: number) => {
+  await api.delete(`/superadmin/users/${id}`);
+};
+
+export const getSuperAdminBusinesses = async (params?: {
+  q?: string;
+  is_active?: string;
+}): Promise<{
+  items: SuperAdminBusiness[];
+  counts: SuperAdminBusinessCounts;
+}> => {
+  const res = await api.get("/superadmin/businesses", {
+    params: {
+      q: params?.q?.trim() || undefined,
+      is_active: params?.is_active || undefined,
+    },
+  });
+  const data = unwrapApiData<{
+    items: RawSuperAdminBusiness[];
+    counts: SuperAdminBusinessCounts;
+  }>(res.data);
+
+  return {
+    items: (data?.items ?? []).map(mapSuperAdminBusiness),
+    counts: data?.counts ?? { total: 0, active: 0, inactive: 0 },
+  };
+};
+
+export const getSuperAdminBusiness = async (
+  id: number,
+): Promise<SuperAdminBusiness> => {
+  const res = await api.get(`/superadmin/businesses/${id}`);
+  const data = unwrapApiData<{ business: RawSuperAdminBusiness }>(res.data);
+  return mapSuperAdminBusiness(data.business);
+};
+
+export const createSuperAdminBusiness = async (
+  payload: SuperAdminBusinessPayload,
+) => {
+  const res = await api.post("/superadmin/businesses", {
+    user_id: payload.userId,
+    name: payload.name.trim(),
+    business_type: payload.businessType.trim(),
+    phone: payload.phone?.trim() || undefined,
+    email: payload.email.trim(),
+    address: payload.address?.trim() || undefined,
+    is_active: payload.isActive ?? true,
+  });
+  const data = unwrapApiData<{ business: RawSuperAdminBusiness }>(res.data);
+  return mapSuperAdminBusiness(data.business);
+};
+
+export const updateSuperAdminBusiness = async (payload: {
+  id: number;
+} & SuperAdminBusinessPayload) => {
+  const res = await api.put(`/superadmin/businesses/${payload.id}`, {
+    user_id: payload.userId,
+    name: payload.name.trim(),
+    business_type: payload.businessType.trim(),
+    phone: payload.phone?.trim() || undefined,
+    email: payload.email.trim(),
+    address: payload.address?.trim() || undefined,
+    is_active: payload.isActive ?? true,
+  });
+  const data = unwrapApiData<{ business: RawSuperAdminBusiness }>(res.data);
+  return mapSuperAdminBusiness(data.business);
+};
+
+export const deleteSuperAdminBusiness = async (id: number) => {
+  await api.delete(`/superadmin/businesses/${id}`);
 };
