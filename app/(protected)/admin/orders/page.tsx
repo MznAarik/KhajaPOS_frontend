@@ -46,21 +46,21 @@ type OrderFilter = "active" | "all" | OrderStatus;
 const getStatusStyle = (status: OrderStatus) => {
   switch (status) {
     case "pending":
-      return { color: "#d97706", bgcolor: "#fef3c7" };
+      return { color: "var(--status-pending-fg)", bgcolor: "var(--status-pending-bg)" };
     case "confirmed":
-      return { color: "#2563eb", bgcolor: "#dbeafe" };
+      return { color: "var(--status-confirmed-fg)", bgcolor: "var(--status-confirmed-bg)" };
     case "preparing":
-      return { color: "#6b21a8", bgcolor: "#f3e8ff" };
+      return { color: "var(--status-preparing-fg)", bgcolor: "var(--status-preparing-bg)" };
     case "ready":
-      return { color: "#166534", bgcolor: "#dcfce7" };
+      return { color: "var(--status-ready-fg)", bgcolor: "var(--status-ready-bg)" };
     case "served":
-      return { color: "#374151", bgcolor: "#f3f4f6" };
+      return { color: "var(--status-served-fg)", bgcolor: "var(--status-served-bg)" };
     case "cancelled":
-      return { color: "#b91c1c", bgcolor: "#fee2e2" };
+      return { color: "var(--status-cancelled-fg)", bgcolor: "var(--status-cancelled-bg)" };
     case "closed":
-      return { color: "#475569", bgcolor: "#e2e8f0" };
+      return { color: "var(--status-closed-fg)", bgcolor: "var(--status-closed-bg)" };
     default:
-      return { color: "#374151", bgcolor: "#f3f4f6" };
+      return { color: "var(--muted-foreground)", bgcolor: "var(--muted)" };
   }
 };
 
@@ -589,6 +589,13 @@ export default function OrdersPage() {
         >
           {filterOptions.map((option) => {
             const selected = filter === option.value;
+            const isStatus = option.value !== "active" && option.value !== "all";
+            const activeColor = isStatus
+              ? `var(--status-${option.value}-fg)`
+              : "var(--primary)";
+            const activeBg = isStatus
+              ? `var(--status-${option.value}-bg)`
+              : "var(--primary)";
             return (
               <Chip
                 key={option.value}
@@ -601,9 +608,13 @@ export default function OrdersPage() {
                   px: { xs: 0.35, md: 0.5 },
                   fontWeight: 800,
                   fontSize: { xs: "0.78rem", md: "0.875rem" },
-                  color: selected ? "var(--primary-foreground)" : "var(--foreground)",
-                  backgroundColor: selected ? "var(--primary)" : "var(--card)",
-                  border: "1px solid var(--border)",
+                  color: selected
+                    ? isStatus
+                      ? activeColor
+                      : "var(--primary-foreground)"
+                    : "var(--foreground)",
+                  backgroundColor: selected ? activeBg : "var(--card)",
+                  border: `1px solid ${selected ? activeColor : "var(--border)"}`,
                 }}
               />
             );
@@ -640,10 +651,45 @@ export default function OrdersPage() {
       >
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Paper key={i} sx={{ p: { xs: 2, md: 3 }, borderRadius: { xs: "18px", md: 4 }, border: "1px solid", borderColor: "divider", minWidth: 0 }}>
-              <Skeleton variant="text" width="45%" height={30} />
-              <Skeleton variant="text" width="65%" height={20} sx={{ mt: 0.5 }} />
-              <Skeleton variant="rounded" height={150} sx={{ mt: 2, borderRadius: 3 }} />
+            <Paper
+              key={i}
+              sx={{
+                p: { xs: 2, md: 3 },
+                borderRadius: { xs: "18px", md: 4 },
+                border: "1px solid",
+                borderColor: "divider",
+                borderLeft: "5px solid var(--border)",
+                minWidth: 0,
+              }}
+            >
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
+                <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+                  <Skeleton variant="rounded" width={66} height={54} sx={{ borderRadius: "16px", flexShrink: 0 }} />
+                  <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+                    <Skeleton variant="rounded" width={110} height={26} />
+                    <Skeleton variant="rounded" width={160} height={14} />
+                  </Stack>
+                </Stack>
+                <Stack spacing={0.75} alignItems="flex-end" sx={{ flexShrink: 0 }}>
+                  <Skeleton variant="rounded" width={86} height={26} sx={{ borderRadius: "999px" }} />
+                  <Skeleton variant="rounded" width={78} height={24} sx={{ borderRadius: "999px" }} />
+                  <Skeleton variant="rounded" width={72} height={20} />
+                </Stack>
+              </Stack>
+
+              <Stack spacing={0.75} sx={{ mt: 2 }}>
+                {[92, 74, 84].map((width, row) => (
+                  <Stack key={`kitchen-row-skeleton-${i}-${row}`} direction="row" spacing={1.25} alignItems="center">
+                    <Skeleton variant="circular" width={14} height={14} />
+                    <Skeleton variant="text" width={`${width}%`} height={22} />
+                  </Stack>
+                ))}
+              </Stack>
+
+              <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                <Skeleton variant="rounded" width={124} height={38} sx={{ borderRadius: "12px" }} />
+                <Skeleton variant="rounded" width={98} height={38} sx={{ borderRadius: "12px" }} />
+              </Stack>
             </Paper>
           ))
         ) : visibleOrders.length === 0 ? (
@@ -684,8 +730,8 @@ export default function OrdersPage() {
                   borderRadius: { xs: "22px", md: 4 },
                   border: "1px solid",
                   borderColor: locked ? "rgba(148, 163, 184, 0.24)" : "divider",
-                  borderLeft: `5px solid ${statusStyle.color}`,
-                  backgroundColor: "var(--background)",
+                    borderLeft: `5px solid ${statusStyle.color}`,
+                    backgroundColor: "var(--card)",
                   transition: locked ? "none" : "all 0.25s ease",
                   opacity: locked ? 0.82 : 1,
                   "&:hover": locked
@@ -751,14 +797,14 @@ export default function OrdersPage() {
                 </Stack>
 
                 {order.remarks ? (
-                  <Typography sx={{ mt: 1.5, p: 1.25, borderRadius: "14px", backgroundColor: "rgba(251, 191, 36, 0.14)", fontWeight: 700, color: "#d97706", overflowWrap: "anywhere", fontSize: "0.88rem" }}>
+                  <Typography sx={{ mt: 1.5, p: 1.25, borderRadius: "14px", backgroundColor: "var(--status-neutral-bg)", fontWeight: 700, color: "var(--status-neutral-fg)", overflowWrap: "anywhere", fontSize: "0.88rem" }}>
                     Note: {order.remarks}
                   </Typography>
                 ) : null}
 
                 <Divider sx={{ my: { xs: 1.75, md: 2.5 } }} />
 
-                <Stack spacing={0.75} sx={{ mb: { xs: 2, md: 3 } }}>
+                <Stack spacing={0.75} sx={{ mb: { xs: 2.5, md: 3.5 } }}>
                   {order.items.map((item) => (
                     <Stack
                       key={item.id}
@@ -770,7 +816,7 @@ export default function OrdersPage() {
                         p: 1.1,
                         minWidth: 0,
                         borderRadius: "12px",
-                        backgroundColor: "var(--card)",
+                        backgroundColor: "var(--muted)",
                       }}
                     >
                       <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
@@ -839,8 +885,8 @@ export default function OrdersPage() {
                             fontSize: { xs: "0.76rem", sm: "0.875rem" },
                             fontWeight: 850,
                             textTransform: "none",
-                            backgroundColor: order.status === "ready" ? "#166534" : "var(--primary)",
-                            color: order.status === "ready" ? "#ffffff" : "var(--primary-foreground)",
+                            backgroundColor: order.status === "ready" ? "var(--status-ready-solid-bg)" : "var(--primary)",
+                            color: order.status === "ready" ? "var(--status-ready-solid-fg)" : "var(--primary-foreground)",
                           }}
                         >
                           {isUpdating ? "Updating..." : nextAction.label}
@@ -911,7 +957,7 @@ export default function OrdersPage() {
                   p: 1.5,
                   borderRadius: "16px",
                   border: "1px solid var(--border)",
-                  backgroundColor: "var(--background)",
+                  backgroundColor: "var(--muted)",
                 }}
               >
                 <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">

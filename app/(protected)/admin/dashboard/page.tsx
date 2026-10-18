@@ -34,13 +34,13 @@ const formatCurrency = (value: number, fractionDigits = 0) =>
   })}`;
 
 const statusMeta: Record<OrderStatus, { label: string; color: string; bg: string }> = {
-  pending: { label: "Pending", color: "#d97706", bg: "#fef3c7" },
-  confirmed: { label: "Confirmed", color: "#2563eb", bg: "#dbeafe" },
-  preparing: { label: "Preparing", color: "#6b21a8", bg: "#f3e8ff" },
-  ready: { label: "Ready", color: "#166534", bg: "#dcfce7" },
-  served: { label: "Served", color: "#374151", bg: "#f3f4f6" },
-  cancelled: { label: "Cancelled", color: "#b91c1c", bg: "#fee2e2" },
-  closed: { label: "Closed", color: "#475569", bg: "#e2e8f0" },
+  pending: { label: "Pending", color: "var(--status-pending-fg)", bg: "var(--status-pending-bg)" },
+  confirmed: { label: "Confirmed", color: "var(--status-confirmed-fg)", bg: "var(--status-confirmed-bg)" },
+  preparing: { label: "Preparing", color: "var(--status-preparing-fg)", bg: "var(--status-preparing-bg)" },
+  ready: { label: "Ready", color: "var(--status-ready-fg)", bg: "var(--status-ready-bg)" },
+  served: { label: "Served", color: "var(--status-served-fg)", bg: "var(--status-served-bg)" },
+  cancelled: { label: "Cancelled", color: "var(--status-cancelled-fg)", bg: "var(--status-cancelled-bg)" },
+  closed: { label: "Closed", color: "var(--status-closed-fg)", bg: "var(--status-closed-bg)" },
 };
 
 const statusOrder: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled", "closed"];

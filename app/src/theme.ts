@@ -6,12 +6,13 @@ export function createAppTheme(mode: ThemeMode = "light") {
   const paletteByMode =
     mode === "dark"
       ? {
-          primary: { main: "#f59e0b", contrastText: "#17100b" },
-          secondary: { main: "#33241b", contrastText: "#f6dfc8" },
-          background: { default: "#120f0c", paper: "#1f1a16" },
-          text: { primary: "#f8efe7", secondary: "#d8c0aa" },
-          divider: "#4d3a2d",
-          error: { main: "#f87171" },
+          primary: { main: "#e08061", contrastText: "#2a1008" },
+          secondary: { main: "#203028", contrastText: "#d6e8dd" },
+          background: { default: "#080f0b", paper: "#15211b" },
+          text: { primary: "#f3e2d6", secondary: "#dac5b5" },
+          divider: "#3d4f43",
+          error: { main: "#ff7a66" },
+          warning: { main: "#f0b429" },
         }
       : {
           primary: { main: "#b45309", contrastText: "#fff8ef" },
@@ -36,6 +37,38 @@ export function createAppTheme(mode: ThemeMode = "light") {
           body: {
             backgroundColor: "var(--background)",
             color: "var(--foreground)",
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            fontWeight: 800,
+            letterSpacing: "0.01em",
+          },
+          contained: {
+            boxShadow:
+              "0 10px 24px color-mix(in srgb, var(--primary) 26%, transparent)",
+            "&:hover": {
+              boxShadow:
+                "0 14px 32px color-mix(in srgb, var(--primary) 38%, transparent)",
+              filter: "brightness(1.06)",
+            },
+          },
+          outlined: {
+            borderColor: "var(--border)",
+            "&:hover": {
+              borderColor: "var(--primary)",
+              backgroundColor:
+                "color-mix(in srgb, var(--primary) 10%, transparent)",
+            },
+          },
+          text: {
+            "&:hover": {
+              backgroundColor:
+                "color-mix(in srgb, var(--primary) 10%, transparent)",
+            },
           },
         },
       },
