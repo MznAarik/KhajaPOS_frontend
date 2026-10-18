@@ -17,7 +17,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import ThemeToggle from "@/components/common/ThemeToggle";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, resendVerification } from "@/lib/api";
 import { safeError } from "@/lib/safeError";
 import { useRouter } from "next/navigation";
 
@@ -29,6 +29,8 @@ export default function AuthPage() {
     const [showPassword, setShowPassword] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [verificationRequired, setVerificationRequired] = React.useState(false);
+    const [resending, setResending] = React.useState(false);
     const [hasSession, setHasSession] = React.useState(false);
 
     const { showSnackbar } = useAppSnackbar();
@@ -63,6 +65,7 @@ export default function AuthPage() {
 
         setLoading(true);
         setError(null);
+        setVerificationRequired(false);
 
         try {
             if (!API_BASE) {
@@ -115,6 +118,7 @@ export default function AuthPage() {
         } catch (err) {
             const message = safeError(err, "Login failed");
             setError(message);
+            setVerificationRequired(message.toLowerCase().includes("not verified"));
             const lowered = message.toLowerCase();
             const severity =
                 lowered.includes("not configured") ||
@@ -127,6 +131,20 @@ export default function AuthPage() {
             showSnackbar(message, severity);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        if (!email || resending) return;
+
+        try {
+            setResending(true);
+            const message = await resendVerification(email);
+            showSnackbar(message, "success");
+        } catch (err) {
+            showSnackbar(safeError(err, "Could not resend verification email"), "error");
+        } finally {
+            setResending(false);
         }
     };
 
@@ -245,8 +263,21 @@ export default function AuthPage() {
                     )}
 
                     {error && (
-                        <Alert severity="error" sx={{ borderRadius: "14px" }}>
-                            {error}
+                        <Alert severity={verificationRequired ? "warning" : "error"} sx={{ borderRadius: "14px" }}>
+                            <Stack spacing={1}>
+                                <Typography sx={{ fontWeight: 700 }}>{error}</Typography>
+                                {verificationRequired && (
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        disabled={resending || !email}
+                                        onClick={handleResendVerification}
+                                        sx={{ alignSelf: "flex-start", borderRadius: "10px", fontWeight: 800, textTransform: "none" }}
+                                    >
+                                        {resending ? "Sending..." : "Resend verification email"}
+                                    </Button>
+                                )}
+                            </Stack>
                         </Alert>
                     )}
 

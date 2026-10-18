@@ -30,6 +30,7 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { AuthProvider, useAuth, type SessionUser } from "@/lib/auth-context";
 import RoleGate from "@/components/admin/RoleGate";
+import { getBusinessSettings, resolveMenuImageUrl } from "@/lib/api";
 
 const drawerWidth = 260;
 
@@ -71,6 +72,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
+    const [brand, setBrand] = React.useState<{ name: string; logo: string | null } | null>(null);
     const dashboardIconRef = React.useRef<HouseIconHandle | null>(null);
     const categoryIconRef = React.useRef<ShoppingCartIconHandle | null>(null);
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
@@ -81,6 +83,25 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     React.useEffect(() => {
         mainRef.current?.scrollTo({ top: 0 });
     }, [pathname]);
+
+    React.useEffect(() => {
+        if (isSuperAdmin) return;
+
+        let active = true;
+
+        getBusinessSettings()
+            .then((data) => {
+                if (!active) return;
+                setBrand({ name: data.name, logo: resolveMenuImageUrl(data.logo) });
+            })
+            .catch(() => {
+                // Keep default KhajaPOS branding when no business profile is available.
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [isSuperAdmin]);
 
     const navItems: NavItem[] = isSuperAdmin
         ? [
@@ -105,6 +126,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         orders: "Orders",
         users: "Users",
         restaurants: "Restaurants",
+        settings: "Settings",
     };
 
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
@@ -152,7 +174,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         Workspace
                     </Typography>
                     <Typography sx={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--sidebar-foreground)" }}>
-                        {isSuperAdmin ? "KhajaPOS Super Admin" : "KhajaPOS Admin"}
+                        {isSuperAdmin
+                            ? "KhajaPOS Super Admin"
+                            : brand?.name
+                                ? brand.name
+                                : "KhajaPOS Admin"}
                     </Typography>
                     <Typography sx={{ fontSize: "0.9rem", color: "var(--sidebar-foreground)", opacity: 0.8 }}>
                         {isSuperAdmin
@@ -303,39 +329,74 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 flexShrink: 0,
                             }}
                         >
-                            <Box
-                                sx={{
-                                    width: 34,
-                                    height: 34,
-                                    borderRadius: "11px",
-                                    display: "grid",
-                                    placeItems: "center",
-                                    backgroundImage:
-                                        "linear-gradient(145deg, var(--primary), color-mix(in srgb, var(--primary) 55%, var(--accent)))",
-                                    color: "var(--primary-foreground)",
-                                    fontWeight: 900,
-                                    fontSize: "0.95rem",
-                                    boxShadow: "0 8px 18px color-mix(in srgb, var(--primary) 35%, transparent)",
-                                }}
-                            >
-                                K
-                            </Box>
-                            <Box sx={{ minWidth: 0, lineHeight: 1.1 }}>
-                                <Typography
+                            {brand?.logo ? (
+                                <Box
+                                    component="img"
+                                    src={brand.logo}
+                                    alt=""
                                     sx={{
-                                        fontSize: "0.62rem",
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: "11px",
+                                        objectFit: "cover",
+                                        border: "1px solid var(--border)",
+                                        boxShadow: "0 8px 18px color-mix(in srgb, var(--primary) 25%, transparent)",
+                                    }}
+                                />
+                            ) : (
+                                <Box
+                                    sx={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: "11px",
+                                        display: "grid",
+                                        placeItems: "center",
+                                        backgroundImage:
+                                            "linear-gradient(145deg, var(--primary), color-mix(in srgb, var(--primary) 55%, var(--accent)))",
+                                        color: "var(--primary-foreground)",
                                         fontWeight: 900,
-                                        letterSpacing: "0.2em",
-                                        textTransform: "uppercase",
-                                        color: "var(--muted-foreground)",
+                                        fontSize: "0.95rem",
+                                        boxShadow: "0 8px 18px color-mix(in srgb, var(--primary) 35%, transparent)",
                                     }}
                                 >
-                                    Khaja
-                                </Typography>
-                                <Typography sx={{ fontSize: "0.92rem", fontWeight: 900, color: "var(--foreground)" }}>
-                                    POS
-                                </Typography>
-                            </Box>
+                                    K
+                                </Box>
+                            )}
+                            {brand?.name ? (
+                                <Box sx={{ minWidth: 0, maxWidth: 150 }}>
+                                    <Typography noWrap sx={{ fontSize: "0.92rem", fontWeight: 900, color: "var(--foreground)" }}>
+                                        {brand.name}
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "0.62rem",
+                                            fontWeight: 900,
+                                            letterSpacing: "0.2em",
+                                            textTransform: "uppercase",
+                                            color: "var(--muted-foreground)",
+                                        }}
+                                    >
+                                        POS
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                <Box sx={{ minWidth: 0, lineHeight: 1.1 }}>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "0.62rem",
+                                            fontWeight: 900,
+                                            letterSpacing: "0.2em",
+                                            textTransform: "uppercase",
+                                            color: "var(--muted-foreground)",
+                                        }}
+                                    >
+                                        Khaja
+                                    </Typography>
+                                    <Typography sx={{ fontSize: "0.92rem", fontWeight: 900, color: "var(--foreground)" }}>
+                                        POS
+                                    </Typography>
+                                </Box>
+                            )}
                         </Stack>
                         <Box sx={{ minWidth: 0 }}>
                             <Typography
@@ -380,7 +441,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         sx={{ position: "relative", zIndex: (theme) => theme.zIndex.drawer + 3, pointerEvents: "auto" }}
                     >
                         <ThemeToggle />
-                        <ProfileComponent />
+                        <ProfileComponent showSettings={!isSuperAdmin} logoSrc={brand?.logo ?? null} />
                     </Stack>
                 </Toolbar>
             </AppBar>
