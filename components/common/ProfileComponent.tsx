@@ -5,6 +5,7 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import LoginRoundedIcon from "@mui/icons-material/LoginRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import {
     Avatar,
     Box,
@@ -21,7 +22,13 @@ import { clearAuthSession } from "@/lib/api";
 
 const getInitials = () => "KP";
 
-export default function ProfileComponent() {
+export default function ProfileComponent({
+    showSettings = false,
+    logoSrc = null,
+}: {
+    showSettings?: boolean;
+    logoSrc?: string | null;
+}) {
     const router = useRouter();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
@@ -48,7 +55,12 @@ export default function ProfileComponent() {
 
     const handleEditProfile = () => {
         handleClose();
-        router.push("/user");
+        router.push("/admin/settings");
+    };
+
+    const handleSettings = () => {
+        handleClose();
+        router.push("/admin/settings");
     };
 
     const handleLogout = async () => {
@@ -109,6 +121,8 @@ export default function ProfileComponent() {
                 >
                     {isAuthenticated ? (
                         <Avatar
+                            src={logoSrc ?? undefined}
+                            alt=""
                             sx={{
                                 width: 34,
                                 height: 34,
@@ -118,7 +132,7 @@ export default function ProfileComponent() {
                                 color: "var(--primary-foreground)",
                             }}
                         >
-                            {getInitials()}
+                            {logoSrc ? "" : getInitials()}
                         </Avatar>
                     ) : (
                         <Avatar
@@ -166,12 +180,26 @@ export default function ProfileComponent() {
 
                 {isAuthenticated ? (
                     [
-                        <MenuItem key="edit-profile" onClick={handleEditProfile} sx={{ py: 1.2 }}>
-                            <ListItemIcon>
-                                <ManageAccountsRoundedIcon fontSize="small" sx={{ color: "var(--foreground)" }} />
-                            </ListItemIcon>
-                            Edit Profile
-                        </MenuItem>,
+                        ...(showSettings
+                            ? []
+                            : [
+                                <MenuItem key="edit-profile" onClick={handleEditProfile} sx={{ py: 1.2 }}>
+                                    <ListItemIcon>
+                                        <ManageAccountsRoundedIcon fontSize="small" sx={{ color: "var(--foreground)" }} />
+                                    </ListItemIcon>
+                                    Edit Profile
+                                </MenuItem>,
+                            ]),
+                        ...(showSettings
+                            ? [
+                                <MenuItem key="settings" onClick={handleSettings} sx={{ py: 1.2 }}>
+                                    <ListItemIcon>
+                                        <SettingsRoundedIcon fontSize="small" sx={{ color: "var(--foreground)" }} />
+                                    </ListItemIcon>
+                                    Settings
+                                </MenuItem>,
+                            ]
+                            : []),
                         <MenuItem
                             key="logout"
                             onClick={handleLogout}

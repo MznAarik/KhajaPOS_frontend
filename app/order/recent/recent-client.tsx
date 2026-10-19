@@ -63,24 +63,10 @@ const statusLabel = (status: OrderStatus) => {
   }
 };
 
-const statusColor = (
-  status: OrderStatus
-): "warning" | "info" | "success" | "error" | "default" => {
-  switch (status) {
-    case "pending":
-      return "warning";
-    case "confirmed":
-    case "preparing":
-      return "info";
-    case "ready":
-    case "served":
-      return "success";
-    case "cancelled":
-      return "error";
-    default:
-      return "default";
-  }
-};
+const statusToken = (status: OrderStatus) => ({
+  color: `var(--status-${status}-fg)`,
+  backgroundColor: `var(--status-${status}-bg)`,
+});
 
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -261,16 +247,54 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                 <Paper
                   key={`recent-skeleton-${index}`}
                   sx={{
-                    p: 2,
+                    p: { xs: 1.75, md: 2.25 },
                     borderRadius: "18px",
                     border: "1px solid var(--border)",
-                    backgroundColor: "var(--background)",
+                    backgroundColor: "var(--card)",
                   }}
                 >
-                  <Stack spacing={1.25}>
-                    <Skeleton variant="text" width="45%" height={28} />
-                    <Skeleton variant="rounded" height={8} />
-                    <Skeleton variant="text" width="70%" />
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
+                      <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Skeleton variant="rounded" width={112} height={24} />
+                          <Skeleton variant="rounded" width={74} height={24} sx={{ borderRadius: "999px" }} />
+                          <Skeleton variant="rounded" width={80} height={24} sx={{ borderRadius: "999px" }} />
+                        </Stack>
+                        <Skeleton variant="text" width={150} height={16} />
+                      </Stack>
+                      <Skeleton variant="rounded" width={86} height={22} />
+                    </Stack>
+
+                    <Stack direction="row" spacing={0.5}>
+                      {[0, 1, 2, 3].map((step) => (
+                        <Stack key={`timeline-skeleton-${index}-${step}`} spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
+                          <Skeleton variant="rounded" height={5} sx={{ borderRadius: "999px" }} />
+                          <Skeleton
+                            variant="rounded"
+                            height={9}
+                            sx={{ width: "72%", alignSelf: "center", borderRadius: "999px" }}
+                          />
+                        </Stack>
+                      ))}
+                    </Stack>
+
+                    <Box>
+                      <Divider sx={{ mb: 1 }} />
+                      <Stack spacing={0.75}>
+                        {[62, 46].map((width, row) => (
+                          <Stack
+                            key={`recent-row-skeleton-${index}-${row}`}
+                            direction="row"
+                            justifyContent="space-between"
+                            spacing={1.5}
+                          >
+                            <Skeleton variant="text" width={`${width}%`} height={20} />
+                            <Skeleton variant="text" width="24%" height={20} />
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Box>
                   </Stack>
                 </Paper>
               ))}
@@ -290,7 +314,7 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                       p: { xs: 1.75, md: 2.25 },
                       borderRadius: "18px",
                       border: "1px solid var(--border)",
-                      backgroundColor: "var(--background)",
+                      backgroundColor: "var(--card)",
                     }}
                   >
                     <Stack spacing={1.5}>
@@ -303,8 +327,7 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                             <Chip
                               size="small"
                               label={statusLabel(status)}
-                              color={statusColor(status)}
-                              sx={{ fontWeight: 800 }}
+                              sx={{ fontWeight: 800, ...statusToken(status) }}
                             />
                             {current ? (
                               <Chip
@@ -336,7 +359,9 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                                   sx={{
                                     height: 5,
                                     borderRadius: "999px",
-                                    backgroundColor: reached ? "var(--primary)" : "var(--border)",
+                                    backgroundColor: reached
+                                      ? `var(--status-${step}-fg)`
+                                      : "var(--border)",
                                     transition: "background-color 200ms ease",
                                   }}
                                 />
@@ -345,7 +370,9 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                                     mt: 0.5,
                                     fontSize: { xs: "0.6rem", md: "0.68rem" },
                                     fontWeight: reached ? 800 : 600,
-                                    color: reached ? "var(--primary)" : "var(--muted-foreground)",
+                                    color: reached
+                                      ? `var(--status-${step}-fg)`
+                                      : "var(--muted-foreground)",
                                     textAlign: "center",
                                     whiteSpace: "nowrap",
                                     overflow: "hidden",
@@ -382,8 +409,8 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                         </Box>
                       ) : null}
 
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                        {current && canCustomerConfirmOrder(current.status) ? (
+                      {current && canCustomerConfirmOrder(current.status) ? (
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 0.5 }}>
                           <Button
                             variant="contained"
                             disabled={confirming === order.sessionToken}
@@ -392,15 +419,8 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                           >
                             {confirming === order.sessionToken ? "Confirming..." : "Confirm Order"}
                           </Button>
-                        ) : null}
-                        <Button
-                          variant="outlined"
-                          onClick={() => router.push(`/order/track/${order.sessionToken}`)}
-                          sx={{ borderRadius: "14px", textTransform: "none", fontWeight: 800 }}
-                        >
-                          Track Order
-                        </Button>
-                      </Stack>
+                        </Stack>
+                      ) : null}
                     </Stack>
                   </Paper>
                 );

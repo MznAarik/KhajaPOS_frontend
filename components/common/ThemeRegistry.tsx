@@ -90,7 +90,7 @@ const readThemeVar = (name: string, mode: ThemeMode, fallback: string) => {
 const prefersReducedMotion = () =>
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-type DropletPhase = "start" | "expand" | "swap" | "fade";
+type DropletPhase = "start" | "expand" | "fade";
 
 interface DropletState {
     id: number;
@@ -102,10 +102,9 @@ interface DropletState {
     phase: DropletPhase;
 }
 
-const DROP_EXPAND_MS = 950;
-const DROP_SWAP_MS = 1000;
-const DROP_FADE_DELAY_MS = 1260;
-const DROP_TOTAL_MS = 1780;
+const DROP_EXPAND_MS = 850;
+const DROP_FADE_DELAY_MS = 1000;
+const DROP_TOTAL_MS = 1500;
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -146,6 +145,9 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
             busyRef.current = true;
             clearTimers();
 
+            setMode(nextMode);
+            applyThemeMode(nextMode, storageKey);
+
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             const x = origin?.x ?? vw / 2;
@@ -157,7 +159,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                 nextMode,
                 nextMode === "dark" ? "#0b100c" : "#faf6f0"
             );
-            const glow = readThemeVar("--primary", nextMode, nextMode === "dark" ? "#f6a313" : "#b45309");
+            const glow = readThemeVar("--primary", nextMode, nextMode === "dark" ? "#e08061" : "#b45309");
 
             setDroplet({ id: Date.now(), x, y, radius, background, glow, phase: "start" });
 
@@ -168,11 +170,6 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
             });
 
             timersRef.current.push(
-                window.setTimeout(() => {
-                    setDroplet((prev) => (prev ? { ...prev, phase: "swap" } : prev));
-                    setMode(nextMode);
-                    applyThemeMode(nextMode, storageKey);
-                }, DROP_SWAP_MS),
                 window.setTimeout(() => {
                     setDroplet((prev) => (prev ? { ...prev, phase: "fade" } : prev));
                 }, DROP_FADE_DELAY_MS),
@@ -191,6 +188,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
         droplet === null ? null : (
             <Box
                 aria-hidden="true"
+                data-phase={droplet.phase}
                 sx={{
                     position: "fixed",
                     inset: 0,
@@ -205,17 +203,17 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                     key={`${droplet.id}-body`}
                     sx={{
                         position: "absolute",
-                        left: droplet.x,
-                        top: droplet.y,
+                        left: droplet.x - droplet.radius,
+                        top: droplet.y - droplet.radius,
                         width: droplet.radius * 2,
                         height: droplet.radius * 2,
-                        marginLeft: -droplet.radius,
-                        marginTop: -droplet.radius,
                         borderRadius: "50%",
-                        backgroundImage: `radial-gradient(circle at 34% 26%, color-mix(in srgb, ${droplet.background} 86%, white), ${droplet.background} 54%, color-mix(in srgb, ${droplet.background} 88%, black))`,
+                        backgroundImage: `radial-gradient(circle at 34% 26%, color-mix(in srgb, ${droplet.background} 64%, transparent), color-mix(in srgb, ${droplet.background} 46%, transparent) 55%, color-mix(in srgb, ${droplet.background} 24%, transparent))`,
+                        backdropFilter: "blur(6px) saturate(1.4)",
+                        WebkitBackdropFilter: "blur(6px) saturate(1.4)",
                         transform: droplet.phase === "start" ? "scale(0)" : "scale(1)",
                         transition: `transform ${DROP_EXPAND_MS}ms cubic-bezier(0.3, 0.65, 0.2, 1)`,
-                        boxShadow: `0 0 110px 22px color-mix(in srgb, ${droplet.glow} 30%, transparent), inset 0 0 140px color-mix(in srgb, ${droplet.glow} 20%, transparent)`,
+                        boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${droplet.glow} 55%, transparent), inset 0 0 130px color-mix(in srgb, ${droplet.glow} 24%, transparent), 0 0 90px 18px color-mix(in srgb, ${droplet.glow} 22%, transparent)`,
                     }}
                 >
                     <Box
@@ -238,12 +236,10 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                     key={`${droplet.id}-ripple`}
                     sx={{
                         position: "absolute",
-                        left: droplet.x,
-                        top: droplet.y,
+                        left: droplet.x - droplet.radius,
+                        top: droplet.y - droplet.radius,
                         width: droplet.radius * 2,
                         height: droplet.radius * 2,
-                        marginLeft: -droplet.radius,
-                        marginTop: -droplet.radius,
                         borderRadius: "50%",
                         border: `2px solid color-mix(in srgb, ${droplet.glow} 70%, transparent)`,
                         transform: droplet.phase === "start" ? "scale(0.08)" : "scale(1.2)",
