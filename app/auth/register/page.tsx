@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 
 import {
@@ -21,6 +21,7 @@ import {
     Visibility,
     VisibilityOff,
     StorefrontRounded,
+    CloudUploadRounded,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -41,6 +42,9 @@ const businessTypes = [
 export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+    const logoInputRef = useRef<HTMLInputElement | null>(null);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -59,6 +63,29 @@ export default function RegisterPage() {
 
     const router = useRouter();
     const { showSnackbar } = useAppSnackbar();
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        e.target.value = "";
+
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            showSnackbar("Please choose an image file (JPG, PNG or WebP).", "warning");
+            return;
+        }
+
+        if (file.size > 4 * 1024 * 1024) {
+            showSnackbar("Logo must be smaller than 4 MB.", "warning");
+            return;
+        }
+
+        setLogoFile(file);
+        setLogoPreviewUrl((previous) => {
+            if (previous) URL.revokeObjectURL(previous);
+            return URL.createObjectURL(file);
+        });
+    };
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
@@ -87,14 +114,38 @@ export default function RegisterPage() {
 
         try {
             setLoading(true);
+
+            const submitData = new FormData();
+            submitData.append("name", formData.name);
+            submitData.append("email", formData.email);
+            submitData.append("password", formData.password);
+            submitData.append("role", formData.role);
+            submitData.append("business[name]", formData.business.name);
+            submitData.append("business[business_type]", formData.business.business_type);
+            submitData.append("business[phone]", formData.business.phone);
+            submitData.append("business[email]", formData.business.email);
+            submitData.append("business[address]", formData.business.address);
+            if (logoFile) {
+                submitData.append("business[logo]", logoFile);
+            }
+
             const res = await axios.post(
                 `${process.env.NEXT_PUBLIC_API_URL}/register`,
-                formData
+                submitData
             );
 
-            showSnackbar("Registration successful", "success");
+            const message =
+                res?.data?.message ??
+                "Account created successfully. Please check your email to verify your account before logging in.";
 
-            router.push("/auth/login");
+            showSnackbar(message, "success");
+
+            router.push(
+                "/auth/login?message=" +
+                    encodeURIComponent(
+                        "Account created — check your email (including spam) for the verification link."
+                    )
+            );
 
         } catch (error: any) {
             console.error(error?.response?.data || error);
@@ -449,7 +500,7 @@ export default function RegisterPage() {
                                                 />
                                             </Box>
 
-                                            <Box sx={{ gridColumn: "1 / -1" }}>
+                    <Box sx={{ gridColumn: "1 / -1" }}>
                                                 <TextField
                                                     fullWidth
                                                     multiline
@@ -463,6 +514,66 @@ export default function RegisterPage() {
                                                     onChange={handleChange}
                                                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "14px", backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)" } }}
                                                 />
+                                            </Box>
+
+                                            <Box sx={{ gridColumn: "1 / -1" }}>
+                                                <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, mb: 1, color: "var(--muted-foreground)" }}>
+                                                    Brand logo (optional)
+                                                </Typography>
+                                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                                    <Box
+                                                        sx={{
+                                                            width: 56,
+                                                            height: 56,
+                                                            borderRadius: "14px",
+                                                            border: "1px dashed var(--border)",
+                                                            backgroundColor: "color-mix(in srgb, var(--background) 48%, transparent)",
+                                                            display: "grid",
+                                                            placeItems: "center",
+                                                            overflow: "hidden",
+                                                            flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        {logoPreviewUrl ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <Box
+                                                                component="img"
+                                                                src={logoPreviewUrl}
+                                                                alt="Logo preview"
+                                                                sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                            />
+                                                        ) : (
+                                                            <StorefrontRounded sx={{ fontSize: 24, color: "var(--muted-foreground)" }} />
+                                                        )}
+                                                    </Box>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outlined"
+                                                        component="button"
+                                                        startIcon={<CloudUploadRounded />}
+                                                        onClick={() => logoInputRef.current?.click()}
+                                                        sx={{
+                                                            borderRadius: "12px",
+                                                            fontWeight: 700,
+                                                            textTransform: "none",
+                                                            borderColor: "var(--border)",
+                                                            color: "var(--foreground)",
+                                                            "&:hover": { borderColor: "var(--primary)" },
+                                                        }}
+                                                    >
+                                                        {logoFile ? "Change logo" : "Upload logo"}
+                                                    </Button>
+                                                    <input
+                                                        ref={logoInputRef}
+                                                        type="file"
+                                                        accept="image/png,image/jpeg,image/webp"
+                                                        hidden
+                                                        onChange={handleLogoChange}
+                                                    />
+                                                </Stack>
+                                                <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", mt: 0.75 }}>
+                                                    JPG, PNG or WebP up to 4 MB. Shows on your admin panel and customer menu.
+                                                </Typography>
                                             </Box>
                                         </Box>
                                     </Box>

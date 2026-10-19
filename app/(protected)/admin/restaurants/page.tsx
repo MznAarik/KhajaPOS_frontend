@@ -297,8 +297,8 @@ export default function SuperAdminRestaurantsPage() {
         fontWeight: 800,
         fontSize: "0.74rem",
         cursor: "pointer",
-        color: active ? "#166534" : "#991b1b",
-        backgroundColor: active ? "#dcfce7" : "#fee2e2",
+        color: active ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+        backgroundColor: active ? "var(--status-active-bg)" : "var(--status-inactive-bg)",
     });
 
     const renderStats = (business: SuperAdminBusiness) => (
@@ -777,9 +777,9 @@ export default function SuperAdminRestaurantsPage() {
                                             fontWeight: 800,
                                             height: 32,
                                             border: "1px solid var(--border)",
-                                            color: dialogState.isActive === value ? (value ? "#166534" : "#991b1b") : "var(--muted-foreground)",
+                                            color: dialogState.isActive === value ? (value ? "var(--status-active-fg)" : "var(--status-inactive-fg)") : "var(--muted-foreground)",
                                             backgroundColor:
-                                                dialogState.isActive === value ? (value ? "#dcfce7" : "#fee2e2") : "transparent",
+                                                dialogState.isActive === value ? (value ? "var(--status-active-bg)" : "var(--status-inactive-bg)") : "transparent",
                                         }}
                                     />
                                 ))}

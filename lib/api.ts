@@ -283,7 +283,7 @@ export type PublicMenuCategory = {
 
 export type PublicTableMenu = {
   table: AdminTable;
-  business: { id: number; name: string } | null;
+  business: { id: number; name: string; logo?: string | null } | null;
   categories: PublicMenuCategory[];
 };
 
@@ -371,7 +371,7 @@ type PublicMenuResponse = {
   status: number;
   data: {
     table: AdminTableResponse;
-    business?: { id: number; name: string } | null;
+    business?: { id: number; name: string; logo?: string | null } | null;
     categories: MenuCategoryResponse[];
   };
 };
@@ -806,8 +806,14 @@ type DashboardResponse = {
   data: DashboardStats;
 };
 
-export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const res = await api.get<DashboardResponse>("/admin/dashboard");
+export type DashboardPeriod = "daily" | "weekly" | "monthly";
+
+export const getDashboardStats = async (
+  period: DashboardPeriod = "daily",
+): Promise<DashboardStats> => {
+  const res = await api.get<DashboardResponse>(
+    `/admin/dashboard?period=${period}`,
+  );
   const data = unwrapApiData<DashboardStats>(res.data);
 
   return {
@@ -1301,4 +1307,47 @@ export const updateSuperAdminBusiness = async (payload: {
 
 export const deleteSuperAdminBusiness = async (id: number) => {
   await api.delete(`/superadmin/businesses/${id}`);
+};
+
+export type BusinessSettings = {
+  id: number;
+  name: string;
+  logo: string | null;
+  business_type: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+};
+
+export const getBusinessSettings = async (): Promise<BusinessSettings> => {
+  const res = await api.get("/admin/business");
+  return unwrapApiData<BusinessSettings>(res.data);
+};
+
+export const updateBusinessSettings = async (payload: {
+  name: string;
+  logoFile?: File | null;
+}): Promise<BusinessSettings> => {
+  const formData = new FormData();
+  formData.append("name", payload.name.trim());
+  if (payload.logoFile) {
+    formData.append("logo", payload.logoFile);
+  }
+
+  const res = await api.post("/admin/business", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return unwrapApiData<BusinessSettings>(res.data);
+};
+
+export const verifyEmail = async (token: string): Promise<string> => {
+  const res = await api.post("/verify-email", { token });
+  const payload = res.data as { message?: string };
+  return payload.message ?? "Email verified successfully.";
+};
+
+export const resendVerification = async (email: string): Promise<string> => {
+  const res = await api.post("/resend-verification", { email });
+  const payload = res.data as { message?: string };
+  return payload.message ?? "Verification email sent.";
 };

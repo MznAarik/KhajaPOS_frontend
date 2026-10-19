@@ -719,8 +719,8 @@ export default function SuperAdminUsersPage() {
                                         height: 24,
                                         fontWeight: 800,
                                         fontSize: "0.7rem",
-                                        color: isOwner ? "#166534" : "var(--muted-foreground)",
-                                        backgroundColor: isOwner ? "#dcfce7" : "color-mix(in srgb, var(--muted) 70%, transparent)",
+                                        color: isOwner ? "var(--status-active-fg)" : "var(--muted-foreground)",
+                                        backgroundColor: isOwner ? "var(--status-active-bg)" : "color-mix(in srgb, var(--muted) 70%, transparent)",
                                     }}
                                 />
                             </Stack>

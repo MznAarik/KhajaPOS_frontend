@@ -12,6 +12,8 @@ import {
   Paper,
   Skeleton,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
@@ -22,7 +24,12 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import TableRestaurantOutlinedIcon from "@mui/icons-material/TableRestaurantOutlined";
 import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlined";
 import WhatshotOutlinedIcon from "@mui/icons-material/WhatshotOutlined";
-import { getDashboardStats, type DashboardStats, type OrderStatus } from "@/lib/api";
+import {
+  getDashboardStats,
+  type DashboardPeriod,
+  type DashboardStats,
+  type OrderStatus,
+} from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
@@ -34,13 +41,13 @@ const formatCurrency = (value: number, fractionDigits = 0) =>
   })}`;
 
 const statusMeta: Record<OrderStatus, { label: string; color: string; bg: string }> = {
-  pending: { label: "Pending", color: "#d97706", bg: "#fef3c7" },
-  confirmed: { label: "Confirmed", color: "#2563eb", bg: "#dbeafe" },
-  preparing: { label: "Preparing", color: "#6b21a8", bg: "#f3e8ff" },
-  ready: { label: "Ready", color: "#166534", bg: "#dcfce7" },
-  served: { label: "Served", color: "#374151", bg: "#f3f4f6" },
-  cancelled: { label: "Cancelled", color: "#b91c1c", bg: "#fee2e2" },
-  closed: { label: "Closed", color: "#475569", bg: "#e2e8f0" },
+  pending: { label: "Pending", color: "var(--status-pending-fg)", bg: "var(--status-pending-bg)" },
+  confirmed: { label: "Confirmed", color: "var(--status-confirmed-fg)", bg: "var(--status-confirmed-bg)" },
+  preparing: { label: "Preparing", color: "var(--status-preparing-fg)", bg: "var(--status-preparing-bg)" },
+  ready: { label: "Ready", color: "var(--status-ready-fg)", bg: "var(--status-ready-bg)" },
+  served: { label: "Served", color: "var(--status-served-fg)", bg: "var(--status-served-bg)" },
+  cancelled: { label: "Cancelled", color: "var(--status-cancelled-fg)", bg: "var(--status-cancelled-bg)" },
+  closed: { label: "Closed", color: "var(--status-closed-fg)", bg: "var(--status-closed-bg)" },
 };
 
 const statusOrder: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled", "closed"];
@@ -125,28 +132,43 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = React.useState<DashboardStats | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [period, setPeriod] = React.useState<DashboardPeriod>("daily");
   const { showSnackbar } = useAppSnackbar();
 
-  const fetchStats = React.useCallback(async () => {
-    try {
-      const data = await getDashboardStats();
-      setStats(data);
-    } catch (error) {
-      console.error("Failed to fetch dashboard:", error);
-      showSnackbar(safeError(error, "Failed to load dashboard."), "error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [showSnackbar]);
+  const fetchStats = React.useCallback(
+    async (requestedPeriod: DashboardPeriod = "daily") => {
+      try {
+        const data = await getDashboardStats(requestedPeriod);
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to fetch dashboard:", error);
+        showSnackbar(safeError(error, "Failed to load dashboard."), "error");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [showSnackbar],
+  );
 
   React.useEffect(() => {
-    fetchStats();
+    fetchStats(period);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchStats]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchStats();
+    fetchStats(period);
+  };
+
+  const handlePeriodChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    next: DashboardPeriod | null,
+  ) => {
+    if (!next || next === period) return;
+    setPeriod(next);
+    setRefreshing(true);
+    fetchStats(next);
   };
 
   if (loading) {
@@ -158,7 +180,7 @@ export default function AdminDashboardPage() {
             <Skeleton key={index} variant="rounded" height={110} sx={{ borderRadius: "20px" }} />
           ))}
         </Box>
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.7fr 1fr" }, gap: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr" }, gap: 2 }}>
           <Skeleton variant="rounded" height={340} sx={{ borderRadius: "22px" }} />
           <Skeleton variant="rounded" height={340} sx={{ borderRadius: "22px" }} />
         </Box>
@@ -276,7 +298,7 @@ export default function AdminDashboardPage() {
         />
       </Box>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.7fr 1fr" }, gap: { xs: 2, md: 2.5 }, minWidth: 0 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr" }, gap: { xs: 2, md: 2.5 }, minWidth: 0 }}>
         <Paper
           elevation={0}
           sx={{
@@ -292,7 +314,8 @@ export default function AdminDashboardPage() {
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>Sales Overview</Typography>
               <Typography sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}>
-                Revenue across the last {salesTrend.length} recorded days
+                Revenue across the last {salesTrend.length}{" "}
+                {period === "daily" ? "days" : period === "weekly" ? "weeks" : "months"}
               </Typography>
             </Box>
             <Box sx={{ textAlign: "right", flexShrink: 0 }}>
@@ -303,6 +326,46 @@ export default function AdminDashboardPage() {
                 </Typography>
               ) : null}
             </Box>
+          </Stack>
+
+          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={period}
+              onChange={handlePeriodChange}
+              aria-label="Sales overview period"
+              sx={{
+                "& .MuiToggleButtonGroup-grouped": {
+                  border: "1px solid var(--border) !important",
+                  borderRadius: "10px !important",
+                  margin: "0 5px 0 0 !important",
+                  px: { xs: 1, md: 1.4 },
+                  py: 0.4,
+                  fontSize: { xs: "0.7rem", md: "0.76rem" },
+                  fontWeight: 800,
+                  textTransform: "none",
+                  color: "var(--muted-foreground)",
+                  "&.Mui-selected": {
+                    backgroundColor: "var(--primary) !important",
+                    color: "var(--primary-foreground) !important",
+                    borderColor: "var(--primary) !important",
+                  },
+                },
+                "& .MuiToggleButtonGroup-grouped:not(:last-of-type)": {
+                  borderTopRightRadius: "10px !important",
+                  borderBottomRightRadius: "10px !important",
+                },
+                "& .MuiToggleButtonGroup-grouped:not(:first-of-type)": {
+                  borderTopLeftRadius: "10px !important",
+                  borderBottomLeftRadius: "10px !important",
+                },
+              }}
+            >
+              <ToggleButton value="daily">Daily</ToggleButton>
+              <ToggleButton value="weekly">Weekly</ToggleButton>
+              <ToggleButton value="monthly">Monthly</ToggleButton>
+            </ToggleButtonGroup>
           </Stack>
 
           <Box sx={{ mt: 2 }}>

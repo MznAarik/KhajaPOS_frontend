@@ -18,7 +18,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   canCustomerCancelOrder,
   canCustomerConfirmOrder,
@@ -57,6 +57,7 @@ type RecentOrderSummary = {
 };
 
 const getCartStorageKey = (tableCode: string) => `khajapos-cart:${tableCode}`;
+const MAX_INLINE_ORDERS = 2;
 const getLatestOrderStorageKey = (tableId: number | string) => `khajapos-latest-order:${tableId}`;
 const getOrderListStorageKey = (tableId: number | string) => `khajapos-order-list:${tableId}`;
 const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-order:${tableId}`;
@@ -75,19 +76,19 @@ const ORDER_STATUS_FLOW: OrderStatus[] = ["pending", "confirmed", "preparing", "
 const orderStatusAccent = (status: OrderStatus) => {
   switch (status) {
     case "pending":
-      return "#d97706";
+      return "var(--status-pending-fg)";
     case "confirmed":
-      return "#2563eb";
+      return "var(--status-confirmed-fg)";
     case "preparing":
-      return "#7c3aed";
+      return "var(--status-preparing-fg)";
     case "ready":
-      return "#16a34a";
+      return "var(--status-ready-fg)";
     case "served":
-      return "#0f766e";
+      return "var(--status-served-fg)";
     case "cancelled":
-      return "#dc2626";
+      return "var(--status-cancelled-fg)";
     default:
-      return "#64748b";
+      return "var(--muted-foreground)";
   }
 };
 
@@ -128,9 +129,9 @@ function OrderStatusTimeline({ status }: { status: OrderStatus }) {
           borderRadius: "12px",
           fontSize: "0.78rem",
           fontWeight: 700,
-          color: "#dc2626",
-          backgroundColor: "color-mix(in srgb, #dc2626 10%, transparent)",
-          border: "1px solid color-mix(in srgb, #dc2626 38%, transparent)",
+        color: "var(--status-cancelled-fg)",
+        backgroundColor: "color-mix(in srgb, var(--status-cancelled-fg) 10%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--status-cancelled-fg) 38%, transparent)",
         }}
       >
         This order was cancelled.
@@ -194,10 +195,10 @@ const formatPrice = (value: string | number) => {
 };
 
 const vegMarkTone = {
-  veg: { color: "#16a34a", label: "Veg" },
-  vegan: { color: "#0d9488", label: "Vegan" },
-  egg: { color: "#d97706", label: "Egg" },
-  "non-veg": { color: "#dc2626", label: "Non-veg" },
+  veg: { color: "var(--food-veg)", label: "Veg" },
+  vegan: { color: "var(--food-vegan)", label: "Vegan" },
+  egg: { color: "var(--food-egg)", label: "Egg" },
+  "non-veg": { color: "var(--food-nonveg)", label: "Non-veg" },
 } as const;
 
 function VegMark({ foodType }: { foodType: PublicMenuItem["foodType"] }) {
@@ -263,6 +264,7 @@ const qtyBumpSx = {
 
 export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
+  const router = useRouter();
   const { showSnackbar } = useAppSnackbar();
   const tableCode = params.tableCode;
 
@@ -786,25 +788,44 @@ export default function TableOrderPage() {
           p: { xs: 1.5, md: 3 },
           borderRadius: { xs: "18px", md: "24px" },
           border: "1px solid var(--border)",
-          backgroundColor: "var(--card)",
+          backgroundColor: "var(--muted)",
           boxShadow: "0 14px 34px color-mix(in srgb, var(--foreground) 8%, transparent)",
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
           {/* Left Side */}
           <Stack spacing={1} sx={{ flex: 1 }}>
-            {!loading && menu?.business?.name ? (
-              <Typography
-                sx={{
-                  fontSize: { xs: "0.7rem", md: "0.78rem" },
-                  fontWeight: 900,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  color: "var(--primary)",
-                }}
-              >
-                {menu.business.name}
-              </Typography>
+            {loading ? (
+              <Skeleton variant="rounded" width={140} height={14} sx={{ borderRadius: "999px" }} />
+            ) : menu?.business?.name ? (
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                {menu.business.logo ? (
+                  <Box
+                    component="img"
+                    src={resolveMenuImageUrl(menu.business.logo) ?? undefined}
+                    alt=""
+                    sx={{
+                      width: { xs: 26, md: 30 },
+                      height: { xs: 26, md: 30 },
+                      borderRadius: "8px",
+                      objectFit: "cover",
+                      border: "1px solid var(--border)",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : null}
+                <Typography
+                  sx={{
+                    fontSize: { xs: "0.7rem", md: "0.78rem" },
+                    fontWeight: 900,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "var(--primary)",
+                  }}
+                >
+                  {menu.business.name}
+                </Typography>
+              </Stack>
             ) : null}
             {loading ? (
               <Skeleton variant="rounded" width={124} height={32} sx={{ borderRadius: "999px" }} />
@@ -867,7 +888,7 @@ export default function TableOrderPage() {
             p: { xs: 2, md: 2.5 },
             borderRadius: "18px",
             border: "1px solid var(--border)",
-            backgroundColor: "var(--card)",
+            backgroundColor: "var(--muted)",
           }}
         >
           <Stack spacing={2}>
@@ -890,7 +911,7 @@ export default function TableOrderPage() {
                 alignContent: "start",
               }}
             >
-              {orderedOrders.map((item) => {
+              {orderedOrders.slice(0, MAX_INLINE_ORDERS).map((item) => {
                 const current = recentOrderStatuses[item.sessionToken];
                 const status: OrderStatus = current?.status ?? "pending";
                 const accent = orderStatusAccent(status);
@@ -909,7 +930,7 @@ export default function TableOrderPage() {
                       borderRadius: "16px",
                       border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
                       borderLeft: `4px solid ${accent}`,
-                      backgroundColor: "var(--background)",
+                      backgroundColor: "var(--muted)",
                       opacity: isCancelled ? 0.82 : 1,
                     }}
                   >
@@ -997,11 +1018,31 @@ export default function TableOrderPage() {
                 );
               })}
             </Box>
+
+            {orderedOrders.length > MAX_INLINE_ORDERS ? (
+              <Button
+                variant="outlined"
+                onClick={() => router.push(`/order/recent?tableCode=${encodeURIComponent(tableCode)}`)}
+                endIcon={
+                  <Box component="span" sx={{ fontWeight: 900 }}>
+                    →
+                  </Box>
+                }
+                sx={{
+                  alignSelf: { xs: "stretch", sm: "flex-start" },
+                  borderRadius: "14px",
+                  textTransform: "none",
+                  fontWeight: 800,
+                }}
+              >
+                Recent orders ({orderedOrders.length})
+              </Button>
+            ) : null}
           </Stack>
         </Paper>
       ) : null}
       {message ? (
-        <Paper sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <Paper sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
           <Typography>{message}</Typography>
         </Paper>
       ) : null}
@@ -1009,14 +1050,129 @@ export default function TableOrderPage() {
       <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, alignContent: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 360px" } }}>
         <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, alignContent: "start", minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)" }}>
           {loading ? (
-            // Skeleton remains same
-            Array.from({ length: 2 }, (_, categoryIndex) => (
-              <Paper key={`menu-category-skeleton-${categoryIndex}`} sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                {/* Skeleton content unchanged */}
+            <Stack spacing={{ xs: 1.25, md: 2 }}>
+              <Paper
+                sx={{
+                  p: { xs: 0.75, md: 1 },
+                  borderRadius: { xs: "16px", md: "18px" },
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Skeleton variant="rounded" width={44} height={14} />
+                <Stack direction="row" spacing={0.75}>
+                  {[60, 54, 78, 64].map((width, index) => (
+                    <Skeleton
+                      key={`diet-skeleton-${index}`}
+                      variant="rounded"
+                      width={width}
+                      height={30}
+                      sx={{ borderRadius: "999px" }}
+                    />
+                  ))}
+                </Stack>
               </Paper>
-            ))
+
+              <Paper
+                sx={{
+                  p: { xs: 0.75, md: 1 },
+                  borderRadius: { xs: "16px", md: "18px" },
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  overflow: "hidden",
+                }}
+              >
+                <Skeleton variant="rounded" width={48} height={14} />
+                <Stack direction="row" spacing={0.75}>
+                  {[66, 82, 74, 90, 62].map((width, index) => (
+                    <Skeleton
+                      key={`chip-skeleton-${index}`}
+                      variant="rounded"
+                      width={width}
+                      height={32}
+                      sx={{ borderRadius: "999px" }}
+                    />
+                  ))}
+                </Stack>
+              </Paper>
+
+              {Array.from({ length: 2 }, (_, categoryIndex) => (
+                <Paper
+                  key={`menu-category-skeleton-${categoryIndex}`}
+                  sx={{
+                    p: { xs: 1.25, md: 3 },
+                    borderRadius: { xs: "18px", md: "22px" },
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--muted)",
+                    boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
+                  }}
+                >
+                  <Stack spacing={{ xs: 1.25, md: 2 }}>
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Skeleton variant="circular" width={8} height={8} />
+                      <Skeleton variant="rounded" sx={{ width: { xs: "48%", sm: "30%" } }} height={18} />
+                      <Box sx={{ flex: 1, minWidth: 20, height: "1px", backgroundColor: "var(--border)" }} />
+                      <Skeleton variant="rounded" width={54} height={12} />
+                    </Stack>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" },
+                        gap: { xs: 1, md: 2 },
+                      }}
+                    >
+                      {Array.from({ length: 4 }, (_, itemIndex) => (
+                        <Paper
+                          key={`item-skeleton-${categoryIndex}-${itemIndex}`}
+                          sx={{
+                            p: { xs: 1, md: 2 },
+                            borderRadius: { xs: "15px", md: "18px" },
+                            border: "1px solid var(--border)",
+                            backgroundColor: "var(--muted)",
+                          }}
+                        >
+                          <Stack direction="row" spacing={{ xs: 1, md: 2 }} alignItems="stretch">
+                            <Skeleton
+                              variant="rounded"
+                              sx={{
+                                width: { xs: 82, sm: 108 },
+                                height: { xs: 82, sm: 108 },
+                                borderRadius: { xs: "13px", sm: "16px" },
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0, py: 0.25 }}>
+                              <Skeleton variant="rounded" width="70%" height={16} />
+                              <Skeleton variant="text" width="92%" height={13} />
+                              <Skeleton variant="text" width="58%" height={13} />
+                              <Stack
+                                direction="row"
+                                alignItems="center"
+                                justifyContent="space-between"
+                                sx={{ mt: "auto" }}
+                              >
+                                <Skeleton variant="rounded" width={66} height={16} />
+                                <Skeleton variant="rounded" width={72} height={30} sx={{ borderRadius: "999px" }} />
+                              </Stack>
+                            </Stack>
+                          </Stack>
+                        </Paper>
+                      ))}
+                    </Box>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
           ) : !menu || menu.categories.length === 0 ? (
-            <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
               <Stack spacing={1} alignItems="center" sx={{ textAlign: "center" }}>
                 <Typography sx={{ fontSize: "2rem", lineHeight: 1 }}>🍽️</Typography>
                 <Typography sx={{ fontWeight: 800 }}>Menu coming soon</Typography>
@@ -1033,7 +1189,7 @@ export default function TableOrderPage() {
                 p: { xs: 0.75, md: 1 },
                 borderRadius: { xs: "16px", md: "18px" },
                 border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--muted)",
                 backdropFilter: "blur(10px)",
                 mb: { xs: 1, md: 1.5 },
                 display: "flex",
@@ -1115,7 +1271,7 @@ export default function TableOrderPage() {
                 p: { xs: 0.75, md: 1 },
                 borderRadius: { xs: "16px", md: "18px" },
                 border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
+                backgroundColor: "var(--muted)",
                 backdropFilter: "blur(10px)",
                 display: "flex",
                 alignItems: "center",
@@ -1196,7 +1352,7 @@ export default function TableOrderPage() {
                   p: { xs: 1.25, md: 3 },
                   borderRadius: { xs: "18px", md: "22px" },
                   border: "1px solid var(--border)",
-                  backgroundColor: "var(--card)",
+                  backgroundColor: "var(--muted)",
                   boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
                 }}
               >
@@ -1280,8 +1436,8 @@ export default function TableOrderPage() {
                                 : "1px solid var(--border)",
                             backgroundColor:
                               quantity > 0
-                                ? "color-mix(in srgb, var(--primary) 6%, var(--card))"
-                                : "color-mix(in srgb, var(--card) 86%, var(--background) 14%)",
+                                ? "color-mix(in srgb, var(--primary) 8%, var(--muted))"
+                                : "var(--muted)",
                             boxShadow:
                               quantity > 0
                                 ? "0 8px 20px color-mix(in srgb, var(--primary) 14%, transparent)"
@@ -1488,7 +1644,7 @@ export default function TableOrderPage() {
                 p: { xs: 2, md: 3 },
                 borderRadius: { xs: "18px", md: "22px" },
                 border: "1px dashed var(--border)",
-                backgroundColor: "color-mix(in srgb, var(--card) 88%, var(--background) 12%)",
+                backgroundColor: "var(--muted)",
                 textAlign: "center",
               }}
             >
@@ -1511,7 +1667,7 @@ export default function TableOrderPage() {
           ) : null}
         </Box>
 
-        <Paper sx={{ display: { xs: "none", lg: "block" }, p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
+        <Paper sx={{ display: { xs: "none", lg: "block" }, p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)", height: "fit-content", position: { lg: "sticky" }, top: { lg: 24 } }}>
           <Stack spacing={2}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Your Cart
@@ -1524,6 +1680,12 @@ export default function TableOrderPage() {
                     <Skeleton variant="text" width="25%" height={24} />
                   </Stack>
                 ))}
+                <Box sx={{ height: "1px", backgroundColor: "var(--border)", my: 0.5 }} />
+                <Stack direction="row" justifyContent="space-between">
+                  <Skeleton variant="text" width="38%" height={26} />
+                  <Skeleton variant="text" width="30%" height={26} />
+                </Stack>
+                <Skeleton variant="rounded" width="100%" height={44} sx={{ borderRadius: "14px", mt: 0.5 }} />
               </Stack>
             ) : cartItems.length === 0 ? (
               <Stack
@@ -1601,7 +1763,7 @@ export default function TableOrderPage() {
               pointerEvents: "auto",
               borderRadius: "22px",
               border: "1px solid var(--border)",
-              backgroundColor: "color-mix(in srgb, var(--card) 96%, transparent)",
+                   backgroundColor: "color-mix(in srgb, var(--muted) 96%, transparent)",
               backdropFilter: "blur(18px)",
               boxShadow: "0 18px 46px rgba(31, 42, 43, 0.22)",
               overflow: "hidden",
@@ -1722,7 +1884,7 @@ export default function TableOrderPage() {
             borderRadius: "24px",
             overflow: "hidden",
             border: "1px solid var(--border)",
-            backgroundColor: "var(--card)",
+            backgroundColor: "var(--muted)",
           },
         }}
       >
@@ -1735,10 +1897,10 @@ export default function TableOrderPage() {
               <Box
                 sx={{
                   minHeight: { xs: 240, sm: 340 },
-                  maxHeight: { xs: "58vh", sm: "64vh" },
-                  borderRadius: "20px",
-                  overflow: "auto",
-                  backgroundColor: "var(--background)",
+                   maxHeight: { xs: "58vh", sm: "64vh" },
+                   borderRadius: "20px",
+                   overflow: "auto",
+                   backgroundColor: "var(--muted)",
                   display: "grid",
                   placeItems: "center",
                   border: "1px solid var(--border)",
