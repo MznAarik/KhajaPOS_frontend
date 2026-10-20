@@ -102,9 +102,9 @@ interface DropletState {
     phase: DropletPhase;
 }
 
-const DROP_EXPAND_MS = 850;
-const DROP_FADE_DELAY_MS = 1000;
-const DROP_TOTAL_MS = 1500;
+const DROP_EXPAND_MS = 700;
+const DROP_FADE_DELAY_MS = 850;
+const DROP_TOTAL_MS = 1150;
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -128,6 +128,9 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
     const clearTimers = React.useCallback(() => {
         timersRef.current.forEach((id) => window.clearTimeout(id));
         timersRef.current = [];
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.remove("theme-switching");
+        }
     }, []);
 
     React.useEffect(() => clearTimers, [clearTimers]);
@@ -144,6 +147,8 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
 
             busyRef.current = true;
             clearTimers();
+
+            document.documentElement.classList.add("theme-switching");
 
             setMode(nextMode);
             applyThemeMode(nextMode, storageKey);
@@ -176,6 +181,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                 window.setTimeout(() => {
                     setDroplet(null);
                     busyRef.current = false;
+                    document.documentElement.classList.remove("theme-switching");
                 }, DROP_TOTAL_MS)
             );
         },
@@ -196,7 +202,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                     overflow: "hidden",
                     pointerEvents: "none",
                     opacity: droplet.phase === "fade" ? 0 : 1,
-                    transition: "opacity 440ms ease",
+                    transition: "opacity 280ms ease",
                 }}
             >
                 <Box
@@ -208,30 +214,17 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         width: droplet.radius * 2,
                         height: droplet.radius * 2,
                         borderRadius: "50%",
-                        backgroundImage: `radial-gradient(circle at 34% 26%, color-mix(in srgb, ${droplet.background} 64%, transparent), color-mix(in srgb, ${droplet.background} 46%, transparent) 55%, color-mix(in srgb, ${droplet.background} 24%, transparent))`,
-                        backdropFilter: "blur(6px) saturate(1.4)",
-                        WebkitBackdropFilter: "blur(6px) saturate(1.4)",
-                        transform: droplet.phase === "start" ? "scale(0)" : "scale(1)",
+                        backgroundColor: droplet.background,
+                        backgroundImage:
+                            "radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 42%)",
+                        border: `1.5px solid color-mix(in srgb, ${droplet.glow} 55%, transparent)`,
+                        boxShadow: `0 0 28px 4px color-mix(in srgb, ${droplet.glow} 16%, transparent)`,
+                        transform: droplet.phase === "start" ? "translateZ(0) scale(0)" : "translateZ(0) scale(1)",
+                        willChange: "transform",
+                        contain: "paint",
                         transition: `transform ${DROP_EXPAND_MS}ms cubic-bezier(0.3, 0.65, 0.2, 1)`,
-                        boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${droplet.glow} 55%, transparent), inset 0 0 130px color-mix(in srgb, ${droplet.glow} 24%, transparent), 0 0 90px 18px color-mix(in srgb, ${droplet.glow} 22%, transparent)`,
                     }}
-                >
-                    <Box
-                        sx={{
-                            position: "absolute",
-                            left: "16%",
-                            top: "12%",
-                            width: "36%",
-                            height: "26%",
-                            borderRadius: "50%",
-                            background:
-                                "linear-gradient(140deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0))",
-                            filter: "blur(14px)",
-                            opacity: droplet.phase === "start" ? 0 : 0.9,
-                            transition: "opacity 520ms ease 220ms",
-                        }}
-                    />
-                </Box>
+                />
                 <Box
                     key={`${droplet.id}-ripple`}
                     sx={{
@@ -245,7 +238,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         transform: droplet.phase === "start" ? "scale(0.08)" : "scale(1.2)",
                         opacity: droplet.phase === "start" ? 0.95 : 0,
                         transition:
-                            "transform 1250ms cubic-bezier(0.16, 1, 0.3, 1), opacity 700ms ease 450ms",
+                            "transform 950ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease 350ms",
                     }}
                 />
             </Box>

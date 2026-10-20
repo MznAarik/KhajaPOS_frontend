@@ -61,12 +61,13 @@ export default function SalesLineChart({
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
   const gradientId = React.useId().replace(/[:]/g, "");
 
-  const padTop = 18;
-  const padRight = 16;
-  const padBottom = 34;
-  const padLeft = 52;
-
   const width = bounds.width;
+  const compact = width > 0 && width < 480;
+  const padTop = 18;
+  const padRight = 12;
+  const padBottom = 32;
+  const padLeft = compact ? 40 : 52;
+
   const plotWidth = Math.max(width - padLeft - padRight, 0);
   const plotHeight = Math.max(height - padTop - padBottom, 0);
 
@@ -85,7 +86,22 @@ export default function SalesLineChart({
       : "";
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
-  const labelInterval = Math.max(1, Math.ceil(data.length / 6));
+  const minLabelGap = compact ? 64 : 52;
+  const maxLabels = Math.max(2, Math.floor(plotWidth / minLabelGap));
+  const labelInterval = Math.max(1, Math.ceil(data.length / maxLabels));
+
+  const labelIndices: number[] = [];
+  for (let i = 0; i < data.length; i += labelInterval) labelIndices.push(i);
+  if (labelIndices.length > 0 && data.length > 1) {
+    const last = data.length - 1;
+    const lastShown = labelIndices[labelIndices.length - 1];
+    if ((last - lastShown) * stepX < minLabelGap * 0.75) {
+      labelIndices[labelIndices.length - 1] = last;
+    } else {
+      labelIndices.push(last);
+    }
+  }
+
   const activePoint = activeIndex === null ? null : { point: points[activeIndex], data: data[activeIndex] };
 
   const handleMove = (event: React.MouseEvent<SVGSVGElement>) => {
@@ -136,10 +152,10 @@ export default function SalesLineChart({
                   opacity={ratio === 1 ? 0.9 : 0.55}
                 />
                 <text
-                  x={padLeft - 12}
+                  x={padLeft - 10}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize={11}
+                  fontSize={compact ? 10 : 11}
                   fontWeight={700}
                   fill="var(--muted-foreground)"
                 >
@@ -194,13 +210,13 @@ export default function SalesLineChart({
           })}
 
           {data.map((point, index) =>
-            index % labelInterval === 0 || index === data.length - 1 ? (
+            labelIndices.includes(index) ? (
               <text
                 key={`label-${point.date}`}
                 x={points[index].x}
-                y={height - 10}
-                textAnchor="middle"
-                fontSize={11}
+                y={height - 8}
+                textAnchor={index === data.length - 1 ? "end" : index === 0 ? "start" : "middle"}
+                fontSize={compact ? 10 : 11}
                 fontWeight={700}
                 fill="var(--muted-foreground)"
               >

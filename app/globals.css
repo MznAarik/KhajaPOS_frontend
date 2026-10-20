@@ -445,3 +445,9 @@
     @apply border-border outline-ring/50;
   }
 }
+
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
