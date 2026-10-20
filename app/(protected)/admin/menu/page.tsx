@@ -834,6 +834,7 @@ export default function MenuManagementPage() {
               xs: "none",
               md: "table",
             },
+            tableLayout: "fixed",
           }}
         >
           <TableHead>
@@ -842,12 +843,12 @@ export default function MenuManagementPage() {
                 backgroundColor: "var(--background)",
               }}
             >
-              <TableCell>Image</TableCell>
+              <TableCell sx={{ width: 100 }}>Image</TableCell>
               <TableCell>Menu Name</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Price</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">
+              <TableCell sx={{ width: "18%" }}>Category</TableCell>
+              <TableCell sx={{ width: "10%" }}>Price</TableCell>
+              <TableCell sx={{ width: 140 }}>Status</TableCell>
+              <TableCell align="center" sx={{ width: 160 }}>
                 Actions
               </TableCell>
             </TableRow>

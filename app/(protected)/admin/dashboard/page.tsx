@@ -213,7 +213,7 @@ export default function AdminDashboardPage() {
   const pipelineTotal = statusOrder.reduce((total, status) => total + (statusBreakdown[status] ?? 0), 0);
 
   return (
-    <Box sx={{ p: { xs: 1, md: 2 }, display: "grid", gap: { xs: 2, md: 2.5 }, minWidth: 0 }}>
+    <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
       <Paper
         elevation={0}
         sx={{
@@ -298,7 +298,7 @@ export default function AdminDashboardPage() {
         />
       </Box>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr" }, gap: { xs: 2, md: 2.5 }, minWidth: 0 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.7fr 1fr" }, gap: 2, minWidth: 0 }}>
         <Paper
           elevation={0}
           sx={{
@@ -310,7 +310,7 @@ export default function AdminDashboardPage() {
             boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
           }}
         >
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>Sales Overview</Typography>
               <Typography sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}>
@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
                 {period === "daily" ? "days" : period === "weekly" ? "weeks" : "months"}
               </Typography>
             </Box>
-            <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+            <Box sx={{ textAlign: { xs: "left", md: "right" }, flexShrink: 0 }}>
               <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.3rem" }, fontWeight: 900 }}>{formatCurrency(trendRevenue)}</Typography>
               {bestDay ? (
                 <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 700 }}>
@@ -462,7 +462,7 @@ export default function AdminDashboardPage() {
         </Paper>
       </Box>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.4fr 1fr" }, gap: { xs: 2, md: 2.5 }, minWidth: 0 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.4fr 1fr" }, gap: 2, minWidth: 0 }}>
         <Paper
           elevation={0}
           sx={{
