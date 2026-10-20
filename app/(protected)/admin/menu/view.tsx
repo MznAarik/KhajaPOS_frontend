@@ -33,6 +33,13 @@ const DetailRow = ({ label, value }: { label: string; value: React.ReactNode }) 
     </Stack>
 );
 
+const foodTypeTone: Record<MenuRow["foodType"], string> = {
+    veg: "var(--food-veg)",
+    vegan: "var(--food-vegan)",
+    egg: "var(--food-egg)",
+    "non-veg": "var(--food-nonveg)",
+};
+
 export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogProps) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -149,8 +156,9 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
                                     <Chip
                                         label={getFoodTypeLabel(item.foodType)}
                                         sx={{
-                                            backgroundColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
-                                            color: "var(--foreground)",
+                                            backgroundColor: `color-mix(in srgb, ${foodTypeTone[item.foodType]} 14%, transparent)`,
+                                            color: foodTypeTone[item.foodType],
+                                            border: `1px solid color-mix(in srgb, ${foodTypeTone[item.foodType]} 55%, transparent)`,
                                             fontWeight: 800,
                                         }}
                                     />
@@ -192,7 +200,17 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
                             }}
                         >
                             <DetailRow label="Category" value={capitalize(item.category)} />
-                            <DetailRow label="Food Type" value={getFoodTypeLabel(item.foodType)} />
+                            <DetailRow
+                                label="Food Type"
+                                value={
+                                    <Box
+                                        component="span"
+                                        sx={{ color: foodTypeTone[item.foodType], fontWeight: 800 }}
+                                    >
+                                        {getFoodTypeLabel(item.foodType)}
+                                    </Box>
+                                }
+                            />
                             <DetailRow label="Created At" value={new Date(item.createdAt).toLocaleString()} />
                         </Box>
                     </Stack>

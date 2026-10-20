@@ -85,24 +85,46 @@ export default function TablesPage() {
   );
   const { showSnackbar } = useAppSnackbar();
 
-  const fetchTables = React.useCallback(async () => {
-    setLoading(true);
+  const fetchTables = React.useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
+    if (!silent) setLoading(true);
 
     try {
       const data = await getAdminTables();
       setTables(data);
     } catch (loadError) {
+      if (silent) return;
+
       console.error("Failed to load tables:", loadError);
       const message = safeError(loadError, "Unable to load tables right now.");
       setError(message);
       showSnackbar(message, "error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
     fetchTables();
+  }, [fetchTables]);
+
+  React.useEffect(() => {
+    const POLL_INTERVAL_MS = 15000;
+
+    const poll = () => {
+      if (document.visibilityState === "visible") {
+        void fetchTables({ silent: true });
+      }
+    };
+
+    const timer = window.setInterval(poll, POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", poll);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", poll);
+    };
   }, [fetchTables]);
 
   const visibleTables = React.useMemo(() => {
@@ -341,11 +363,22 @@ export default function TablesPage() {
               />
 
               <Chip
-                label={`${tables.filter((table) => table.isActive).length
-                  } Active`}
+                label={`${tables.filter((table) => table.isActive && !table.occupied).length
+                  } Available`}
                 sx={{
                   backgroundColor: "var(--status-active-bg)",
                   color: "var(--status-active-fg)",
+                  fontWeight: 700,
+                }}
+              />
+
+              <Chip
+                label={`${tables.filter((table) => table.isActive && table.occupied).length
+                  } Occupied`}
+                sx={{
+                  backgroundColor: "color-mix(in srgb, var(--primary) 16%, transparent)",
+                  color: "var(--primary)",
+                  border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
                   fontWeight: 700,
                 }}
               />
@@ -379,6 +412,44 @@ export default function TablesPage() {
                       <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
                         Secure QR enabled
                       </Typography>
+                      <Chip
+                        size="small"
+                        label={
+                          !table.isActive
+                            ? "Unavailable"
+                            : table.occupied
+                              ? table.stale
+                                ? "Likely left"
+                                : "Occupied"
+                              : "Available"
+                        }
+                        sx={{
+                          mt: 1,
+                          fontWeight: 800,
+                          backgroundColor: !table.isActive
+                            ? "var(--status-inactive-bg)"
+                            : table.occupied
+                              ? table.stale
+                                ? "var(--status-pending-bg)"
+                                : "color-mix(in srgb, var(--primary) 16%, transparent)"
+                              : "var(--status-active-bg)",
+                          color: !table.isActive
+                            ? "var(--status-inactive-fg)"
+                            : table.occupied
+                              ? table.stale
+                                ? "var(--status-pending-fg)"
+                                : "var(--primary)"
+                              : "var(--status-active-fg)",
+                          border: "1px solid",
+                          borderColor: !table.isActive
+                            ? "var(--status-inactive-border)"
+                            : table.occupied
+                              ? table.stale
+                                ? "var(--status-pending-border)"
+                                : "color-mix(in srgb, var(--primary) 40%, transparent)"
+                              : "var(--status-active-border)",
+                        }}
+                      />
                     </Box>
                     <Chip
                       clickable={!updatingTables.has(table.id)}
@@ -456,14 +527,14 @@ export default function TablesPage() {
         </Box>
 
         <Box sx={{ display: { xs: "none", md: "block" }, overflowX: "auto" }}>
-        <Table sx={{ minWidth: 900 }}>
+        <Table sx={{ minWidth: 900, tableLayout: "fixed" }}>
           <TableHead>
             <TableRow sx={{ backgroundColor: "var(--background)" }}>
-              <TableCell>Table</TableCell>
+              <TableCell sx={{ width: 90 }}>Table</TableCell>
               <TableCell>QR Code</TableCell>
-              <TableCell>Order URL</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell sx={{ width: "30%" }}>Order URL</TableCell>
+              <TableCell sx={{ width: 140 }}>Status</TableCell>
+              <TableCell align="center" sx={{ width: 170 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
 
@@ -525,14 +596,18 @@ export default function TablesPage() {
 
                   {/* QR */}
 
-                  <TableCell>{table.qrCode}</TableCell>
+                  <TableCell>
+                    <Typography noWrap sx={{ minWidth: 0 }}>
+                      {table.qrCode}
+                    </Typography>
+                  </TableCell>
 
                   {/* URL */}
 
                   <TableCell>
                     <Typography
                       sx={{
-                        maxWidth: 220,
+                        maxWidth: "100%",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -546,48 +621,45 @@ export default function TablesPage() {
 
                   <TableCell>
                     <Chip
-                      clickable={!updatingTables.has(table.id)}
-                      disabled={updatingTables.has(table.id)}
                       label={
-                        updatingTables.has(table.id)
-                          ? "Updating..."
-                          : table.isActive
-                            ? "Available"
-                            : "Unavailable"
+                        !table.isActive
+                          ? "Unavailable"
+                          : table.occupied
+                            ? table.stale
+                              ? "Likely left"
+                              : "Occupied"
+                            : "Available"
                       }
                       sx={{
-                        backgroundColor: updatingTables.has(table.id)
-                          ? "rgba(128,128,128,0.12)"
-                          : table.isActive
-                            ? "var(--status-active-bg)"
-                            : "var(--status-inactive-bg)",
+                        backgroundColor: !table.isActive
+                          ? "var(--status-inactive-bg)"
+                          : table.occupied
+                            ? table.stale
+                              ? "var(--status-pending-bg)"
+                              : "color-mix(in srgb, var(--primary) 16%, transparent)"
+                            : "var(--status-active-bg)",
 
-                        color: updatingTables.has(table.id)
-                          ? "#808080"
-                          : table.isActive
-                            ? "var(--status-active-fg)"
-                            : "var(--status-inactive-fg)",
+                        color: !table.isActive
+                          ? "var(--status-inactive-fg)"
+                          : table.occupied
+                            ? table.stale
+                              ? "var(--status-pending-fg)"
+                              : "var(--primary)"
+                            : "var(--status-active-fg)",
 
                         fontWeight: 700,
 
                         border: "1px solid",
 
-                        borderColor: updatingTables.has(table.id)
-                          ? "var(--status-neutral-border)"
-                          : table.isActive
-                            ? "var(--status-active-border)"
-                            : "var(--status-inactive-border)",
-
-                        cursor: updatingTables.has(table.id)
-                          ? "wait"
-                          : "pointer",
+                        borderColor: !table.isActive
+                          ? "var(--status-inactive-border)"
+                          : table.occupied
+                            ? table.stale
+                              ? "var(--status-pending-border)"
+                              : "color-mix(in srgb, var(--primary) 40%, transparent)"
+                            : "var(--status-active-border)",
 
                         opacity: 1,
-                      }}
-                      onClick={() => {
-                        if (!updatingTables.has(table.id)) {
-                          handleToggleActive(table);
-                        }
                       }}
                     />
                   </TableCell>
