@@ -50,6 +50,7 @@
 
   --status-pending-fg: #d97706;
   --status-pending-bg: #fef3c7;
+  --status-pending-border: #fcd34d;
   --status-confirmed-fg: #2563eb;
   --status-confirmed-bg: #dbeafe;
   --status-preparing-fg: #6b21a8;
@@ -69,6 +70,7 @@
   --food-vegan: #0d9488;
   --food-egg: #d97706;
   --food-nonveg: #dc2626;
+  --food-drink: #0284c7;
 
   --border: #e6dccc;
   --input: #d8cbb8;
@@ -146,6 +148,7 @@
 
   --status-pending-fg: #f0b429;
   --status-pending-bg: rgba(240, 180, 41, 0.16);
+  --status-pending-border: rgba(240, 180, 41, 0.4);
   --status-confirmed-fg: #7db4fb;
   --status-confirmed-bg: rgba(96, 165, 250, 0.16);
   --status-preparing-fg: #c4a2fc;
@@ -165,6 +168,7 @@
   --food-vegan: #4fd1c5;
   --food-egg: #f0b429;
   --food-nonveg: #f87171;
+  --food-drink: #7dd3fc;
 
   --border: #3d4f43;
   --input: #61756a;
@@ -446,7 +450,7 @@
   }
 }
 
-html.theme-switching *,
+html.theme-switching *:not([data-theme-droplet], [data-theme-droplet] *),
 html.theme-switching *::before,
 html.theme-switching *::after {
   transition: none !important;

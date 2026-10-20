@@ -25,6 +25,7 @@ import {
   cancelPublicOrder,
   completePublicOrder,
   confirmPublicOrder,
+  touchPublicPresence,
   FOOD_FILTER_LABELS,
   FOOD_FILTER_ORDER,
   getFoodTypeLabel,
@@ -65,7 +66,7 @@ const getRecentOrderStorageKey = (tableId: number | string) => `khajapos-recent-
 const getOrderSessionTableCodeKey = (sessionToken: string) => `khajapos-order-session-table:${sessionToken}`;
 const getOrderTypeStorageKey = (tableCode: string) => `khajapos-order-type:${tableCode}`;
 const MAX_ORDER_QUANTITY = 10;
-const MENU_REFRESH_INTERVAL = 60000;
+const MENU_REFRESH_INTERVAL = 120000;
 
 const formatOrderStatusLabel = (status: string) =>
   status
@@ -375,6 +376,7 @@ export default function TableOrderPage() {
 
     let timeout: number | undefined;
     let isCancelled = false;
+    const ORDER_STATUS_POLL_MS = 15000;
 
     const refreshTableOrders = async () => {
       try {
@@ -424,21 +426,39 @@ export default function TableOrderPage() {
       }
     };
 
-    const refreshAndSchedule = async () => {
-      const shouldKeepPolling = await refreshTableOrders();
-
-      if (!isCancelled && shouldKeepPolling) {
-        timeout = window.setTimeout(refreshAndSchedule, 10000);
+    const scheduleNext = (delay: number) => {
+      window.clearTimeout(timeout);
+      if (!isCancelled) {
+        timeout = window.setTimeout(tick, delay);
       }
     };
 
-    refreshAndSchedule();
+    const tick = async () => {
+      if (isCancelled) return;
+
+      if (document.visibilityState !== "visible") {
+        scheduleNext(ORDER_STATUS_POLL_MS);
+        return;
+      }
+
+      const shouldKeepPolling = await refreshTableOrders();
+      if (isCancelled) return;
+      if (shouldKeepPolling) scheduleNext(ORDER_STATUS_POLL_MS);
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !isCancelled) {
+        void tick();
+      }
+    };
+
+    void tick();
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       isCancelled = true;
-      if (timeout) {
-        window.clearTimeout(timeout);
-      }
+      window.clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [orderRefreshKey, tableCode, tableId]);
 
@@ -507,19 +527,25 @@ export default function TableOrderPage() {
     return scopedCategories
       .map((category) => ({
         ...category,
-        items: category.items.filter((item) => matchesFoodFilter(item.foodType, foodFilter)),
+        items: category.items.filter((item) =>
+          matchesFoodFilter(item.foodType, foodFilter, { name: item.name, category: category.name }),
+        ),
       }))
       .filter((category) => category.items.length > 0);
   }, [foodFilter, scopedCategories]);
 
   const foodFilterCounts: Record<FoodFilterKey, number> = React.useMemo(() => {
-    const items = scopedCategories.flatMap((category) => category.items);
+    const items = scopedCategories.flatMap((category) =>
+      category.items.map((item) => ({ item, categoryName: category.name })),
+    );
     return FOOD_FILTER_ORDER.reduce(
       (counts, key) => {
-        counts[key] = items.filter((item) => matchesFoodFilter(item.foodType, key)).length;
+        counts[key] = items.filter(({ item, categoryName }) =>
+          matchesFoodFilter(item.foodType, key, { name: item.name, category: categoryName }),
+        ).length;
         return counts;
       },
-      { all: items.length, veg: 0, "non-veg": 0, others: 0 } as Record<FoodFilterKey, number>
+      { all: items.length, veg: 0, "non-veg": 0, drinks: 0, others: 0 } as Record<FoodFilterKey, number>
     );
   }, [scopedCategories]);
 
@@ -718,6 +744,67 @@ export default function TableOrderPage() {
       setCompletingToken(null);
     }
   };
+
+  const heartbeatKey = React.useMemo(
+    () =>
+      recentOrders
+        .map((item) => {
+          const status = recentOrderStatuses[item.sessionToken]?.status ?? "pending";
+          return `${item.sessionToken}:${status}`;
+        })
+        .filter((entry) => {
+          const status = entry.slice(entry.indexOf(":") + 1);
+          return status !== "closed" && status !== "cancelled";
+        })
+        .join("|"),
+    [recentOrders, recentOrderStatuses]
+  );
+
+  React.useEffect(() => {
+    if (!heartbeatKey) return;
+
+    const tokens = heartbeatKey
+      .split("|")
+      .map((entry) => entry.slice(0, entry.indexOf(":")));
+
+    const beat = () => {
+      tokens.forEach((token) => {
+        touchPublicPresence(token).catch(() => undefined);
+      });
+    };
+
+    beat();
+    const interval = window.setInterval(beat, 45000);
+
+    let wakeLockSentinel: { release: () => Promise<void> } | null = null;
+    const requestWakeLock = async () => {
+      try {
+        const nav = navigator as Navigator & {
+          wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
+        };
+        if (nav.wakeLock) {
+          wakeLockSentinel = await nav.wakeLock.request("screen");
+        }
+      } catch {
+        wakeLockSentinel = null;
+      }
+    };
+    void requestWakeLock();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        beat();
+        void requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      void wakeLockSentinel?.release().catch(() => undefined);
+    };
+  }, [heartbeatKey]);
 
   const orderTypeSelector = (
     <Stack spacing={0.75}>
@@ -1273,6 +1360,26 @@ export default function TableOrderPage() {
                       borderColor: "var(--primary) !important",
                     },
                     "&:last-of-type": { marginRight: "0 !important" },
+                  },
+                  "& .MuiToggleButton-root[value='veg'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-veg) 14%, var(--card)) !important",
+                    color: "var(--food-veg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-veg) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='non-veg'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-nonveg) 14%, var(--card)) !important",
+                    color: "var(--food-nonveg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-nonveg) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='drinks'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-drink) 14%, var(--card)) !important",
+                    color: "var(--food-drink) !important",
+                    borderColor: "color-mix(in srgb, var(--food-drink) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='others'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-egg) 14%, var(--card)) !important",
+                    color: "var(--food-egg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-egg) 55%, transparent) !important",
                   },
                 }}
               >

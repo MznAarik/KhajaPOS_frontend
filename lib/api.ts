@@ -160,21 +160,35 @@ export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
   }
 };
 
-export type FoodFilterKey = "all" | "veg" | "non-veg" | "others";
+export type FoodFilterKey = "all" | "veg" | "non-veg" | "drinks" | "others";
 
 export const FOOD_FILTER_LABELS: Record<FoodFilterKey, string> = {
   all: "All",
   veg: "Veg",
   "non-veg": "Non-Veg",
+  drinks: "Drinks",
   others: "Others",
 };
 
-export const FOOD_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg", "others"];
+export const FOOD_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg", "drinks", "others"];
 
-export const matchesFoodFilter = (foodType: MenuRow["foodType"], filter: FoodFilterKey) => {
+const DRINK_KEYWORDS_PATTERN =
+  /\b(?:drinks?|juices?|beverages?|sodas?|cola|cokes?|pepsi|sprite|fanta|limca|thums\s?up|teas?|coffees?|latte|cappuccino|mocha|espresso|shakes?|lassi|smoothies?|lemonades?|water|milk\w*|matcha|cold[\s-]?drinks?)\b/i;
+
+export const matchesFoodFilter = (
+  foodType: MenuRow["foodType"],
+  filter: FoodFilterKey,
+  ctx?: { name?: string | null; category?: string | null },
+) => {
   if (filter === "all") return true;
   if (filter === "veg") return foodType === "veg" || foodType === "vegan";
   if (filter === "non-veg") return foodType === "non-veg";
+  if (filter === "drinks") {
+    return (
+      DRINK_KEYWORDS_PATTERN.test(ctx?.category ?? "") ||
+      DRINK_KEYWORDS_PATTERN.test(ctx?.name ?? "")
+    );
+  }
   return foodType === "egg";
 };
 
@@ -220,6 +234,7 @@ export type AdminTable = {
   qrCode: string;
   isActive: boolean;
   occupied: boolean;
+  stale: boolean;
   createdAt: string;
 };
 
@@ -314,6 +329,7 @@ type AdminTableResponse = {
   qr_code: string;
   is_active?: boolean | null;
   occupied?: boolean | null;
+  stale?: boolean | null;
   created_at: string;
 };
 
@@ -563,6 +579,7 @@ export const getAdminTables = async (): Promise<AdminTable[]> => {
     qrCode: table.qr_code,
     isActive: parseAvailability(table.is_active ?? true),
     occupied: table.occupied ?? false,
+    stale: table.stale ?? false,
     createdAt: table.created_at,
   }));
 };
@@ -689,6 +706,7 @@ export const getPublicMenu = async (
       qrCode: payload.table.qr_code,
       isActive: parseAvailability(payload.table.is_active ?? true),
       occupied: payload.table.occupied ?? false,
+      stale: payload.table.stale ?? false,
       createdAt: payload.table.created_at,
     },
     business: payload.business ?? null,
@@ -774,6 +792,12 @@ export const completePublicOrder = async (
     `/public/orders/${encodeURIComponent(sessionToken)}/complete`,
   );
   return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
+};
+
+export const touchPublicPresence = async (
+  sessionToken: string,
+): Promise<void> => {
+  await api.patch(`/public/orders/${encodeURIComponent(sessionToken)}/presence`);
 };
 
 export type DashboardKpis = {

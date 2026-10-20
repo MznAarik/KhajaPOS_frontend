@@ -194,6 +194,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
         droplet === null ? null : (
             <Box
                 aria-hidden="true"
+                data-theme-droplet="true"
                 data-phase={droplet.phase}
                 sx={{
                     position: "fixed",
@@ -202,7 +203,7 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                     overflow: "hidden",
                     pointerEvents: "none",
                     opacity: droplet.phase === "fade" ? 0 : 1,
-                    transition: "opacity 280ms ease",
+                    transition: "opacity 320ms ease",
                 }}
             >
                 <Box
@@ -215,14 +216,12 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         height: droplet.radius * 2,
                         borderRadius: "50%",
                         backgroundColor: droplet.background,
-                        backgroundImage:
-                            "radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 42%)",
                         border: `1.5px solid color-mix(in srgb, ${droplet.glow} 55%, transparent)`,
-                        boxShadow: `0 0 28px 4px color-mix(in srgb, ${droplet.glow} 16%, transparent)`,
-                        transform: droplet.phase === "start" ? "translateZ(0) scale(0)" : "translateZ(0) scale(1)",
+                        transform: droplet.phase === "start" ? "translateZ(0) scale(0.001)" : "translateZ(0) scale(1)",
                         willChange: "transform",
-                        contain: "paint",
-                        transition: `transform ${DROP_EXPAND_MS}ms cubic-bezier(0.3, 0.65, 0.2, 1)`,
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                        transition: `transform ${DROP_EXPAND_MS}ms cubic-bezier(0.22, 0.85, 0.25, 1)`,
                     }}
                 />
                 <Box
@@ -237,8 +236,26 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         border: `2px solid color-mix(in srgb, ${droplet.glow} 70%, transparent)`,
                         transform: droplet.phase === "start" ? "scale(0.08)" : "scale(1.2)",
                         opacity: droplet.phase === "start" ? 0.95 : 0,
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
                         transition:
                             "transform 950ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease 350ms",
+                    }}
+                />
+                <Box
+                    key={`${droplet.id}-halo`}
+                    sx={{
+                        position: "absolute",
+                        left: droplet.x - 42,
+                        top: droplet.y - 42,
+                        width: 84,
+                        height: 84,
+                        borderRadius: "50%",
+                        background: `radial-gradient(circle, color-mix(in srgb, ${droplet.glow} 45%, transparent) 0%, transparent 70%)`,
+                        transform: droplet.phase === "start" ? "scale(0.4)" : "scale(3.2)",
+                        opacity: droplet.phase === "start" ? 1 : 0,
+                        transition:
+                            "transform 650ms ease-out, opacity 550ms ease 180ms",
                     }}
                 />
             </Box>

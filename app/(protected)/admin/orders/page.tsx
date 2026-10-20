@@ -156,7 +156,7 @@ export default function OrdersPage() {
   const [editSaving, setEditSaving] = React.useState(false);
   const { showSnackbar } = useAppSnackbar();
 
-  const fetchOrders = React.useCallback(async () => {
+  const fetchOrders = React.useCallback(async (options?: { silent?: boolean }) => {
     try {
       const data = await getAdminOrders(selectedDate || undefined);
       setOrders(data.orders);
@@ -165,7 +165,9 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error("Failed to fetch orders:", error);
-      showSnackbar(safeError(error, "Failed to fetch orders."), "error");
+      if (!options?.silent) {
+        showSnackbar(safeError(error, "Failed to fetch orders."), "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -181,16 +183,41 @@ export default function OrdersPage() {
 
   React.useEffect(() => {
     fetchDays();
-    const daysInterval = setInterval(fetchDays, 60000);
-    return () => clearInterval(daysInterval);
+
+    const DAYS_REFRESH_MS = 600000;
+    const daysInterval = window.setInterval(fetchDays, DAYS_REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void fetchDays();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(daysInterval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchDays]);
 
   React.useEffect(() => {
     setLoading(true);
-    fetchOrders();
+    void fetchOrders();
 
-    const interval = setInterval(fetchOrders, 15000);
-    return () => clearInterval(interval);
+    const ORDERS_POLL_MS = 15000;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void fetchOrders({ silent: true });
+      }
+    }, ORDERS_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void fetchOrders({ silent: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchOrders]);
 
   const handleStatusChange = async (orderId: number, nextStatus: OrderStatus) => {
@@ -276,7 +303,9 @@ export default function OrdersPage() {
   const foodFilteredOrders = React.useMemo(() => {
     if (foodFilter === "all") return orders;
     return orders.filter((order) =>
-      order.items.some((item) => matchesFoodFilter(item.foodType, foodFilter)),
+      order.items.some((item) =>
+        matchesFoodFilter(item.foodType, foodFilter, { name: item.name }),
+      ),
     );
   }, [foodFilter, orders]);
 
@@ -285,12 +314,13 @@ export default function OrdersPage() {
       all: orders.length,
       veg: 0,
       "non-veg": 0,
+      drinks: 0,
       others: 0,
     };
     FOOD_FILTER_ORDER.forEach((key) => {
       if (key === "all") return;
       counts[key] = orders.filter((order) =>
-        order.items.some((item) => matchesFoodFilter(item.foodType, key)),
+        order.items.some((item) => matchesFoodFilter(item.foodType, key, { name: item.name })),
       ).length;
     });
     return counts;
@@ -355,7 +385,7 @@ export default function OrdersPage() {
           </Box>
           <IconButton
             aria-label="refresh orders"
-            onClick={fetchOrders}
+            onClick={() => void fetchOrders()}
             disabled={loading}
             sx={{
               display: { xs: "inline-flex", md: "none" },
@@ -373,7 +403,7 @@ export default function OrdersPage() {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={fetchOrders}
+            onClick={() => void fetchOrders()}
             disabled={loading}
             size="medium"
             sx={{ display: { xs: "none", md: "inline-flex" }, borderRadius: "14px" }}
@@ -554,6 +584,26 @@ export default function OrdersPage() {
                       borderColor: "var(--primary) !important",
                     },
                     "&:last-of-type": { marginRight: "0 !important" },
+                  },
+                  "& .MuiToggleButton-root[value='veg'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-veg) 14%, var(--card)) !important",
+                    color: "var(--food-veg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-veg) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='non-veg'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-nonveg) 14%, var(--card)) !important",
+                    color: "var(--food-nonveg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-nonveg) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='drinks'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-drink) 14%, var(--card)) !important",
+                    color: "var(--food-drink) !important",
+                    borderColor: "color-mix(in srgb, var(--food-drink) 55%, transparent) !important",
+                  },
+                  "& .MuiToggleButton-root[value='others'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-egg) 14%, var(--card)) !important",
+                    color: "var(--food-egg) !important",
+                    borderColor: "color-mix(in srgb, var(--food-egg) 55%, transparent) !important",
                   },
                 }}
               >
@@ -783,13 +833,15 @@ export default function OrdersPage() {
                   </Stack>
 
                   <Stack spacing={0.75} alignItems="flex-end" sx={{ flexShrink: 0 }}>
-                    <StatusChip status={order.status} />
-                    <Chip
-                      label={getOrderTypeLabel(order.orderType)}
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontWeight: 900, height: 26 }}
-                    />
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap justifyContent="flex-end">
+                      <StatusChip status={order.status} />
+                      <Chip
+                        label={getOrderTypeLabel(order.orderType)}
+                        variant="outlined"
+                        size="small"
+                        sx={{ fontWeight: 900, height: 26 }}
+                      />
+                    </Stack>
                     <Typography sx={{ fontWeight: 900, fontSize: { xs: "1rem", md: "1.1rem" }, whiteSpace: "nowrap" }}>
                       Rs. {order.totalAmount}
                     </Typography>
