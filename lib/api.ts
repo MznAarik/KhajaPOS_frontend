@@ -219,6 +219,7 @@ export type AdminTable = {
   tableNo: string;
   qrCode: string;
   isActive: boolean;
+  occupied: boolean;
   createdAt: string;
 };
 
@@ -312,6 +313,7 @@ type AdminTableResponse = {
   table_no: string;
   qr_code: string;
   is_active?: boolean | null;
+  occupied?: boolean | null;
   created_at: string;
 };
 
@@ -560,6 +562,7 @@ export const getAdminTables = async (): Promise<AdminTable[]> => {
     tableNo: table.table_no,
     qrCode: table.qr_code,
     isActive: parseAvailability(table.is_active ?? true),
+    occupied: table.occupied ?? false,
     createdAt: table.created_at,
   }));
 };
@@ -685,6 +688,7 @@ export const getPublicMenu = async (
       tableNo: payload.table.table_no,
       qrCode: payload.table.qr_code,
       isActive: parseAvailability(payload.table.is_active ?? true),
+      occupied: payload.table.occupied ?? false,
       createdAt: payload.table.created_at,
     },
     business: payload.business ?? null,
@@ -759,6 +763,15 @@ export const cancelPublicOrder = async (
 ): Promise<KitchenOrder> => {
   const res = await api.patch<PublicOrderResponse>(
     `/public/orders/${encodeURIComponent(sessionToken)}/cancel`,
+  );
+  return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
+};
+
+export const completePublicOrder = async (
+  sessionToken: string,
+): Promise<KitchenOrder> => {
+  const res = await api.patch<PublicOrderResponse>(
+    `/public/orders/${encodeURIComponent(sessionToken)}/complete`,
   );
   return normalizeOrder(unwrapApiData<PublicOrderResponse["data"]>(res.data));
 };

@@ -23,6 +23,7 @@ import {
   canCustomerCancelOrder,
   canCustomerConfirmOrder,
   cancelPublicOrder,
+  completePublicOrder,
   confirmPublicOrder,
   FOOD_FILTER_LABELS,
   FOOD_FILTER_ORDER,
@@ -289,6 +290,7 @@ export default function TableOrderPage() {
   const [foodFilter, setFoodFilter] = React.useState<FoodFilterKey>("all");
   const [confirmingToken, setConfirmingToken] = React.useState<string | null>(null);
   const [cancellingToken, setCancellingToken] = React.useState<string | null>(null);
+  const [completingToken, setCompletingToken] = React.useState<string | null>(null);
   const [mySessionTokens, setMySessionTokens] = React.useState<string[]>([]);
   const tableId = menu?.table.id ?? 0;
 
@@ -700,6 +702,23 @@ export default function TableOrderPage() {
     }
   };
 
+  const handleCompleteOrder = async (sessionToken: string) => {
+    if (completingToken) return;
+
+    setCompletingToken(sessionToken);
+    try {
+      const updated = await completePublicOrder(sessionToken);
+      setRecentOrderStatuses((current) => ({ ...current, [sessionToken]: updated }));
+      setOrderRefreshKey((current) => current + 1);
+      showSnackbar("Thanks! Your table is now free.", "success");
+    } catch (error) {
+      console.error("Failed to complete order:", error);
+      showSnackbar("This order cannot be completed yet.", "warning");
+    } finally {
+      setCompletingToken(null);
+    }
+  };
+
   const orderTypeSelector = (
     <Stack spacing={0.75}>
       <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>
@@ -919,8 +938,10 @@ export default function TableOrderPage() {
                 const isCancelled = status === "cancelled";
                 const canConfirm = current ? canCustomerConfirmOrder(current.status) : isPending;
                 const canCancel = current ? canCustomerCancelOrder(current.status) : isPending;
+                const canComplete = status === "served";
                 const isConfirming = confirmingToken === item.sessionToken;
                 const isCancelling = cancellingToken === item.sessionToken;
+                const isCompleting = completingToken === item.sessionToken;
 
                 return (
                   <Paper
@@ -988,12 +1009,12 @@ export default function TableOrderPage() {
                         Placed at {new Date(item.createdAt).toLocaleString()}
                       </Typography>
 
-                      {canConfirm || canCancel ? (
+                      {(canConfirm || canCancel || canComplete) ? (
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ pt: 0.25 }}>
                           {canConfirm ? (
                             <Button
                               variant="contained"
-                              disabled={isConfirming || isCancelling}
+                              disabled={isConfirming || isCancelling || isCompleting}
                               onClick={() => handleConfirmPending(item.sessionToken)}
                               sx={{ borderRadius: "12px" }}
                             >
@@ -1004,11 +1025,22 @@ export default function TableOrderPage() {
                             <Button
                               variant="outlined"
                               color="error"
-                              disabled={isConfirming || isCancelling}
+                              disabled={isConfirming || isCancelling || isCompleting}
                               onClick={() => handleCancelPending(item.sessionToken)}
                               sx={{ borderRadius: "12px" }}
                             >
                               {isCancelling ? "Cancelling..." : "Cancel order"}
+                            </Button>
+                          ) : null}
+                          {canComplete ? (
+                            <Button
+                              variant="contained"
+                              color="success"
+                              disabled={isConfirming || isCancelling || isCompleting}
+                              onClick={() => handleCompleteOrder(item.sessionToken)}
+                              sx={{ borderRadius: "12px", fontWeight: 800 }}
+                            >
+                              {isCompleting ? "Finishing..." : "I'm done — free the table"}
                             </Button>
                           ) : null}
                         </Stack>
