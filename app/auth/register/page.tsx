@@ -129,10 +129,7 @@ export default function RegisterPage() {
                 submitData.append("business[logo]", logoFile);
             }
 
-            const res = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/register`,
-                submitData
-            );
+            const res = await axios.post("/api/svc/register", submitData);
 
             const message =
                 res?.data?.message ??
