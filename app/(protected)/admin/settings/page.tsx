@@ -214,7 +214,7 @@ export default function BusinessSettingsPage() {
     const displayLogo = previewUrl ?? logoUrl;
 
     return (
-        <Box sx={{ maxWidth: { xs: 680, md: 1120 }, mx: "auto", px: { xs: 1, sm: 1.5 }, py: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0 }}>
             <Stack spacing={1.5} sx={{ mb: 3 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: "1.35rem" }}>Settings</Typography>
                 <Typography sx={{ color: "var(--muted-foreground)" }}>

@@ -350,26 +350,18 @@ export default function OrdersPage() {
   const viewingPastDay = Boolean(selectedDate && selectedDate !== today);
 
   return (
-    <Box sx={{ width: "100%", minWidth: 0, overflowX: "clip", p: { xs: 0, md: 3 }, maxWidth: 1600, mx: "auto" }}>
-      <Box
-        sx={{
-          position: { xs: "sticky", md: "static" },
-          top: { xs: 74, md: "auto" },
-          zIndex: 3,
-        }}
-      >
+    <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0, overflowX: "clip" }}>
       <Paper
         elevation={0}
         sx={{
-          mx: { xs: 1.5, md: 0 },
-          mb: { xs: 0, md: 4 },
-          p: { xs: 1.25, md: 0 },
-          borderRadius: { xs: "18px", md: 0 },
-          border: { xs: "1px solid var(--border)", md: "none" },
-          borderTop: 0,
-          backgroundColor: { xs: "color-mix(in srgb, var(--card) 88%, transparent)", md: "transparent" },
-          backdropFilter: { xs: "blur(18px)", md: "none" },
-          boxShadow: { xs: "0 12px 30px rgba(31, 42, 43, 0.12)", md: "none" },
+          p: { xs: 1.75, md: 2.75 },
+          minWidth: 0,
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage:
+            "radial-gradient(420px 200px at 88% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 65%)",
+          boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
         }}
       >
         <Stack
@@ -450,15 +442,12 @@ export default function OrdersPage() {
             </Paper>
           ))}
         </Box>
-      </Paper>
 
       <Box
         sx={{
-          px: { xs: 0.7, md: 0 },
-          py: { xs: 0.7, md: 0 },
-          borderRadius: { xs: "18px", md: 0 },
-          backgroundColor: { xs: "var(--background)", md: "transparent" },
-          mb: { xs: 1.5, md: 4 },
+          mt: { xs: 1.5, md: 2 },
+          pt: { xs: 1.5, md: 2 },
+          borderTop: "1px solid var(--border)",
         }}
       >
         <Box
@@ -522,8 +511,8 @@ export default function OrdersPage() {
           <Box
             sx={{
               minWidth: 0,
-              borderLeft: { xs: "none", sm: "1px dashed var(--border)" },
-              pl: { xs: 0, sm: 2 },
+              borderLeft: "1px dashed var(--border)",
+              pl: { xs: 1, sm: 2 },
             }}
           >
             <Typography
@@ -669,16 +658,15 @@ export default function OrdersPage() {
           })}
         </Stack>
       </Box>
-      </Box>
+      </Paper>
 
       {viewingPastDay ? (
         <Paper
           elevation={0}
           sx={{
-            mb: { xs: 1.5, md: 2 },
             px: 2,
             py: 1.25,
-            borderRadius: "14px",
+            borderRadius: "22px",
             border: "1px solid var(--border)",
             backgroundColor: "var(--card)",
           }}
@@ -690,11 +678,22 @@ export default function OrdersPage() {
         </Paper>
       ) : null}
 
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 1.25, md: 2 },
+          minWidth: 0,
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          overflow: "hidden",
+        }}
+      >
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" },
-          gap: { xs: 1.5, md: 3 },
+          gap: { xs: 1.5, md: 2 },
           minWidth: 0,
         }}
       >
@@ -1001,6 +1000,7 @@ export default function OrdersPage() {
           })
         )}
       </Box>
+      </Paper>
 
       <Dialog open={Boolean(editingOrder)} onClose={closeEditDialog} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 900 }}>

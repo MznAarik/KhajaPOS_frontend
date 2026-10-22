@@ -55,7 +55,7 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
             scroll="paper"
             PaperProps={{
                 sx: {
-                    borderRadius: fullScreen ? 0 : "24px",
+                    borderRadius: fullScreen ? 0 : "22px",
                     overflow: "hidden",
                     background:
                         "linear-gradient(145deg, color-mix(in srgb, var(--card) 96%, transparent), color-mix(in srgb, var(--accent) 12%, var(--card)))",
@@ -96,7 +96,7 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
                                 gap: { xs: 2, sm: 2.5 },
                                 alignItems: "stretch",
                                 p: { xs: 1.25, sm: 1.5 },
-                                borderRadius: "24px",
+                                borderRadius: "22px",
                                 border: "1px solid var(--border)",
                                 background:
                                     "linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--card) 92%, transparent))",

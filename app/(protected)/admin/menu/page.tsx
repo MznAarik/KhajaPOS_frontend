@@ -145,70 +145,84 @@ const MenuMobileCard = ({
     }}
   >
     <Stack spacing={1.5}>
-      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-        <Box
-          sx={{
-            width: 62,
-            height: 62,
-            borderRadius: "14px",
-            overflow: "hidden",
-            backgroundColor: "var(--background)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <MenuThumb item={item} />
-        </Box>
+      <Stack spacing={1}>
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Box
+            sx={{
+              width: 62,
+              height: 62,
+              borderRadius: "14px",
+              overflow: "hidden",
+              backgroundColor: "var(--background)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <MenuThumb item={item} />
+          </Box>
 
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontWeight: 850, fontSize: "1.02rem", lineHeight: 1.25, overflowWrap: "anywhere" }}>
-            {capitalize(item.name)}
-          </Typography>
-          <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 0.25 }}>
-            {capitalize(item.category)}
-          </Typography>
-        </Box>
-
-        <Chip
-          clickable={updatingStatusId !== item.id}
-          disabled={updatingStatusId === item.id}
-          label={
-            updatingStatusId === item.id
-              ? "Updating"
-              : item.isAvailable
-                ? "Active"
-                : "Off"
-          }
-          size="small"
-          onClick={() => updatingStatusId !== item.id && onToggleAvailability(item)}
-          sx={{
-            flexShrink: 0,
-            backgroundColor:
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              sx={{
+                fontWeight: 850,
+                fontSize: "1.02rem",
+                lineHeight: 1.25,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={item.name}
+            >
+              {capitalize(item.name)}
+            </Typography>
+            <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 0.25 }}>
+              {capitalize(item.category)}
+            </Typography>
+          </Box>
+        </Stack>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box />
+          <Chip
+            clickable={updatingStatusId !== item.id}
+            disabled={updatingStatusId === item.id}
+            label={
               updatingStatusId === item.id
-                ? "#e5e7eb"
+                ? "Updating"
                 : item.isAvailable
-                  ? "var(--status-active-bg)"
-                  : "var(--status-inactive-bg)",
-            color:
-              updatingStatusId === item.id
-                ? "#6b7280"
-                : item.isAvailable
-                  ? "var(--status-active-fg)"
-                  : "var(--status-inactive-fg)",
-            border: "1px solid",
-            borderColor:
-              updatingStatusId === item.id
-                ? "var(--status-neutral-border)"
-                : item.isAvailable
-                  ? "var(--status-active-border)"
-                  : "var(--status-inactive-border)",
-            fontWeight: 800,
-            cursor: updatingStatusId === item.id ? "wait" : "pointer",
-            opacity: 1,
-          }}
-        />
+                  ? "Active"
+                  : "Off"
+            }
+            size="small"
+            onClick={() => updatingStatusId !== item.id && onToggleAvailability(item)}
+            sx={{
+              flexShrink: 0,
+              backgroundColor:
+                updatingStatusId === item.id
+                  ? "#e5e7eb"
+                  : item.isAvailable
+                    ? "var(--status-active-bg)"
+                    : "var(--status-inactive-bg)",
+              color:
+                updatingStatusId === item.id
+                  ? "#6b7280"
+                  : item.isAvailable
+                    ? "var(--status-active-fg)"
+                    : "var(--status-inactive-fg)",
+              border: "1px solid",
+              borderColor:
+                updatingStatusId === item.id
+                  ? "var(--status-neutral-border)"
+                  : item.isAvailable
+                    ? "var(--status-active-border)"
+                    : "var(--status-inactive-border)",
+              fontWeight: 800,
+              cursor: updatingStatusId === item.id ? "wait" : "pointer",
+              opacity: 1,
+            }}
+          />
+        </Stack>
       </Stack>
 
       <Paper
@@ -509,81 +523,67 @@ export default function MenuManagementPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
-      <Box
+    <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0 }}>
+      <Paper
+        elevation={0}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
+          p: { xs: 1.75, md: 2.75 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage:
+            "radial-gradient(420px 200px at 88% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 65%)",
+          boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
         }}
       >
-        <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              mt: 0.5,
-              fontSize: { xs: "1.25rem", md: "2.125rem" },
-            }}
-          >
-            Menu Management
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "var(--muted-foreground)",
-              mt: 0.5,
-            }}
-          >
-            Manage your restaurant menu items
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            gap: 1.5,
-            flexWrap: "wrap",
-            width: { xs: "100%", sm: "auto" },
-          }}
-        >
-          <Button
-            variant="outlined"
-            startIcon={<FileDownloadOutlinedIcon />}
-            onClick={handleExport}
-            sx={{
-              borderRadius: "14px",
-              borderColor: "var(--border)",
-              color: "var(--foreground)",
-              backgroundColor: "var(--card)",
-              flex: { xs: 1, sm: "initial" },
-            }}
-          >
-            Export
-          </Button>
-
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={openCreateDialog}
-            sx={{
-              borderRadius: "14px",
-              backgroundColor: "var(--primary)",
-              color: "var(--primary-foreground)",
-              boxShadow: "0 12px 24px rgba(79, 139, 255, 0.25)",
-              flex: { xs: 1, sm: "initial" },
-            }}
-          >
-            Add Menu
-          </Button>
-        </Box>
-      </Box>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Catalog
+            </Typography>
+            <Typography sx={{ fontSize: { xs: "1.25rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
+              Menu Management
+            </Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.88rem", md: "0.95rem" }, mt: 0.5, fontWeight: 650 }}>
+              Manage items, pricing, availability and categories
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadOutlinedIcon />}
+              onClick={handleExport}
+              sx={{
+                borderRadius: "14px",
+                borderColor: "var(--border)",
+                color: "var(--foreground)",
+                backgroundColor: "var(--card)",
+                flex: { xs: 1, sm: "initial" },
+              }}
+            >
+              Export
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={openCreateDialog}
+              sx={{
+                borderRadius: "14px",
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+                boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+                flex: { xs: 1, sm: "initial" },
+              }}
+            >
+              Add Menu
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Paper
         sx={{
-          borderRadius: { xs: "18px", md: "22px" },
+          borderRadius: "22px",
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",
@@ -593,18 +593,20 @@ export default function MenuManagementPage() {
           sx={{
             display: "grid",
             gap: 2,
-            p: { xs: 1.5, md: 2.5 },
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
+              p: { xs: 1.25, md: 2 },
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
           <Box
             sx={{
               display: "grid",
-              gap: 2,
+              gap: { xs: 1, md: 1.5 },
               gridTemplateColumns: {
-                xs: "1fr",
-                md: "1.8fr 1fr 1fr",
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "2fr 1fr 1fr",
               },
+              alignItems: "center",
             }}
           >
             <TextField
@@ -627,8 +629,9 @@ export default function MenuManagementPage() {
                 ),
               }}
               sx={{
+                gridColumn: { xs: "1 / -1", sm: "1 / -1", lg: "auto" },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
+                  borderRadius: "999px",
                   backgroundColor: "var(--background)",
                 },
               }}
@@ -640,7 +643,8 @@ export default function MenuManagementPage() {
               onChange={(event) =>
                 setCategoryFilter(event.target.value)
               }
-              sx={{ borderRadius: "12px" }}
+              displayEmpty
+              sx={{ borderRadius: "999px", backgroundColor: "var(--background)" }}
             >
               <MenuItem value="All Categories">
                 All Categories
@@ -667,7 +671,8 @@ export default function MenuManagementPage() {
                   | "unavailable"
                 )
               }
-              sx={{ borderRadius: "12px" }}
+              displayEmpty
+              sx={{ borderRadius: "999px", backgroundColor: "var(--background)" }}
             >
               <MenuItem value="all">
                 All Availability
