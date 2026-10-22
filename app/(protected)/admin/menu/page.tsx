@@ -49,7 +49,7 @@ import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 
 import AddEditMenuDialog from "./addEdit";
-import MenuViewDialog from "./view";
+import MenuViewDialog, { foodTypeTone } from "./view";
 
 type MenuItemType = MenuRow & {
   tag?: string;
@@ -58,6 +58,44 @@ type MenuItemType = MenuRow & {
 
 const getAvailabilityLabel = (isAvailable: boolean) =>
   isAvailable ? "Available" : "Unavailable";
+
+const FoodTypeBadge = ({
+  foodType,
+  size = "md",
+}: {
+  foodType: MenuRow["foodType"];
+  size?: "sm" | "md";
+}) => {
+  const tone = foodTypeTone[foodType];
+  const dot = size === "sm" ? 6 : 7;
+
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: size === "sm" ? "4px" : "5px",
+        height: size === "sm" ? 22 : 24,
+        px: size === "sm" ? 0.7 : 0.85,
+        borderRadius: "999px",
+        backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${tone} 55%, transparent)`,
+        color: tone,
+        fontSize: size === "sm" ? "0.7rem" : "0.74rem",
+        fontWeight: 850,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <Box
+        component="span"
+        sx={{ width: dot, height: dot, borderRadius: "50%", flexShrink: 0, backgroundColor: tone }}
+      />
+      {getFoodTypeLabel(foodType)}
+    </Box>
+  );
+};
 
 const MenuThumb = ({ item }: { item: MenuItemType }) => {
   const imageSrc = resolveMenuImageUrl(item.imageUrl);
@@ -184,10 +222,10 @@ const MenuMobileCard = ({
       >
         <Stack direction="row" justifyContent="space-between" spacing={1.5}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800, mb: 0.5 }}>
               Type
             </Typography>
-            <Typography sx={{ fontWeight: 750 }}>{getFoodTypeLabel(item.foodType)}</Typography>
+            <FoodTypeBadge foodType={item.foodType} />
           </Box>
           <Box sx={{ textAlign: "right", flexShrink: 0 }}>
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 800 }}>
@@ -919,15 +957,9 @@ export default function MenuManagementPage() {
                       {capitalize(item.name)}
                     </Typography>
 
-                    <Typography
-                      sx={{
-                        fontSize: "0.8rem",
-                        color:
-                          "var(--muted-foreground)",
-                      }}
-                    >
-                      {getFoodTypeLabel(item.foodType)}
-                    </Typography>
+                    <Box sx={{ mt: 0.4 }}>
+                      <FoodTypeBadge foodType={item.foodType} size="sm" />
+                    </Box>
                   </TableCell>
 
                   <TableCell>

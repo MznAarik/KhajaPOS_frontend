@@ -33,7 +33,7 @@ const DetailRow = ({ label, value }: { label: string; value: React.ReactNode }) 
     </Stack>
 );
 
-const foodTypeTone: Record<MenuRow["foodType"], string> = {
+export const foodTypeTone: Record<MenuRow["foodType"], string> = {
     veg: "var(--food-veg)",
     vegan: "var(--food-vegan)",
     egg: "var(--food-egg)",

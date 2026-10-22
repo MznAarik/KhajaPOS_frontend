@@ -280,7 +280,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 minHeight: "100vh",
                 height: { xs: "auto", sm: "100dvh" },
                 position: "relative",
-                overflowX: "hidden",
+                overflowX: "clip",
                 overflowY: { xs: "visible", sm: "hidden" },
                 backgroundColor: "var(--background)",
                 backgroundImage:
