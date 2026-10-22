@@ -64,8 +64,8 @@ export default function SalesLineChart({
   const width = bounds.width;
   const compact = width > 0 && width < 480;
   const padTop = 18;
-  const padRight = 12;
-  const padBottom = 32;
+  const padRight = compact ? 28 : 72;
+  const padBottom = 36;
   const padLeft = compact ? 40 : 52;
 
   const plotWidth = Math.max(width - padLeft - padRight, 0);
@@ -86,7 +86,7 @@ export default function SalesLineChart({
       : "";
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
-  const minLabelGap = compact ? 64 : 52;
+  const minLabelGap = compact ? 72 : 64;
   const maxLabels = Math.max(2, Math.floor(plotWidth / minLabelGap));
   const labelInterval = Math.max(1, Math.ceil(data.length / maxLabels));
 
@@ -95,11 +95,14 @@ export default function SalesLineChart({
   if (labelIndices.length > 0 && data.length > 1) {
     const last = data.length - 1;
     const lastShown = labelIndices[labelIndices.length - 1];
-    if ((last - lastShown) * stepX < minLabelGap * 0.75) {
+    if ((last - lastShown) * stepX < minLabelGap * 0.9) {
       labelIndices[labelIndices.length - 1] = last;
-    } else {
+    } else if ((last - labelIndices[labelIndices.length - 1]) * stepX >= minLabelGap * 0.6) {
       labelIndices.push(last);
     }
+  } else if (data.length > 1) {
+    labelIndices.push(0);
+    labelIndices.push(data.length - 1);
   }
 
   const activePoint = activeIndex === null ? null : { point: points[activeIndex], data: data[activeIndex] };

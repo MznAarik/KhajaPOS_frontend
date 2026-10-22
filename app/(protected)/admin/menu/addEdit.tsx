@@ -12,12 +12,12 @@ import {
     IconButton,
     InputAdornment,
     MenuItem,
+    Slider,
     Stack,
     TextField,
     Typography,
-    useMediaQuery,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import Cropper from "react-easy-crop";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import {
@@ -55,6 +55,58 @@ type FormState = {
     imageUrl: string | null;
 };
 
+type CropArea = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+        const image = new Image();
+        image.addEventListener("load", () => resolve(image));
+        image.addEventListener("error", (error) => reject(error));
+        image.setAttribute("crossOrigin", "anonymous");
+        image.src = url;
+    });
+
+const getCroppedImg = async (imageSrc: string, pixelCrop: CropArea, fileName: string): Promise<File> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+        throw new Error("Failed to create canvas context");
+    }
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height,
+    );
+
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                reject(new Error("Failed to crop image"));
+                return;
+            }
+            const file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
+            resolve(file);
+        }, "image/jpeg", 0.9);
+    });
+};
+
 const createInitialState = (initialData?: MenuRow | null): FormState => ({
     categoryId: initialData?.categoryId ? String(initialData.categoryId) : "",
     name: initialData?.name ?? "",
@@ -66,24 +118,10 @@ const createInitialState = (initialData?: MenuRow | null): FormState => ({
     imageUrl: initialData?.imageUrl ?? null,
 });
 
-const floatingFieldSx = {
-    mt: 1.75,
-    "& .MuiInputLabel-root": {
-        backgroundColor: "transparent",
-        px: 0.75,
-        borderRadius: "6px",
-        lineHeight: 1.15,
-        overflow: "visible",
-        zIndex: 2,
-    },
-    "& .MuiInputLabel-root.MuiInputLabel-shrink": {
-        transform: "translate(11px, -7px) scale(0.75)",
-    },
+const fieldSx = {
     "& .MuiOutlinedInput-root": {
-        overflow: "visible",
-    },
-    "& .MuiOutlinedInput-notchedOutline legend": {
-        height: 12,
+        borderRadius: "14px",
+        backgroundColor: "var(--background)",
     },
 };
 
@@ -94,8 +132,6 @@ export default function AddEditMenuDialog({
     initialData,
     onCategoryCreated,
 }: MenuEditDialogProps) {
-    const theme = useTheme();
-    const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
     const [form, setForm] = React.useState<FormState>(() => createInitialState(initialData));
     const [categories, setCategories] = React.useState<CategoryOption[]>([]);
     const [saving, setSaving] = React.useState(false);
@@ -105,6 +141,13 @@ export default function AddEditMenuDialog({
     const [creatingCategoryBusy, setCreatingCategoryBusy] = React.useState(false);
     const imageInputRef = React.useRef<HTMLInputElement | null>(null);
     const { showSnackbar } = useAppSnackbar();
+    const [cropOpen, setCropOpen] = React.useState(false);
+    const [cropImageSrc, setCropImageSrc] = React.useState<string | null>(null);
+    const [crop, setCrop] = React.useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = React.useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<CropArea | null>(null);
+    const [originalFileName, setOriginalFileName] = React.useState("menu-image.jpg");
+    const [cropping, setCropping] = React.useState(false);
 
     React.useEffect(() => {
         if (open) {
@@ -112,6 +155,12 @@ export default function AddEditMenuDialog({
             setError("");
             setCreatingCategory(false);
             setNewCategoryName("");
+            setCropOpen(false);
+            setCropImageSrc(null);
+            setCrop({ x: 0, y: 0 });
+            setZoom(1);
+            setCroppedAreaPixels(null);
+            setCropping(false);
         }
     }, [initialData, open]);
 
@@ -153,8 +202,56 @@ export default function AddEditMenuDialog({
             };
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        handleFieldChange("imageFile")(event.target.files?.[0] ?? null);
+        const file = event.target.files?.[0];
+        if (!file) {
+            event.target.value = "";
+            return;
+        }
+        setOriginalFileName(file.name || "menu-image.jpg");
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === "string") {
+                setCropImageSrc(reader.result);
+                setCrop({ x: 0, y: 0 });
+                setZoom(1);
+                setCroppedAreaPixels(null);
+                setCropOpen(true);
+            }
+        };
+        reader.readAsDataURL(file);
         event.target.value = "";
+    };
+
+    const onCropComplete = React.useCallback((_croppedArea: CropArea, croppedAreaPixels: CropArea) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const handleCropCancel = () => {
+        setCropOpen(false);
+        setCropImageSrc(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
+    };
+
+    const handleCropApply = async () => {
+        if (!cropImageSrc || !croppedAreaPixels) {
+            showSnackbar("Adjust the crop and try again.", "error");
+            return;
+        }
+        setCropping(true);
+        try {
+            const croppedFile = await getCroppedImg(cropImageSrc, croppedAreaPixels, originalFileName.replace(/\.[^/.]+$/, "") + ".jpg");
+            handleFieldChange("imageFile")(croppedFile);
+            handleFieldChange("imageUrl")(null);
+            setCropOpen(false);
+            setCropImageSrc(null);
+        } catch (cropError) {
+            console.error("Failed to crop image:", cropError);
+            showSnackbar(safeError(cropError, "Failed to crop image."), "error");
+        } finally {
+            setCropping(false);
+        }
     };
 
     const cancelCategoryCreate = () => {
@@ -289,23 +386,38 @@ export default function AddEditMenuDialog({
                 open={open}
                 onClose={saving ? undefined : onClose}
                 fullWidth
-                fullScreen={fullScreen}
                 maxWidth="sm"
                 PaperProps={{
                     sx: {
-                        borderRadius: fullScreen ? 0 : "22px",
-                        overflow: "visible",
+                        borderRadius: "22px",
+                        overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
-                        maxHeight: fullScreen ? "100dvh" : "92vh",
-                        height: fullScreen ? "100dvh" : "auto",
+                        width: { xs: "calc(100% - 24px)", sm: "100%" },
+                        m: { xs: "12px", sm: "32px" },
+                        maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 780px)" },
+                        height: "auto",
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                        backgroundImage:
+                            "radial-gradient(420px 200px at 90% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 65%)",
+                        boxShadow: "0 24px 60px rgba(31, 42, 43, 0.22)",
                         zIndex: (theme) => theme.zIndex.modal + 2,
                     },
                 }}
             >
-                <DialogTitle sx={{ mb: 1, flexShrink: 0 }}>
-                    {initialData ? "Update Menu Item" : "Add Menu Item"}
-                    <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.92rem" }}>
+                <DialogTitle
+                    sx={{
+                        flexShrink: 0,
+                        px: { xs: 2, sm: 3 },
+                        pt: { xs: 2, sm: 2.5 },
+                        pb: 1.75,
+                    }}
+                >
+                    <Typography component="div" sx={{ fontSize: { xs: "1.15rem", sm: "1.3rem" }, fontWeight: 900 }}>
+                        {initialData ? "Update Menu Item" : "Add Menu Item"}
+                    </Typography>
+                    <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
                         {initialData
                             ? "Update menu details, availability, and image."
                             : "Pick a category, or create one on the spot, then add the menu item."}
@@ -313,20 +425,22 @@ export default function AddEditMenuDialog({
                 </DialogTitle>
                 <DialogContent
                     sx={{
-                        pt: 4,
+                        px: { xs: 2, sm: 3 },
+                        pt: { xs: 2, sm: 2.5 },
+                        pb: 2,
+                        borderTop: "1px solid var(--border)",
                         overflowY: "auto",
-                        overflowX: "visible",
                         flex: 1,
                         minHeight: 0,
                     }}
                 >
-                    <Stack spacing={2.5} sx={{ pb: 1.5, overflow: "visible" }}>
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 0.75, overflow: "visible" }}>
+                    <Stack spacing={2.25}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                             {creatingCategory ? (
                                 <TextField
                                     fullWidth
                                     autoFocus
-                                    sx={floatingFieldSx}
+                                    sx={fieldSx}
                                     label="New category name"
                                     value={newCategoryName}
                                     disabled={creatingCategoryBusy}
@@ -370,7 +484,7 @@ export default function AddEditMenuDialog({
                                     select
                                     fullWidth
                                     disabled={Boolean(initialData)}
-                                    sx={floatingFieldSx}
+                                    sx={fieldSx}
                                     label="Category"
                                     value={form.categoryId}
                                     InputLabelProps={{ shrink: true }}
@@ -404,7 +518,7 @@ export default function AddEditMenuDialog({
                             <TextField
                                 select
                                 fullWidth
-                                sx={floatingFieldSx}
+                                sx={fieldSx}
                                 label="Food Type"
                                 value={form.foodType}
                                 onChange={(e) => handleFieldChange("foodType")(e.target.value as FormState["foodType"])}
@@ -416,13 +530,13 @@ export default function AddEditMenuDialog({
                             </TextField>
                         </Stack>
 
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ overflow: "visible" }}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                             <TextField
                                 label="Menu Name"
                                 value={form.name}
                                 onChange={(e) => handleFieldChange("name")(e.target.value)}
                                 fullWidth
-                                sx={floatingFieldSx}
+                                sx={fieldSx}
                             />
 
                             <TextField
@@ -431,7 +545,7 @@ export default function AddEditMenuDialog({
                                 value={form.price}
                                 onChange={(e) => handleFieldChange("price")(e.target.value)}
                                 fullWidth
-                                sx={floatingFieldSx}
+                                sx={fieldSx}
                             />
                         </Stack>
 
@@ -442,22 +556,22 @@ export default function AddEditMenuDialog({
                             fullWidth
                             multiline
                             minRows={3}
-                            sx={floatingFieldSx}
+                            sx={fieldSx}
                         />
 
                         <Box
                             sx={{
                                 border: "1px dashed var(--border)",
                                 borderRadius: "18px",
-                                p: 2,
-                                backgroundColor: "var(--background)",
+                                p: { xs: 1.5, sm: 2 },
+                                backgroundColor: "color-mix(in srgb, var(--background) 70%, transparent)",
                             }}
                         >
                             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }}>
                                 <Box
                                     sx={{
-                                        width: { xs: "100%", sm: 108 },
-                                        height: 108,
+                                        width: { xs: "100%", sm: 112 },
+                                        height: { xs: 180, sm: 112 },
                                         borderRadius: "16px",
                                         backgroundColor: "var(--card)",
                                         border: "1px solid var(--border)",
@@ -474,10 +588,10 @@ export default function AddEditMenuDialog({
                                         <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>No image</Typography>
                                     )}
                                 </Box>
-                                <Stack spacing={1} sx={{ flex: 1 }}>
-                                    <Typography sx={{ fontWeight: 600 }}>Menu Image</Typography>
-                                    <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
-                                        Upload a new image for this menu item. [png, jpg, jpeg formats supported]
+                                <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography sx={{ fontWeight: 800 }}>Menu Image</Typography>
+                                    <Typography sx={{ fontSize: "0.83rem", color: "var(--muted-foreground)" }}>
+                                        Square crop works best. PNG, JPG, or JPEG.
                                     </Typography>
                                     <input
                                         ref={imageInputRef}
@@ -492,13 +606,15 @@ export default function AddEditMenuDialog({
                                         startIcon={<CloudUploadOutlinedIcon />}
                                         onClick={() => imageInputRef.current?.click()}
                                         sx={{
-                                            position: "relative",
-                                            zIndex: 1,
+                                            mt: 0.5,
                                             alignSelf: { xs: "stretch", sm: "flex-start" },
                                             borderRadius: "12px",
-                                            minHeight: 48,
-                                            pointerEvents: "auto",
-                                            touchAction: "manipulation",
+                                            minHeight: 44,
+                                            px: 2,
+                                            borderColor: "var(--border)",
+                                            color: "var(--foreground)",
+                                            fontWeight: 700,
+                                            textTransform: "none",
                                         }}
                                     >
                                         Choose Image
@@ -508,15 +624,27 @@ export default function AddEditMenuDialog({
                         </Box>
 
                         {error ? (
-                            <Typography sx={{ color: "var(--status-inactive-fg)", fontSize: "0.9rem" }}>{error}</Typography>
+                            <Box
+                                sx={{
+                                    px: 1.5,
+                                    py: 1,
+                                    borderRadius: "12px",
+                                    border: "1px solid color-mix(in srgb, var(--status-inactive-fg) 35%, transparent)",
+                                    backgroundColor: "color-mix(in srgb, var(--status-inactive-bg) 60%, transparent)",
+                                }}
+                            >
+                                <Typography sx={{ color: "var(--status-inactive-fg)", fontSize: "0.88rem", fontWeight: 600 }}>
+                                    {error}
+                                </Typography>
+                            </Box>
                         ) : null}
                     </Stack>
                 </DialogContent>
                 <DialogActions
                     sx={{
-                        px: 3,
-                        pb: 3,
-                        pt: 1,
+                        px: { xs: 2, sm: 3 },
+                        py: 2,
+                        gap: 1,
                         flexShrink: 0,
                         borderTop: "1px solid var(--border)",
                         backgroundColor: "var(--card)",
@@ -526,7 +654,15 @@ export default function AddEditMenuDialog({
                         variant="outlined"
                         onClick={onClose}
                         disabled={saving}
-                        sx={{ borderRadius: "12px", borderColor: "var(--border)", color: "var(--foreground)" }}
+                        sx={{
+                            borderRadius: "12px",
+                            borderColor: "var(--border)",
+                            color: "var(--foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 700,
+                        }}
                     >
                         Cancel
                     </Button>
@@ -538,9 +674,113 @@ export default function AddEditMenuDialog({
                             borderRadius: "12px",
                             backgroundColor: "var(--primary)",
                             color: "var(--primary-foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            "&:hover": { backgroundColor: "var(--primary)" },
                         }}
                     >
                         {saving ? "Saving..." : initialData ? "Update Menu" : "Add Menu"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={cropOpen}
+                onClose={handleCropCancel}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: "20px",
+                        overflow: "hidden",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
+                        width: { xs: "calc(100% - 24px)", sm: "100%" },
+                        m: { xs: "12px", sm: "32px" },
+                        maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 720px)" },
+                        height: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                    },
+                }}
+            >
+                <DialogTitle sx={{ flexShrink: 0, fontWeight: 900, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.5 }}>
+                    Crop Image
+                    <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>
+                        Drag to reposition and pinch or use the slider to zoom.
+                    </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, borderTop: "1px solid var(--border)" }}>
+                    <Box
+                        sx={{
+                            position: "relative",
+                            width: "100%",
+                            height: { xs: "min(44vh, 300px)", sm: 380 },
+                            backgroundColor: "#000",
+                        }}
+                    >
+                        {cropImageSrc ? (
+                            <Cropper
+                                image={cropImageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                cropShape="rect"
+                                showGrid
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={onCropComplete}
+                            />
+                        ) : null}
+                    </Box>
+                    <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
+                        <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", mb: 1 }}>Zoom</Typography>
+                        <Slider value={zoom} min={1} max={3} step={0.01} onChange={(_, value) => setZoom(value as number)} />
+                    </Box>
+                </DialogContent>
+                <DialogActions
+                    sx={{
+                        px: { xs: 2, sm: 3 },
+                        py: 2,
+                        gap: 1,
+                        flexShrink: 0,
+                        borderTop: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                    }}
+                >
+                    <Button
+                        onClick={handleCropCancel}
+                        disabled={cropping}
+                        sx={{
+                            borderRadius: "12px",
+                            borderColor: "var(--border)",
+                            color: "var(--foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 700,
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleCropApply}
+                        disabled={cropping || !croppedAreaPixels}
+                        sx={{
+                            borderRadius: "12px",
+                            backgroundColor: "var(--primary)",
+                            color: "var(--primary-foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            "&:hover": { backgroundColor: "var(--primary)" },
+                        }}
+                    >
+                        {cropping ? "Cropping..." : "Apply Crop"}
                     </Button>
                 </DialogActions>
             </Dialog>
