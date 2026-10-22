@@ -354,8 +354,13 @@ export default function OrdersPage() {
       <Box
         sx={{
           position: { xs: "sticky", md: "static" },
-          top: { xs: 74, md: "auto" },
-          zIndex: 3,
+          top: { xs: 64, md: "auto" },
+          zIndex: (theme) => theme.zIndex.appBar + 1,
+          backgroundColor: { xs: "color-mix(in srgb, var(--background) 92%, transparent)", md: "transparent" },
+          backdropFilter: { xs: "blur(18px) saturate(180%)", md: "none" },
+          WebkitBackdropFilter: { xs: "blur(18px) saturate(180%)", md: "none" },
+          borderBottom: { xs: "1px solid color-mix(in srgb, var(--border) 70%, transparent)", md: "none" },
+          mx: { xs: 0, md: 0 },
         }}
       >
       <Paper
@@ -367,9 +372,9 @@ export default function OrdersPage() {
           borderRadius: { xs: "18px", md: 0 },
           border: { xs: "1px solid var(--border)", md: "none" },
           borderTop: 0,
-          backgroundColor: { xs: "color-mix(in srgb, var(--card) 88%, transparent)", md: "transparent" },
-          backdropFilter: { xs: "blur(18px)", md: "none" },
-          boxShadow: { xs: "0 12px 30px rgba(31, 42, 43, 0.12)", md: "none" },
+          backgroundColor: { xs: "transparent", md: "transparent" },
+          backdropFilter: { xs: "none", md: "none" },
+          boxShadow: { xs: "none", md: "none" },
         }}
       >
         <Stack
@@ -454,11 +459,12 @@ export default function OrdersPage() {
 
       <Box
         sx={{
-          px: { xs: 0.7, md: 0 },
-          py: { xs: 0.7, md: 0 },
-          borderRadius: { xs: "18px", md: 0 },
-          backgroundColor: { xs: "var(--background)", md: "transparent" },
-          mb: { xs: 1.5, md: 4 },
+          px: { xs: 0, md: 0 },
+          pt: { xs: 0.5, md: 0 },
+          pb: { xs: 0.75, md: 0 },
+          borderRadius: { xs: 0, md: 0 },
+          backgroundColor: { xs: "transparent", md: "transparent" },
+          mb: { xs: 1, md: 4 },
         }}
       >
         <Box
