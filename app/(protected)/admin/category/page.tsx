@@ -224,80 +224,103 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 1.25, md: 2 }, display: "grid", gap: { xs: 1.75, md: 3 }, minWidth: 0, overflow: "hidden" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 2, flexWrap: "wrap" }}>
-        <Box sx={{ maxWidth: 760, width: { xs: "100%", md: "auto" }, textAlign: { xs: "center", md: "left" } }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: "1.25rem", md: "2.125rem" } }}>
-            Category Management
-          </Typography>
-          <Typography sx={{ color: "var(--muted-foreground)", mt: 0.5, fontSize: { xs: "0.88rem", md: "1rem" }, lineHeight: 1.6 }}>
-            Keep categories simple: create them, rename them, or delete them when they are no longer needed.
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={openCreateDialog}
-          sx={{
-            borderRadius: "14px",
-            backgroundColor: "var(--primary)",
-            color: "var(--primary-foreground)",
-            boxShadow: "0 12px 24px rgba(79, 139, 255, 0.25)",
-            width: { xs: "100%", sm: "auto" },
-          }}
-        >
-          Add Category
-        </Button>
-      </Box>
+    <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 1.75, md: 2.75 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage:
+            "radial-gradient(420px 200px at 88% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 65%)",
+          boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
+        }}
+      >
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Menu Structure
+            </Typography>
+            <Typography sx={{ fontSize: { xs: "1.25rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
+              Category Management
+            </Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.88rem", md: "0.95rem" }, mt: 0.5, fontWeight: 650 }}>
+              Create, update, or disable categories used across your menu.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={openCreateDialog}
+            sx={{
+              borderRadius: "14px",
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+              width: { xs: "100%", sm: "auto" },
+              flexShrink: 0,
+            }}
+          >
+            Add Category
+          </Button>
+        </Stack>
+      </Paper>
 
       <Paper
         sx={{
-          borderRadius: { xs: "18px", md: "22px" },
+          borderRadius: "22px",
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",
         }}
       >
-        <Box sx={{ p: { xs: 1.5, md: 2.5 }, borderBottom: "1px solid var(--border)" }}>
+        <Box sx={{ p: { xs: 1.5, md: 2.25 }, borderBottom: "1px solid var(--border)" }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems={{ xs: "center", md: "center" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", md: "center" }}
             justifyContent="space-between"
           >
-            <Box sx={{ maxWidth: 760, textAlign: { xs: "center", md: "left" } }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>Categories</Typography>
-              <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, mt: 0.75, lineHeight: 1.6 }}>
-                Menu availability is managed at the item level. Categories stay focused on structure, naming, and quick availability control.
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.95rem", md: "1rem" } }}>Categories</Typography>
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.82rem", md: "0.88rem" }, mt: 0.25, fontWeight: 650 }}>
+                Structure, naming, and quick availability control
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="center" sx={{ width: { xs: "100%", md: "auto" } }}>
+            <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }} sx={{ width: { xs: "100%", md: "auto" }, overflowX: "auto", pb: { xs: 0.25, md: 0 } }}>
               <Chip
                 label={`${categories.length} Total`}
                 sx={{
                   borderRadius: "999px",
-                  backgroundColor: "color-mix(in srgb, var(--accent) 36%, transparent)",
+                  height: 32,
+                  flexShrink: 0,
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
                   color: "var(--foreground)",
-                  fontWeight: 700,
+                  fontWeight: 850,
                 }}
               />
               <Chip
                 label={`${categories.filter((category) => category.isActive).length} Active`}
                 sx={{
                   borderRadius: "999px",
+                  height: 32,
+                  flexShrink: 0,
                   backgroundColor: "var(--status-active-bg)",
                   color: "var(--status-active-fg)",
-                  fontWeight: 700,
+                  border: "1px solid color-mix(in srgb, var(--status-active-fg) 35%, transparent)",
+                  fontWeight: 850,
                 }}
               />
             </Stack>
           </Stack>
         </Box>
 
-        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1.25, p: 1.25 }}>
+        <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1, p: 0.75 }}>
           {loading ? (
             skeletonRows.map((row) => (
-              <Paper key={`mobile-category-skeleton-${row}`} sx={{ p: 2, borderRadius: "16px", border: "1px solid var(--border)" }}>
+                <Paper key={`mobile-category-skeleton-${row}`} sx={{ p: 2, borderRadius: "18px", border: "1px solid var(--border)" }}>
                 <Skeleton variant="text" width="60%" height={28} />
                 <Skeleton variant="text" width="90%" height={22} />
                 <Skeleton variant="rounded" width={96} height={26} sx={{ borderRadius: "999px", mt: 1 }} />
@@ -309,7 +332,7 @@ export default function CategoryManagementPage() {
             ))
           ) : paginatedCategories.length ? (
             paginatedCategories.map((category) => (
-              <Paper key={category.id} sx={{ p: 1.5, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
+              <Paper key={category.id} sx={{ p: 1.1, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
                 <Stack spacing={1.35}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
                     <Box sx={{ minWidth: 0 }}>

@@ -263,64 +263,56 @@ export default function TablesPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 0, md: 2 }, display: "grid", gap: { xs: 2, md: 3 }, minWidth: 0, overflow: "hidden" }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0, overflow: "hidden" }}>
       {/* HEADER */}
 
-      <Box
+      <Paper
+        elevation={0}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
+          p: { xs: 1.75, md: 2.75 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage:
+            "radial-gradient(420px 200px at 88% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 65%)",
+          boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
         }}
       >
-        <Box sx={{ maxWidth: 760, minWidth: 0 }}>
-          <Typography
-            variant="h4"
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Dining Tables
+            </Typography>
+            <Typography sx={{ fontSize: { xs: "1.25rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
+              Table Management
+            </Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.88rem", md: "0.95rem" }, mt: 0.5, fontWeight: 650 }}>
+              Generate QR codes per table for contactless ordering
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={openCreateDialog}
             sx={{
-              fontWeight: 700,
-              mt: 0.5,
-              fontSize: { xs: "1.25rem", md: "2.125rem" },
+              borderRadius: "14px",
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+              width: { xs: "100%", sm: "auto" },
+              flexShrink: 0,
             }}
           >
-            Table Management
-          </Typography>
-
-          <Typography
-            sx={{
-              color: "var(--muted-foreground)",
-              mt: 0.75,
-              lineHeight: 1.7,
-              fontSize: { xs: "0.92rem", md: "1rem" },
-            }}
-          >
-            Create one QR identity per table so guests can scan once,
-            browse the full menu, and place orders without manual table
-            selection.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={openCreateDialog}
-          sx={{
-            borderRadius: "14px",
-            backgroundColor: "var(--primary)",
-            color: "var(--primary-foreground)",
-            width: { xs: "100%", sm: "auto" },
-          }}
-        >
-          Add Table
-        </Button>
-      </Box>
+            Add Table
+          </Button>
+        </Stack>
+      </Paper>
 
       {/* TABLE CARD */}
 
       <Paper
         sx={{
-          borderRadius: { xs: "18px", md: "22px" },
+          borderRadius: "22px",
           border: "1px solid var(--border)",
           backgroundColor: "var(--card)",
           overflow: "hidden",

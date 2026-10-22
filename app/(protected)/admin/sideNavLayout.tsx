@@ -478,7 +478,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     mt: { xs: "64px", sm: "92px" },
                     mb: { xs: 0, sm: 2 },
                     mx: { xs: 0, sm: 2 },
-                    pb: { xs: "calc(env(safe-area-inset-bottom) + 92px)", sm: 3 },
+                    pb: { xs: "calc(env(safe-area-inset-bottom) + 110px)", sm: 3 },
                     height: { xs: "auto", sm: "calc(100dvh - 108px)" },
                     boxSizing: "border-box",
                     overflowY: { xs: "visible", sm: "auto" },
