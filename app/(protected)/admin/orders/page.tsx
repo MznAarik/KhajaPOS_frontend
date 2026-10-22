@@ -350,15 +350,18 @@ export default function OrdersPage() {
   const viewingPastDay = Boolean(selectedDate && selectedDate !== today);
 
   return (
-    <Box sx={{ width: "100%", minWidth: 0, overflow: "hidden", p: { xs: 0, md: 3 }, maxWidth: 1600, mx: "auto" }}>
+    <Box sx={{ width: "100%", minWidth: 0, overflowX: "clip", p: { xs: 0, md: 3 }, maxWidth: 1600, mx: "auto" }}>
+      <Box
+        sx={{
+          position: { xs: "sticky", md: "static" },
+          top: { xs: 74, md: "auto" },
+          zIndex: 3,
+        }}
+      >
       <Paper
         elevation={0}
         sx={{
-          position: { xs: "fixed", md: "static" },
-          top: { xs: 74, md: "auto" },
-          left: { xs: 12, md: "auto" },
-          right: { xs: 12, md: "auto" },
-          zIndex: (theme) => theme.zIndex.appBar,
+          mx: { xs: 1.5, md: 0 },
           mb: { xs: 0, md: 4 },
           p: { xs: 1.25, md: 0 },
           borderRadius: { xs: "18px", md: 0 },
@@ -449,13 +452,8 @@ export default function OrdersPage() {
         </Box>
       </Paper>
 
-      <Box sx={{ display: { xs: "block", md: "none" }, height: 132 }} />
-
       <Box
         sx={{
-          position: { xs: "sticky", md: "static" },
-          top: { xs: 90, md: "auto" },
-          zIndex: 2,
           px: { xs: 0.7, md: 0 },
           py: { xs: 0.7, md: 0 },
           borderRadius: { xs: "18px", md: 0 },
@@ -671,6 +669,7 @@ export default function OrdersPage() {
           })}
         </Stack>
       </Box>
+      </Box>
 
       {viewingPastDay ? (
         <Paper
@@ -797,8 +796,13 @@ export default function OrdersPage() {
                     },
                 }}
               >
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
-                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="flex-start"
+                  sx={{ flexWrap: { xs: "wrap", sm: "nowrap" }, columnGap: 1.25, rowGap: 0 }}
+                >
+                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0, flex: "1 1 auto" }}>
                     <Box
                       sx={{
                         flexShrink: 0,
@@ -832,8 +836,14 @@ export default function OrdersPage() {
                     </Box>
                   </Stack>
 
-                  <Stack spacing={0.75} alignItems="flex-end" sx={{ flexShrink: 0 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap justifyContent="flex-end">
+                  <Stack
+                    direction={{ xs: "row", sm: "column" }}
+                    spacing={{ xs: 1.5, sm: 0.75 }}
+                    alignItems={{ xs: "center", sm: "flex-end" }}
+                    justifyContent={{ xs: "space-between", sm: "flex-end" }}
+                    sx={{ flexShrink: 0, flexBasis: { xs: "100%", sm: "auto" }, mt: { xs: 1.5, sm: 0 } }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                       <StatusChip status={order.status} />
                       <Chip
                         label={getOrderTypeLabel(order.orderType)}
@@ -854,7 +864,7 @@ export default function OrdersPage() {
                   </Typography>
                 ) : null}
 
-                <Divider sx={{ my: { xs: 1.75, md: 2.5 } }} />
+                <Divider sx={{ my: { xs: 1.5, md: 2.5 } }} />
 
                 <Stack spacing={0.75} sx={{ mb: { xs: 2.5, md: 3.5 } }}>
                   {order.items.map((item) => (

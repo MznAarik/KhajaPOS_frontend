@@ -1,6 +1,12 @@
 import axios from "axios";
 import { safeError } from "./safeError";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE = "/api/svc";
+
+if (typeof window !== "undefined") {
+  // Older builds kept the access token in localStorage. Purge it on sight.
+  window.localStorage.removeItem("authToken");
+  window.localStorage.removeItem("authTokenType");
+}
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -11,25 +17,14 @@ export const api = axios.create({
   },
 });
 
-const getAuthTokenFromStorage = (): {
-  token: string | null;
-  type: string;
-} | null => {
-  if (typeof document === "undefined") return null;
-  const fromStorage = window.localStorage.getItem("authToken");
-  const type = window.localStorage.getItem("authTokenType") ?? "Bearer";
-  if (fromStorage) return { token: fromStorage, type };
-  const match = document.cookie.match(/(?:^|; )authToken=([^;]+)/);
-  return { token: match ? decodeURIComponent(match[1]) : null, type };
-};
-
 export const clearAuthSession = async () => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
-    await fetch("/api/auth-cookie", {
+    await fetch("/api/auth/session", {
       method: "DELETE",
       signal: controller.signal,
+      credentials: "same-origin",
     });
     clearTimeout(timeout);
   } catch {
@@ -76,12 +71,6 @@ export const toTitleCase = (value: string | null | undefined) =>
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
   config.headers.Accept = "application/json";
-
-  const auth = getAuthTokenFromStorage();
-
-  if (auth?.token) {
-    config.headers.Authorization = `${auth.type} ${auth.token}`;
-  }
 
   return config;
 });
@@ -477,22 +466,9 @@ export const resolveMenuImageUrl = (imageUrl: string | null) => {
   if (!imageUrl) return null;
   if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
 
-  const normalizedPath = imageUrl.replace(/^\/+/, "");
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-  const siteBase =
-    apiBase.replace(/\/api\/?$/i, "").replace(/\/+$/, "") ||
-    (typeof window !== "undefined" ? window.location.origin : "");
+  const normalizedPath = imageUrl.replace(/^\/+/, "").replace(/^storage\//, "");
 
-  if (!siteBase)
-    return normalizedPath.startsWith("storage/")
-      ? `/${normalizedPath}`
-      : `/storage/${normalizedPath}`;
-
-  if (normalizedPath.startsWith("storage/")) {
-    return `${siteBase}/${normalizedPath}`;
-  }
-
-  return `${siteBase}/storage/${normalizedPath}`;
+  return `/media/${normalizedPath}`;
 };
 
 const getSiteBaseUrl = () => {

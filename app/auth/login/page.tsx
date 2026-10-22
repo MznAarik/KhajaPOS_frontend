@@ -21,8 +21,6 @@ import { apiRequest, resendVerification } from "@/lib/api";
 import { safeError } from "@/lib/safeError";
 import { useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
 export default function AuthPage() {
     const [email, setEmail] = React.useState("");
     const [password, setPassword] = React.useState("");
@@ -38,7 +36,7 @@ export default function AuthPage() {
     const handledQueryMessageRef = React.useRef(false);
 
     React.useEffect(() => {
-        const sessionExists = document.cookie.includes("authToken=");
+        const sessionExists = document.cookie.includes("authSession=");
         setHasSession(sessionExists);
 
         if (sessionExists) {
@@ -68,14 +66,9 @@ export default function AuthPage() {
         setVerificationRequired(false);
 
         try {
-            if (!API_BASE) {
-                throw new Error("API URL is not configured");
-            }
-
-            const url = `${API_BASE.replace(/\/$/, "")}/login`;
-
-            const data = await apiRequest<any>(url, {
+            const data = await apiRequest<any>("/api/auth/login", {
                 method: "POST",
+                credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -84,28 +77,6 @@ export default function AuthPage() {
                     password,
                 }),
             });
-
-            const token = data?.data?.access_token;
-            const tokenType =
-                data?.data?.token_type || "Bearer";
-
-            if (!token) {
-                throw new Error("Login succeeded, but no token was returned");
-            }
-
-            await apiRequest("/api/auth-cookie", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ token }),
-            });
-
-            localStorage.setItem("authToken", token);
-            localStorage.setItem(
-                "authTokenType",
-                tokenType
-            );
 
             setError(null);
             showSnackbar("Login successful", "success");

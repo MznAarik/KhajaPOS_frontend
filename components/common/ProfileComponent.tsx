@@ -35,9 +35,7 @@ export default function ProfileComponent({
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
     React.useEffect(() => {
-        const hasCookie = document.cookie.includes("authToken=");
-        const hasStorage = Boolean(window.localStorage.getItem("authToken"));
-        setIsAuthenticated(hasCookie || hasStorage);
+        setIsAuthenticated(document.cookie.includes("authSession="));
     }, []);
 
     const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
