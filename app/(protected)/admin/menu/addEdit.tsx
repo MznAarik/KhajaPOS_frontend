@@ -395,7 +395,10 @@ export default function AddEditMenuDialog({
                         flexDirection: "column",
                         width: { xs: "calc(100% - 24px)", sm: "100%" },
                         m: { xs: "12px", sm: "32px" },
-                        maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 780px)" },
+                        maxHeight: { xs: "calc(100vh - 24px)", sm: "min(90vh, 780px)" },
+                        "@supports (height: 100dvh)": {
+                            maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 780px)" },
+                        },
                         height: "auto",
                         border: "1px solid var(--border)",
                         backgroundColor: "var(--card)",
@@ -699,7 +702,10 @@ export default function AddEditMenuDialog({
                         border: "1px solid var(--border)",
                         width: { xs: "calc(100% - 24px)", sm: "100%" },
                         m: { xs: "12px", sm: "32px" },
-                        maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 720px)" },
+                        maxHeight: { xs: "calc(100vh - 24px)", sm: "min(90vh, 720px)" },
+                        "@supports (height: 100dvh)": {
+                            maxHeight: { xs: "calc(100dvh - 24px)", sm: "min(90dvh, 720px)" },
+                        },
                         height: "auto",
                         display: "flex",
                         flexDirection: "column",

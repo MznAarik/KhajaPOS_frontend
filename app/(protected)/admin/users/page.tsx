@@ -251,7 +251,7 @@ export default function SuperAdminUsersPage() {
     ];
 
     return (
-        <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2, minWidth: 0, overflowX: "clip" }}>
             <Paper
                 elevation={0}
                 sx={{
@@ -571,7 +571,7 @@ export default function SuperAdminUsersPage() {
                                                 {user.name.trim().charAt(0).toUpperCase() || "?"}
                                             </Avatar>
                                             <Box sx={{ minWidth: 0, flex: 1 }}>
-                                                <Typography sx={{ fontWeight: 850, fontSize: "0.95rem", lineHeight: 1.2 }}>
+                                                <Typography sx={{ fontWeight: 850, fontSize: "0.95rem", lineHeight: 1.2, overflowWrap: "anywhere" }}>
                                                     {user.name}
                                                 </Typography>
                                                 <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 650, wordBreak: "break-word" }}>
@@ -592,11 +592,26 @@ export default function SuperAdminUsersPage() {
                                             />
                                         </Stack>
 
-                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.25, gap: 1 }}>
-                                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                                        <Stack
+                                            direction="row"
+                                            justifyContent="space-between"
+                                            alignItems="center"
+                                            flexWrap="wrap"
+                                            sx={{ mt: 1.25, gap: 1 }}
+                                        >
+                                            <Typography
+                                                sx={{
+                                                    fontSize: "0.78rem",
+                                                    color: "var(--muted-foreground)",
+                                                    fontWeight: 650,
+                                                    minWidth: 0,
+                                                    flex: "1 1 150px",
+                                                    overflowWrap: "anywhere",
+                                                }}
+                                            >
                                                 {user.business ? user.business.name : "No restaurant"} · {formatDate(user.createdAt)}
                                             </Typography>
-                                            <Stack direction="row" spacing={0.75}>
+                                            <Stack direction="row" spacing={0.75} sx={{ ml: "auto", flexShrink: 0 }}>
                                                 <IconButton
                                                     aria-label={`Edit ${user.name}`}
                                                     size="small"
@@ -638,7 +653,30 @@ export default function SuperAdminUsersPage() {
                             setPage(0);
                         }}
                         rowsPerPageOptions={[5, 10, 25, 50]}
-                        sx={{ borderTop: "1px solid var(--border)" }}
+                        sx={{
+                            borderTop: "1px solid var(--border)",
+                            ".MuiTablePagination-toolbar": {
+                                px: { xs: 1, sm: 2 },
+                                minHeight: { xs: 48, sm: 52 },
+                                flexWrap: "nowrap",
+                            },
+                            ".MuiTablePagination-selectLabel": {
+                                display: { xs: "none", sm: "block" },
+                                fontSize: "0.82rem",
+                            },
+                            ".MuiTablePagination-select": {
+                                display: { xs: "none", sm: "inline-flex" },
+                            },
+                            ".MuiTablePagination-displayedRows": {
+                                margin: 0,
+                                mr: "auto",
+                                fontSize: { xs: "0.76rem", sm: "0.84rem" },
+                                whiteSpace: "nowrap",
+                            },
+                            ".MuiTablePagination-actions": {
+                                ml: { xs: 0, sm: 2 },
+                            },
+                        }}
                     />
                 )}
             </Paper>
@@ -649,11 +687,50 @@ export default function SuperAdminUsersPage() {
                 onClose={saving ? undefined : () => setDialogOpen(false)}
                 fullWidth
                 maxWidth="sm"
+                sx={{ "& .MuiDialog-container": { alignItems: { xs: "flex-end", sm: "center" } } }}
+                PaperProps={{
+                    sx: {
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                        borderRadius: { xs: "22px 22px 0 0", sm: "22px" },
+                        width: { xs: "100%", sm: "100%" },
+                        m: { xs: 0, sm: "32px" },
+                        maxHeight: { xs: "92vh", sm: "min(90vh, 780px)" },
+                        "@supports (height: 100dvh)": {
+                            maxHeight: { xs: "92dvh", sm: "min(90dvh, 780px)" },
+                        },
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                        backgroundImage:
+                            "radial-gradient(420px 200px at 90% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 65%)",
+                    },
+                }}
             >
-                <DialogTitle sx={{ fontWeight: 900 }}>
-                    {dialogState.id ? "Edit account" : "Create account"}
+                <DialogTitle sx={{ flexShrink: 0, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.5, borderBottom: "1px solid var(--border)" }}>
+                    <Box sx={{ width: 40, height: 4, borderRadius: 999, backgroundColor: "var(--border)", mx: "auto", mb: { xs: 1.25, sm: 0 }, display: { xs: "block", sm: "none" } }} />
+                    <Typography component="div" sx={{ fontSize: { xs: "1.15rem", sm: "1.3rem" }, fontWeight: 900 }}>
+                        {dialogState.id ? "Edit account" : "Create account"}
+                    </Typography>
+                    <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                        {dialogState.id
+                            ? "Update account details, role, and restaurant assignment."
+                            : "Create a user, owner, or super admin account."}
+                    </Typography>
                 </DialogTitle>
-                <DialogContent sx={{ pt: "20px !important" }}>
+                <DialogContent
+                    sx={{
+                        px: { xs: 2, sm: 3 },
+                        pt: { xs: 2, sm: 2.5 },
+                        pb: 2,
+                        overflowY: "auto",
+                        overflowX: "hidden",
+                        flex: 1,
+                        minHeight: 0,
+                        WebkitOverflowScrolling: "touch",
+                        overscrollBehavior: "contain",
+                    }}
+                >
                     <Stack spacing={2}>
                         <TextField
                             label="Full name"
@@ -774,8 +851,30 @@ export default function SuperAdminUsersPage() {
                         ) : null}
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button onClick={() => setDialogOpen(false)} disabled={saving} sx={{ borderRadius: "12px" }}>
+                <DialogActions
+                    sx={{
+                        px: { xs: 2, sm: 3 },
+                        pt: 2,
+                        pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2 },
+                        gap: 1,
+                        flexShrink: 0,
+                        borderTop: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                    }}
+                >
+                    <Button
+                        onClick={() => setDialogOpen(false)}
+                        disabled={saving}
+                        sx={{
+                            borderRadius: "12px",
+                            borderColor: "var(--border)",
+                            color: "var(--foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 700,
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -787,6 +886,10 @@ export default function SuperAdminUsersPage() {
                             fontWeight: 800,
                             backgroundColor: "var(--primary)",
                             color: "var(--primary-foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            "&:hover": { backgroundColor: "var(--primary)" },
                         }}
                     >
                         {saving ? "Saving..." : dialogState.id ? "Update account" : "Create account"}
@@ -800,9 +903,20 @@ export default function SuperAdminUsersPage() {
                 onClose={saving ? undefined : () => setDeleteOpen(false)}
                 fullWidth
                 maxWidth="xs"
+                PaperProps={{
+                    sx: {
+                        borderRadius: "22px",
+                        width: { xs: "calc(100% - 24px)", sm: "100%" },
+                        m: { xs: "12px", sm: "32px" },
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                    },
+                }}
             >
-                <DialogTitle sx={{ fontWeight: 900 }}>Delete account</DialogTitle>
-                <DialogContent sx={{ pt: "20px !important" }}>
+                <DialogTitle sx={{ fontWeight: 900, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1 }}>
+                    Delete account
+                </DialogTitle>
+                <DialogContent sx={{ px: { xs: 2, sm: 3 }, pt: "12px !important" }}>
                     <Typography sx={{ color: "var(--muted-foreground)" }}>
                         Delete <strong>{selectedUser?.name ?? "this account"}</strong>?
                         {selectedUser?.business
@@ -815,8 +929,20 @@ export default function SuperAdminUsersPage() {
                         </Typography>
                     ) : null}
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button onClick={() => setDeleteOpen(false)} disabled={saving} sx={{ borderRadius: "12px" }}>
+                <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, gap: 1 }}>
+                    <Button
+                        onClick={() => setDeleteOpen(false)}
+                        disabled={saving}
+                        sx={{
+                            borderRadius: "12px",
+                            borderColor: "var(--border)",
+                            color: "var(--foreground)",
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                            fontWeight: 700,
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -824,7 +950,13 @@ export default function SuperAdminUsersPage() {
                         variant="contained"
                         onClick={handleDelete}
                         disabled={saving}
-                        sx={{ borderRadius: "12px", fontWeight: 800 }}
+                        sx={{
+                            borderRadius: "12px",
+                            fontWeight: 800,
+                            flex: { xs: 1, sm: "0 0 auto" },
+                            minHeight: 44,
+                            textTransform: "none",
+                        }}
                     >
                         {saving ? "Deleting..." : "Delete"}
                     </Button>
