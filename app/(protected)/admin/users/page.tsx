@@ -149,9 +149,9 @@ export default function SuperAdminUsersPage() {
             role: user.role,
             businessName: user.business?.name ?? "",
             businessType: user.business?.businessType ?? "Restaurant",
-            businessPhone: "",
-            businessEmail: "",
-            businessAddress: "",
+            businessPhone: user.business?.phone ?? "",
+            businessEmail: user.business?.email ?? "",
+            businessAddress: user.business?.address ?? "",
         });
         setError("");
         setDialogOpen(true);
