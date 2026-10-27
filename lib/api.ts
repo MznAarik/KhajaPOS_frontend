@@ -1066,6 +1066,9 @@ export type SuperAdminUser = {
     id: number;
     name: string;
     businessType: string;
+    phone: string;
+    email: string;
+    address: string;
     isActive: boolean;
   } | null;
 };
@@ -1137,6 +1140,9 @@ type RawSuperAdminUser = {
     id: number;
     name: string;
     business_type: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
     is_active?: unknown;
   } | null;
 };
@@ -1169,6 +1175,9 @@ const mapSuperAdminUser = (raw: RawSuperAdminUser): SuperAdminUser => ({
         id: raw.business.id,
         name: raw.business.name,
         businessType: raw.business.business_type,
+        phone: raw.business.phone ?? "",
+        email: raw.business.email ?? "",
+        address: raw.business.address ?? "",
         isActive: parseAvailability(raw.business.is_active ?? true),
       }
     : null,
