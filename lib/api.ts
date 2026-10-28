@@ -593,6 +593,12 @@ export const deleteAdminTable = async (id: number) => {
   await api.delete(`/admin/tables/${id}`);
 };
 
+export const releaseAdminTable = async (id: number) => {
+  const res = await api.patch(`/admin/tables/${id}/release`);
+
+  return unwrapApiData(res.data);
+};
+
 const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
   id: order.id,
   tableId: order.table_id,
@@ -782,8 +788,20 @@ export type DashboardKpis = {
   itemsSold: number;
   avgOrderValue: number;
   activeTables: number;
+  occupiedTables: number;
+  inactiveTables: number;
   totalTables: number;
   totalMenuItems: number;
+};
+
+export type RecentOrderSummary = {
+  id: number;
+  tableNo: string | null;
+  orderType: "dine_in" | "takeaway";
+  status: OrderStatus;
+  total: number;
+  itemCount: number;
+  createdAt: string;
 };
 
 export type TopProduct = {
@@ -812,6 +830,7 @@ export type DashboardStats = {
   topProducts: TopProduct[];
   salesTrend: SalesTrendPoint[];
   statusBreakdown: Partial<Record<OrderStatus, number>>;
+  recentOrders: RecentOrderSummary[];
 };
 
 type DashboardResponse = {
@@ -831,6 +850,11 @@ export const getDashboardStats = async (
 
   return {
     ...data,
+    kpis: {
+      ...data.kpis,
+      occupiedTables: data.kpis?.occupiedTables ?? 0,
+      inactiveTables: data.kpis?.inactiveTables ?? 0,
+    },
     topProducts: (data.topProducts ?? []).map((product) => ({
       ...product,
       name: toTitleCase(product.name),
@@ -839,6 +863,7 @@ export const getDashboardStats = async (
     })),
     salesTrend: data.salesTrend ?? [],
     statusBreakdown: data.statusBreakdown ?? {},
+    recentOrders: data.recentOrders ?? [],
   };
 };
 
@@ -1329,6 +1354,122 @@ export const updateSuperAdminBusiness = async (payload: {
 
 export const deleteSuperAdminBusiness = async (id: number) => {
   await api.delete(`/superadmin/businesses/${id}`);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Superadmin: platform growth & usage analytics                               */
+/* -------------------------------------------------------------------------- */
+
+export type AnalyticsTrendValue = "businesses" | "users" | "orders" | "revenue";
+
+export type AnalyticsGrowth = {
+  current: number;
+  previous: number;
+  percent: number;
+};
+
+export type AnalyticsMonthlyPoint = {
+  key: string;
+  label: string;
+  businesses: number;
+  users: number;
+  orders: number;
+  revenue: number;
+};
+
+export type AnalyticsBusinessType = {
+  label: string;
+  count: number;
+};
+
+export type AnalyticsTopBusiness = {
+  id: number;
+  name: string;
+  businessType: string;
+  isActive: boolean;
+  orders: number;
+  revenue: number;
+  menuItems: number;
+  tables?: number;
+  categories?: number;
+  users?: number;
+  resourceScore?: number;
+};
+
+export type AnalyticsTrafficPoint = {
+  key: string;
+  at?: string;
+  label: string;
+  requests: number;
+  errors: number;
+};
+
+export type AnalyticsRoute = {
+  method: string;
+  path: string;
+  requests: number;
+  avgMs: number;
+  errors: number;
+};
+
+export type PlatformAnalytics = {
+  generatedAt: string;
+  overview: {
+    totals: {
+      users: number;
+      customers: number;
+      owners: number;
+      superAdmins: number;
+      businesses: number;
+      activeBusinesses: number;
+      inactiveBusinesses: number;
+      orders: number;
+      revenue: number;
+      menuItems: number;
+      categories: number;
+      tables: number;
+    };
+    growth: Record<AnalyticsTrendValue, AnalyticsGrowth>;
+    monthly: AnalyticsMonthlyPoint[];
+    daily: SalesTrendPoint[];
+    businessTypes: AnalyticsBusinessType[];
+    topBusinesses: AnalyticsTopBusiness[];
+  };
+  usage: {
+    requestsPerMinute: AnalyticsTrafficPoint[];
+    requestsPerHour: AnalyticsTrafficPoint[];
+    last24h: {
+      requests: number;
+      errors: number;
+      errorRate: number;
+      avgLatencyMs: number;
+      p95LatencyMs: number;
+      uniqueUsers: number;
+      peakPerMinute: number;
+      currentPerMinute: number;
+    };
+    routes: AnalyticsRoute[];
+    statusCodes: Array<{ code: number; count: number }>;
+  };
+  data: {
+    database: {
+      name: string;
+      sizeBytes: number;
+    };
+    storage: {
+      sizeBytes: number;
+    };
+    tables: Array<{
+      name: string;
+      rows: number;
+      sizeBytes: number;
+    }>;
+  };
+};
+
+export const getPlatformAnalytics = async (): Promise<PlatformAnalytics> => {
+  const res = await api.get("/superadmin/analytics");
+  return unwrapApiData<PlatformAnalytics>(res.data);
 };
 
 export type BusinessSettings = {

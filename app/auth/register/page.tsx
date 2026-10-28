@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import ThemeToggle from "@/components/common/ThemeToggle";
+import { useActiveSessionRedirect } from "@/lib/useActiveSessionRedirect";
 import { safeError } from "@/lib/safeError";
 
 const businessTypes = [
@@ -63,6 +64,7 @@ export default function RegisterPage() {
 
     const router = useRouter();
     const { showSnackbar } = useAppSnackbar();
+    useActiveSessionRedirect();
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] ?? null;

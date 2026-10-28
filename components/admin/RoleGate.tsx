@@ -5,40 +5,40 @@ import { usePathname, useRouter } from "next/navigation";
 import { Box, Skeleton, Stack, Typography } from "@mui/material";
 import LockPersonOutlinedIcon from "@mui/icons-material/LockPersonOutlined";
 import { useAuth } from "@/lib/auth-context";
-
-const SUPERADMIN_PATHS = ["/admin/users", "/admin/restaurants"];
-const OWNER_PATHS = [
-  "/admin/dashboard",
-  "/admin/category",
-  "/admin/menu",
-  "/admin/tables",
-  "/admin/orders",
-];
-
-const matches = (pathname: string, paths: string[]) =>
-  paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+import {
+  OWNER_PATHS,
+  SUPERADMIN_PATHS,
+  homeForRole,
+  matchesPath,
+} from "@/lib/role-home";
 
 export default function RoleGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSuperAdmin, isAdmin, loading } = useAuth();
+  const { user, isSuperAdmin, isAdmin, loading } = useAuth();
   const redirected = React.useRef(false);
 
   React.useEffect(() => {
     if (redirected.current || loading) return;
     if (!pathname?.startsWith("/admin")) return;
 
-    if (isSuperAdmin && matches(pathname, OWNER_PATHS)) {
+    if (isSuperAdmin && matchesPath(pathname, OWNER_PATHS)) {
       redirected.current = true;
-      router.replace("/admin/users");
+      router.replace(homeForRole("super_admin"));
       return;
     }
 
-    if (isAdmin && matches(pathname, SUPERADMIN_PATHS)) {
+    if (isAdmin && matchesPath(pathname, SUPERADMIN_PATHS)) {
       redirected.current = true;
-      router.replace("/admin/dashboard");
+      router.replace(homeForRole("admin"));
+      return;
     }
-  }, [pathname, router, isSuperAdmin, isAdmin, loading]);
+
+    if (!isSuperAdmin && !isAdmin && user) {
+      redirected.current = true;
+      router.replace(homeForRole("user"));
+    }
+  }, [pathname, router, isSuperAdmin, isAdmin, loading, user]);
 
   if (loading) {
     return (
@@ -51,7 +51,7 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (matches(pathname, SUPERADMIN_PATHS) && !isSuperAdmin) {
+  if (matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
         <Stack alignItems="center" spacing={1.5} sx={{ textAlign: "center" }}>
@@ -60,14 +60,18 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
             Super admin access required
           </Typography>
           <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
-            Your account does not have permission to manage users or restaurants.
+            Your account does not have permission to manage users, businesses, or platform analytics.
           </Typography>
         </Stack>
       </Box>
     );
   }
 
-  if (matches(pathname, OWNER_PATHS) && isSuperAdmin) {
+  if (matchesPath(pathname ?? "", OWNER_PATHS) && isSuperAdmin) {
+    return null;
+  }
+
+  if (user?.role === "user" && pathname?.startsWith("/admin")) {
     return null;
   }
 

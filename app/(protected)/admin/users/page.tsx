@@ -291,7 +291,7 @@ export default function SuperAdminUsersPage() {
                                 Users &amp; Owners
                             </Typography>
                             <Typography sx={{ fontSize: { xs: "0.78rem", md: "0.85rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}>
-                                Create, edit and remove platform accounts and their restaurants
+                                Create, edit and remove platform accounts and their businesses
                             </Typography>
                         </Box>
                     </Stack>
@@ -365,7 +365,7 @@ export default function SuperAdminUsersPage() {
                     <TextField
                         size="small"
                         fullWidth
-                        placeholder="Search by name, email or restaurant"
+                        placeholder="Search by name, email or business"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         slotProps={{
@@ -416,7 +416,7 @@ export default function SuperAdminUsersPage() {
                         <Table sx={{ display: { xs: "none", md: "table" }, minWidth: 720 }}>
                             <TableHead>
                                 <TableRow>
-                                    {["Account", "Role", "Restaurant", "Joined", "Actions"].map((heading) => (
+                                    {["Account", "Role", "Business", "Joined", "Actions"].map((heading) => (
                                         <TableCell
                                             key={heading}
                                             sx={{
@@ -609,7 +609,7 @@ export default function SuperAdminUsersPage() {
                                                     overflowWrap: "anywhere",
                                                 }}
                                             >
-                                                {user.business ? user.business.name : "No restaurant"} · {formatDate(user.createdAt)}
+                                                {user.business ? user.business.name : "No business"} · {formatDate(user.createdAt)}
                                             </Typography>
                                             <Stack direction="row" spacing={0.75} sx={{ ml: "auto", flexShrink: 0 }}>
                                                 <IconButton
@@ -714,7 +714,7 @@ export default function SuperAdminUsersPage() {
                     </Typography>
                     <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
                         {dialogState.id
-                            ? "Update account details, role, and restaurant assignment."
+                            ? "Update account details, role, and business assignment."
                             : "Create a user, owner, or super admin account."}
                     </Typography>
                 </DialogTitle>
@@ -788,7 +788,7 @@ export default function SuperAdminUsersPage() {
 
                         <Stack spacing={1.5}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                                <Typography sx={{ fontWeight: 850, fontSize: "0.95rem" }}>Restaurant (owner only)</Typography>
+                                <Typography sx={{ fontWeight: 850, fontSize: "0.95rem" }}>Business (owner only)</Typography>
                                 <Chip
                                     label={isOwner ? "Enabled" : "Disabled"}
                                     size="small"
@@ -802,10 +802,10 @@ export default function SuperAdminUsersPage() {
                                 />
                             </Stack>
                             <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: -0.5 }}>
-                                Assign a restaurant now, or leave it blank to create the owner without one yet.
+                                Assign a business now, or leave it blank to create the owner without one yet.
                             </Typography>
                             <TextField
-                                label="Restaurant name"
+                                label="Business name"
                                 value={dialogState.businessName}
                                 onChange={(event) => setDialogState((current) => ({ ...current, businessName: event.target.value }))}
                                 fullWidth
@@ -830,7 +830,7 @@ export default function SuperAdminUsersPage() {
                             {isOwner && (
                                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                                     <TextField
-                                        label="Restaurant email"
+                                        label="Business email"
                                         type="email"
                                         value={dialogState.businessEmail}
                                         onChange={(event) => setDialogState((current) => ({ ...current, businessEmail: event.target.value }))}
@@ -920,7 +920,7 @@ export default function SuperAdminUsersPage() {
                     <Typography sx={{ color: "var(--muted-foreground)" }}>
                         Delete <strong>{selectedUser?.name ?? "this account"}</strong>?
                         {selectedUser?.business
-                            ? " Their restaurant will be removed with them."
+                            ? " Their business will be removed with them."
                             : " This action can be reversed by an admin."}
                     </Typography>
                     {error ? (

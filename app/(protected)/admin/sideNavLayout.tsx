@@ -28,6 +28,7 @@ import { CoffeeIcon, type CoffeeIconHandle } from "@/components/ui/coffee-icon";
 import { HouseIcon, type HouseIconHandle } from "@/components/ui/house-icon";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import { AuthProvider, useAuth, type SessionUser } from "@/lib/auth-context";
 import RoleGate from "@/components/admin/RoleGate";
 import { getBusinessSettings, resolveMenuImageUrl } from "@/lib/api";
@@ -52,6 +53,7 @@ const withNavIcon = (Component: React.ComponentType<any>) =>
 
 const UsersNavIcon = withNavIcon(PeopleAltOutlinedIcon);
 const RestaurantsNavIcon = withNavIcon(StorefrontOutlinedIcon);
+const AnalyticsNavIcon = withNavIcon(InsightsOutlinedIcon);
 
 export default function SideNavLayout({
     children,
@@ -105,8 +107,9 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
     const navItems: NavItem[] = isSuperAdmin
         ? [
+            { text: "Analytics", href: "/admin/analytics", icon: AnalyticsNavIcon },
             { text: "Users", href: "/admin/users", icon: UsersNavIcon },
-            { text: "Restaurants", href: "/admin/restaurants", icon: RestaurantsNavIcon },
+            { text: "Businesses", href: "/admin/restaurants", icon: RestaurantsNavIcon },
         ]
         : [
             { text: "Home", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
@@ -125,7 +128,8 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         items: "Items",
         orders: "Orders",
         users: "Users",
-        restaurants: "Restaurants",
+        restaurants: "Businesses",
+        analytics: "Analytics",
         settings: "Settings",
     };
 
@@ -182,7 +186,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     </Typography>
                     <Typography sx={{ fontSize: "0.9rem", color: "var(--sidebar-foreground)", opacity: 0.8 }}>
                         {isSuperAdmin
-                            ? "Manage platform users, owners and restaurants"
+                            ? "Manage platform analytics, users, owners and businesses"
                             : "Manage food items, orders, and reporting"}
                     </Typography>
                 </Box>

@@ -208,7 +208,12 @@ export default function UserProfilePage() {
             <PersonOutlineRoundedIcon />
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 850, color: "var(--sidebar-foreground)" }}>KhajaPOS</Typography>
+            <Typography
+              noWrap
+              sx={{ fontWeight: 850, color: "var(--sidebar-foreground)", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {user?.business?.name || user?.name || "KhajaPOS"}
+            </Typography>
             <Typography sx={{ fontSize: "0.78rem", color: "var(--sidebar-accent-foreground)" }}>
               Account center
             </Typography>

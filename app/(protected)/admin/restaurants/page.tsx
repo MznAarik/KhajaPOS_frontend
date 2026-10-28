@@ -99,7 +99,7 @@ export default function SuperAdminRestaurantsPage() {
             setBusinesses(data.items);
             setCounts(data.counts);
         } catch (loadError) {
-            const message = safeError(loadError, "Unable to load restaurants right now.");
+            const message = safeError(loadError, "Unable to load businesses right now.");
             showSnackbar(message, "error");
         } finally {
             setLoading(false);
@@ -183,11 +183,11 @@ export default function SuperAdminRestaurantsPage() {
         const email = dialogState.email.trim();
 
         if (!dialogState.userId) {
-            setError("Choose an owner for this restaurant.");
+            setError("Choose an owner for this business.");
             return;
         }
         if (!name) {
-            setError("Restaurant name is required.");
+            setError("Business name is required.");
             return;
         }
         if (!EMAIL_PATTERN.test(email)) {
@@ -223,7 +223,7 @@ export default function SuperAdminRestaurantsPage() {
                 "success",
             );
         } catch (saveError) {
-            const message = safeError(saveError, "Failed to save restaurant. Please try again.");
+            const message = safeError(saveError, "Failed to save business. Please try again.");
             setError(message);
             showSnackbar(message, "error");
         } finally {
@@ -242,7 +242,7 @@ export default function SuperAdminRestaurantsPage() {
             setSelected(null);
             showSnackbar(`${selected.name} has been deleted successfully.`, "success");
         } catch (deleteError) {
-            const message = safeError(deleteError, "Failed to delete restaurant. Please try again.");
+            const message = safeError(deleteError, "Failed to delete business. Please try again.");
             setError(message);
             showSnackbar(message, "error");
         } finally {
@@ -362,10 +362,10 @@ export default function SuperAdminRestaurantsPage() {
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
                             <Typography sx={{ fontSize: { xs: "1.25rem", md: "1.5rem" }, fontWeight: 900, lineHeight: 1.1 }}>
-                                Restaurants
+                                Businesses
                             </Typography>
                             <Typography sx={{ fontSize: { xs: "0.78rem", md: "0.85rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}>
-                                Every restaurant on the platform, its owner and its activity
+                                Every business on the platform, its owner and its activity
                             </Typography>
                         </Box>
                     </Stack>
@@ -385,7 +385,7 @@ export default function SuperAdminRestaurantsPage() {
                             "&:hover": { backgroundColor: "color-mix(in srgb, var(--primary) 86%, black 14%)" },
                         }}
                     >
-                        Add restaurant
+                        Add business
                     </Button>
                 </Stack>
 
@@ -434,7 +434,7 @@ export default function SuperAdminRestaurantsPage() {
                     <TextField
                         size="small"
                         fullWidth
-                        placeholder="Search by restaurant, email or owner"
+                        placeholder="Search by business, email or owner"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         slotProps={{
@@ -457,7 +457,7 @@ export default function SuperAdminRestaurantsPage() {
                             display: { xs: "none", sm: "block" },
                         }}
                     >
-                        {visible.length} {visible.length === 1 ? "restaurant" : "restaurants"}
+                        {visible.length} {visible.length === 1 ? "business" : "businesses"}
                     </Typography>
                 </Stack>
 
@@ -471,12 +471,12 @@ export default function SuperAdminRestaurantsPage() {
                     <Box sx={{ py: 7, px: 3, textAlign: "center", color: "var(--muted-foreground)" }}>
                         <Typography sx={{ fontSize: "1.9rem", lineHeight: 1 }}>🏪</Typography>
                         <Typography sx={{ fontWeight: 800, mt: 1 }}>
-                            {search || statusFilter !== "all" ? "No matching restaurants" : "No restaurants yet"}
+                            {search || statusFilter !== "all" ? "No matching businesses" : "No businesses yet"}
                         </Typography>
                         <Typography sx={{ fontSize: "0.85rem" }}>
                             {search || statusFilter !== "all"
                                 ? "Try a different search or filter."
-                                : "Create an owner in Users, then add their restaurant here."}
+                                : "Create an owner in Users, then add their business here."}
                         </Typography>
                     </Box>
                 ) : (
@@ -484,7 +484,7 @@ export default function SuperAdminRestaurantsPage() {
                         <Table sx={{ display: { xs: "none", md: "table" }, minWidth: 860 }}>
                             <TableHead>
                                 <TableRow>
-                                    {["Restaurant", "Owner", "Activity", "Status", "Joined", "Actions"].map((heading) => (
+                                    {["Business", "Owner", "Activity", "Status", "Joined", "Actions"].map((heading) => (
                                         <TableCell
                                             key={heading}
                                             sx={{
@@ -738,12 +738,12 @@ export default function SuperAdminRestaurantsPage() {
                 <DialogTitle sx={{ flexShrink: 0, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.5, borderBottom: "1px solid var(--border)" }}>
                     <Box sx={{ width: 40, height: 4, borderRadius: 999, backgroundColor: "var(--border)", mx: "auto", mb: { xs: 1.25, sm: 0 }, display: { xs: "block", sm: "none" } }} />
                     <Typography component="div" sx={{ fontSize: { xs: "1.15rem", sm: "1.3rem" }, fontWeight: 900 }}>
-                        {dialogState.id ? "Edit restaurant" : "Add restaurant"}
+                        {dialogState.id ? "Edit business" : "Add business"}
                     </Typography>
                     <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
                         {dialogState.id
-                            ? "Update the restaurant profile and availability."
-                            : "Attach a restaurant profile to an owner account."}
+                            ? "Update the business profile and availability."
+                            : "Attach a business profile to an owner account."}
                     </Typography>
                 </DialogTitle>
                 <DialogContent
@@ -772,7 +772,7 @@ export default function SuperAdminRestaurantsPage() {
                                 disabled={freeOwners.length === 0}
                                 helperText={
                                     freeOwners.length
-                                        ? "Pick a user who does not own a restaurant yet."
+                                        ? "Pick a user who does not own a business yet."
                                         : "No unassigned owners available — create one in Users first."
                                 }
                             >
@@ -787,7 +787,7 @@ export default function SuperAdminRestaurantsPage() {
                         )}
 
                         <TextField
-                            label="Restaurant name"
+                            label="Business name"
                             value={dialogState.name}
                             onChange={(event) => setDialogState((current) => ({ ...current, name: event.target.value }))}
                             fullWidth
@@ -847,7 +847,7 @@ export default function SuperAdminRestaurantsPage() {
                                 ))}
                             </Stack>
                             <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: 0.75 }}>
-                                Inactive restaurants are hidden from customers scanning their QR code.
+                                Inactive businesses are hidden from customers scanning their QR code.
                             </Typography>
                         </Box>
 
@@ -897,7 +897,7 @@ export default function SuperAdminRestaurantsPage() {
                             "&:hover": { backgroundColor: "var(--primary)" },
                         }}
                     >
-                        {saving ? "Saving..." : dialogState.id ? "Update restaurant" : "Create restaurant"}
+                        {saving ? "Saving..." : dialogState.id ? "Update business" : "Create business"}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -919,11 +919,11 @@ export default function SuperAdminRestaurantsPage() {
                 }}
             >
                 <DialogTitle sx={{ fontWeight: 900, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1 }}>
-                    Delete restaurant
+                    Delete business
                 </DialogTitle>
                 <DialogContent sx={{ px: { xs: 2, sm: 3 }, pt: "12px !important" }}>
                     <Typography sx={{ color: "var(--muted-foreground)" }}>
-                        Delete <strong>{selected?.name ?? "this restaurant"}</strong>? Its menu, tables and orders will no
+                        Delete <strong>{selected?.name ?? "this business"}</strong>? Its menu, tables and orders will no
                         longer appear in the platform. The owner account is kept.
                     </Typography>
                     {error ? (
