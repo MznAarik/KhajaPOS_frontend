@@ -9,10 +9,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Skeleton,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +32,7 @@ import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 
@@ -37,6 +42,7 @@ import {
   createAdminTable,
   deleteAdminTable,
   getAdminTables,
+  releaseAdminTable,
   type AdminTable,
   updateAdminTable,
 } from "@/lib/api";
@@ -48,8 +54,8 @@ type DialogState = {
   isActive: boolean;
 };
 
-const createInitialState = (): DialogState => ({
-  tableNo: "",
+const createInitialState = (tableNo = ""): DialogState => ({
+  tableNo,
   qrCode: "",
   isActive: true,
 });
@@ -72,7 +78,12 @@ export default function TablesPage() {
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
 
+  const [releaseTarget, setReleaseTarget] =
+    React.useState<AdminTable | null>(null);
+  const [releaseOpen, setReleaseOpen] = React.useState(false);
+
   const [saving, setSaving] = React.useState(false);
+  const [releasing, setReleasing] = React.useState(false);
 
   const [error, setError] = React.useState("");
 
@@ -83,6 +94,10 @@ export default function TablesPage() {
   const [updatingTables, setUpdatingTables] = React.useState<Set<number>>(
     new Set()
   );
+  const [statusMenu, setStatusMenu] = React.useState<{
+    anchor: HTMLElement;
+    table: AdminTable;
+  } | null>(null);
   const { showSnackbar } = useAppSnackbar();
 
   const fetchTables = React.useCallback(async (options?: { silent?: boolean }) => {
@@ -133,7 +148,14 @@ export default function TablesPage() {
   }, [page, rowsPerPage, tables]);
 
   const openCreateDialog = () => {
-    setDialogState(createInitialState());
+    const numericNumbers = tables
+      .map((table) => Number(table.tableNo))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    const nextNumber = numericNumbers.length
+      ? String(Math.max(...numericNumbers) + 1)
+      : "1";
+
+    setDialogState(createInitialState(nextNumber));
     setError("");
     setDialogOpen(true);
   };
@@ -219,6 +241,7 @@ export default function TablesPage() {
   };
 
   const handleToggleActive = async (table: AdminTable) => {
+    setStatusMenu(null);
     setUpdatingTables((prev) => {
       const next = new Set(prev);
       next.add(table.id);
@@ -235,7 +258,7 @@ export default function TablesPage() {
 
       await fetchTables();
       showSnackbar(
-        `Table ${table.tableNo} has been ${table.isActive ? "disabled" : "enabled"}.`,
+        `Ordering for Table ${table.tableNo} has been ${table.isActive ? "disabled" : "enabled"}.`,
         "warning"
       );
     } catch (toggleError) {
@@ -252,6 +275,35 @@ export default function TablesPage() {
     }
   };
 
+  const openReleaseDialog = (table: AdminTable) => {
+    setStatusMenu(null);
+    setReleaseTarget(table);
+    setError("");
+    setReleaseOpen(true);
+  };
+
+  const handleRelease = async () => {
+    if (!releaseTarget) return;
+
+    setReleasing(true);
+    setError("");
+
+    try {
+      await releaseAdminTable(releaseTarget.id);
+      await fetchTables();
+      setReleaseOpen(false);
+      showSnackbar(`Table ${releaseTarget.tableNo} is now available.`, "success");
+      setReleaseTarget(null);
+    } catch (releaseError) {
+      console.error("Failed to release table:", releaseError);
+      const message = safeError(releaseError, "Failed to free table. Please try again.");
+      setError(message);
+      showSnackbar(message, "error");
+    } finally {
+      setReleasing(false);
+    }
+  };
+
   const copyTableUrl = async (table: AdminTable) => {
     await navigator.clipboard.writeText(buildTableOrderUrl(table.qrCode));
     showSnackbar(`Order URL for table ${table.tableNo} copied.`, "success");
@@ -260,6 +312,69 @@ export default function TablesPage() {
   const copyTableToken = async (table: AdminTable) => {
     await navigator.clipboard.writeText(table.qrCode);
     showSnackbar(`Secure token for table ${table.tableNo} copied.`, "success");
+  };
+
+  const getTableStatus = (table: AdminTable) => ({
+    label: !table.isActive
+      ? "Unavailable"
+      : table.occupied
+        ? table.stale
+          ? "Likely left"
+          : "Occupied"
+        : "Available",
+    backgroundColor: !table.isActive
+      ? "var(--status-inactive-bg)"
+      : table.occupied
+        ? table.stale
+          ? "var(--status-pending-bg)"
+          : "color-mix(in srgb, var(--primary) 16%, transparent)"
+        : "var(--status-active-bg)",
+    color: !table.isActive
+      ? "var(--status-inactive-fg)"
+      : table.occupied
+        ? table.stale
+          ? "var(--status-pending-fg)"
+          : "var(--primary)"
+        : "var(--status-active-fg)",
+    borderColor: !table.isActive
+      ? "var(--status-inactive-border)"
+      : table.occupied
+        ? table.stale
+          ? "var(--status-pending-border)"
+          : "color-mix(in srgb, var(--primary) 40%, transparent)"
+        : "var(--status-active-border)",
+  });
+
+  const renderStatusControl = (table: AdminTable) => {
+    const status = getTableStatus(table);
+    const busy = updatingTables.has(table.id);
+
+    return (
+      <Button
+        size="small"
+        variant="outlined"
+        disabled={busy}
+        aria-haspopup="menu"
+        aria-label={`Table ${table.tableNo} status: ${status.label}. Open status actions`}
+        onClick={(event) => setStatusMenu({ anchor: event.currentTarget, table })}
+        endIcon={<KeyboardArrowDownRoundedIcon />}
+        sx={{
+          borderRadius: "999px",
+          textTransform: "none",
+          fontWeight: 800,
+          px: 1.25,
+          py: 0.35,
+          minHeight: 34,
+          color: status.color,
+          backgroundColor: status.backgroundColor,
+          borderColor: status.borderColor,
+          "&:hover": { backgroundColor: status.backgroundColor, borderColor: status.borderColor, filter: "brightness(0.96)" },
+          "& .MuiButton-endIcon": { ml: 0.35 },
+        }}
+      >
+        {busy ? "Saving..." : status.label}
+      </Button>
+    );
   };
 
   return (
@@ -278,7 +393,7 @@ export default function TablesPage() {
           boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5}>
+        <Stack direction={{ xs: "row", md: "row" }} justifyContent="space-between" alignItems={{ xs: "center", md: "center" }} spacing={1.5}>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
               Dining Tables
@@ -286,8 +401,8 @@ export default function TablesPage() {
             <Typography sx={{ fontSize: { xs: "1.25rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
               Table Management
             </Typography>
-            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.88rem", md: "0.95rem" }, mt: 0.5, fontWeight: 650 }}>
-              Generate QR codes per table for contactless ordering
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.82rem", md: "0.95rem" }, mt: 0.5, fontWeight: 650 }}>
+              {"Manage tables and their ordering QR codes"}
             </Typography>
           </Box>
           <Button
@@ -299,11 +414,14 @@ export default function TablesPage() {
               backgroundColor: "var(--primary)",
               color: "var(--primary-foreground)",
               boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
-              width: { xs: "100%", sm: "auto" },
+              width: { xs: "auto", sm: "auto" },
+              minWidth: { xs: 44, sm: "auto" },
               flexShrink: 0,
+              px: { xs: 1.25, sm: 2 },
             }}
           >
-            Add Table
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Add Table</Box>
+            <Box component="span" sx={{ display: { xs: "inline", sm: "none" }, fontSize: 0, lineHeight: 0 }}>Add</Box>
           </Button>
         </Stack>
       </Paper>
@@ -333,45 +451,59 @@ export default function TablesPage() {
             alignItems={{ xs: "flex-start", md: "center" }}
           >
             <Box>
-              <Typography sx={{ fontWeight: 700 }}>
-                QR-ready Tables
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: "1rem", md: "1.05rem" } }}>
+                Tables
               </Typography>
 
               <Typography
                 sx={{
                   color: "var(--muted-foreground)",
-                  fontSize: "0.92rem",
-                  mt: 0.6,
+                  fontSize: "0.9rem",
+                  mt: 0.4,
+                  fontWeight: 650,
                 }}
               >
-                Each QR code points to a table-specific order page.
+                See table status and manage ordering access.
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ width: { xs: "100%", md: "auto" } }}>
               <Chip
                 label={`${tables.length} Total`}
-                sx={{ fontWeight: 700 }}
+                size="small"
+                sx={{ fontWeight: 800, borderRadius: "999px" }}
               />
-
               <Chip
-                label={`${tables.filter((table) => table.isActive && !table.occupied).length
-                  } Available`}
+                label={`${tables.filter((table) => table.isActive && !table.occupied).length} Available`}
+                size="small"
                 sx={{
+                  fontWeight: 800,
+                  borderRadius: "999px",
                   backgroundColor: "var(--status-active-bg)",
                   color: "var(--status-active-fg)",
-                  fontWeight: 700,
+                  border: "1px solid var(--status-active-border)",
                 }}
               />
-
               <Chip
-                label={`${tables.filter((table) => table.isActive && table.occupied).length
-                  } Occupied`}
+                label={`${tables.filter((table) => table.isActive && table.occupied).length} Occupied`}
+                size="small"
                 sx={{
-                  backgroundColor: "color-mix(in srgb, var(--primary) 16%, transparent)",
+                  fontWeight: 800,
+                  borderRadius: "999px",
+                  backgroundColor: "color-mix(in srgb, var(--primary) 14%, transparent)",
                   color: "var(--primary)",
-                  border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
-                  fontWeight: 700,
+                  border: "1px solid color-mix(in srgb, var(--primary) 38%, transparent)",
+                }}
+              />
+              <Chip
+                label={`${tables.filter((table) => !table.isActive).length} Unavailable`}
+                size="small"
+                sx={{
+                  fontWeight: 800,
+                  borderRadius: "999px",
+                  backgroundColor: "var(--status-inactive-bg)",
+                  color: "var(--status-inactive-fg)",
+                  border: "1px solid var(--status-inactive-border)",
                 }}
               />
             </Stack>
@@ -394,75 +526,20 @@ export default function TablesPage() {
             ))
           ) : visibleTables.length ? (
             visibleTables.map((table) => (
-              <Paper key={table.id} sx={{ p: 1.75, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
-                <Stack spacing={1.5}>
+              <Paper key={table.id} sx={{ p: 1.75, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0, overflow: "hidden", boxShadow: "0 10px 30px rgba(31,42,43,0.06)" }}>
+                <Stack spacing={1.25}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 850, fontSize: "1.05rem", overflowWrap: "anywhere" }}>
-                        Table {table.tableNo}
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: "wrap" }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: "1.08rem", overflowWrap: "anywhere" }}>
+                          Table {table.tableNo}
+                        </Typography>
+                        {renderStatusControl(table)}
+                      </Stack>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem", mt: 0.25 }}>
+                        QR code ready for contactless ordering
                       </Typography>
-                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
-                        Secure QR enabled
-                      </Typography>
-                      <Chip
-                        size="small"
-                        label={
-                          !table.isActive
-                            ? "Unavailable"
-                            : table.occupied
-                              ? table.stale
-                                ? "Likely left"
-                                : "Occupied"
-                              : "Available"
-                        }
-                        sx={{
-                          mt: 1,
-                          fontWeight: 800,
-                          backgroundColor: !table.isActive
-                            ? "var(--status-inactive-bg)"
-                            : table.occupied
-                              ? table.stale
-                                ? "var(--status-pending-bg)"
-                                : "color-mix(in srgb, var(--primary) 16%, transparent)"
-                              : "var(--status-active-bg)",
-                          color: !table.isActive
-                            ? "var(--status-inactive-fg)"
-                            : table.occupied
-                              ? table.stale
-                                ? "var(--status-pending-fg)"
-                                : "var(--primary)"
-                              : "var(--status-active-fg)",
-                          border: "1px solid",
-                          borderColor: !table.isActive
-                            ? "var(--status-inactive-border)"
-                            : table.occupied
-                              ? table.stale
-                                ? "var(--status-pending-border)"
-                                : "color-mix(in srgb, var(--primary) 40%, transparent)"
-                              : "var(--status-active-border)",
-                        }}
-                      />
                     </Box>
-                    <Chip
-                      clickable={!updatingTables.has(table.id)}
-                      disabled={updatingTables.has(table.id)}
-                      label={updatingTables.has(table.id) ? "Updating" : table.isActive ? "Active" : "Off"}
-                      onClick={() => !updatingTables.has(table.id) && handleToggleActive(table)}
-                      sx={{
-                        flexShrink: 0,
-                        backgroundColor: updatingTables.has(table.id) ? "rgba(128,128,128,0.12)" : table.isActive ? "var(--status-active-bg)" : "var(--status-inactive-bg)",
-                        color: updatingTables.has(table.id) ? "#808080" : table.isActive ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
-                        border: "1px solid",
-                        borderColor: updatingTables.has(table.id)
-                          ? "var(--status-neutral-border)"
-                          : table.isActive
-                            ? "var(--status-active-border)"
-                            : "var(--status-inactive-border)",
-                        fontWeight: 800,
-                        cursor: updatingTables.has(table.id) ? "wait" : "pointer",
-                        opacity: 1,
-                      }}
-                    />
                   </Stack>
 
                   <Paper
@@ -498,15 +575,15 @@ export default function TablesPage() {
                     </Typography>
                   </Paper>
 
-                  <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-                    <IconButton size="small" onClick={() => setQrPreviewTable(table)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}>
-                      <QrCode2OutlinedIcon fontSize="small" />
-                    </IconButton>
-                    <Button size="small" variant="outlined" onClick={() => copyTableUrl(table)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0, px: 1 }}>Copy URL</Button>
-                    <IconButton size="small" onClick={() => openEditDialog(table)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
+                  <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0, flexWrap: "wrap" }}>
+                    <Button size="small" variant="contained" onClick={() => setQrPreviewTable(table)} startIcon={<QrCode2OutlinedIcon sx={{ fontSize: "16px !important" }} />} sx={{ borderRadius: "12px", fontWeight: 800, textTransform: "none", minHeight: 40 }}>
+                      View QR
+                    </Button>
+                    <Button size="small" variant="outlined" onClick={() => copyTableUrl(table)} sx={{ borderRadius: "12px", fontWeight: 800, textTransform: "none", minHeight: 40 }}>Copy link</Button>
+                    <IconButton aria-label={`Edit table ${table.tableNo}`} onClick={() => openEditDialog(table)} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--primary)" }}>
                       <EditOutlinedIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+                    <IconButton aria-label={`Delete table ${table.tableNo}`} onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--status-inactive-fg)" }}>
                       <DeleteOutlineOutlinedIcon fontSize="small" />
                     </IconButton>
                   </Stack>
@@ -519,14 +596,14 @@ export default function TablesPage() {
         </Box>
 
         <Box sx={{ display: { xs: "none", md: "block" }, overflowX: "auto" }}>
-        <Table sx={{ minWidth: 900, tableLayout: "fixed" }}>
+        <Table sx={{ minWidth: 980, tableLayout: "fixed" }}>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "var(--background)" }}>
-              <TableCell sx={{ width: 90 }}>Table</TableCell>
-              <TableCell>QR Code</TableCell>
-              <TableCell sx={{ width: "30%" }}>Order URL</TableCell>
-              <TableCell sx={{ width: 140 }}>Status</TableCell>
-              <TableCell align="center" sx={{ width: 170 }}>Actions</TableCell>
+            <TableRow sx={{ backgroundColor: "color-mix(in srgb, var(--muted) 40%, transparent)" }}>
+              <TableCell sx={{ width: 110, fontWeight: 800 }}>Table</TableCell>
+              <TableCell sx={{ fontWeight: 800 }}>QR Code</TableCell>
+              <TableCell sx={{ width: "28%", fontWeight: 800 }}>Order URL</TableCell>
+              <TableCell sx={{ width: 170, fontWeight: 800 }}>Status</TableCell>
+              <TableCell align="right" sx={{ width: 230, fontWeight: 800 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
 
@@ -612,89 +689,54 @@ export default function TablesPage() {
                   {/* STATUS */}
 
                   <TableCell>
-                    <Chip
-                      label={
-                        !table.isActive
-                          ? "Unavailable"
-                          : table.occupied
-                            ? table.stale
-                              ? "Likely left"
-                              : "Occupied"
-                            : "Available"
-                      }
-                      sx={{
-                        backgroundColor: !table.isActive
-                          ? "var(--status-inactive-bg)"
-                          : table.occupied
-                            ? table.stale
-                              ? "var(--status-pending-bg)"
-                              : "color-mix(in srgb, var(--primary) 16%, transparent)"
-                            : "var(--status-active-bg)",
-
-                        color: !table.isActive
-                          ? "var(--status-inactive-fg)"
-                          : table.occupied
-                            ? table.stale
-                              ? "var(--status-pending-fg)"
-                              : "var(--primary)"
-                            : "var(--status-active-fg)",
-
-                        fontWeight: 700,
-
-                        border: "1px solid",
-
-                        borderColor: !table.isActive
-                          ? "var(--status-inactive-border)"
-                          : table.occupied
-                            ? table.stale
-                              ? "var(--status-pending-border)"
-                              : "color-mix(in srgb, var(--primary) 40%, transparent)"
-                            : "var(--status-active-border)",
-
-                        opacity: 1,
-                      }}
-                    />
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
+                      {renderStatusControl(table)}
+                    </Stack>
                   </TableCell>
 
                   {/* ACTIONS */}
 
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        setQrPreviewTable(table)
-                      }
-                    >
-                      <QrCode2OutlinedIcon />
-                    </IconButton>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end" alignItems="center" flexWrap="nowrap">
+                      <IconButton
+                        size="small"
+                        aria-label={`Show QR code for table ${table.tableNo}`}
+                        onClick={() => setQrPreviewTable(table)}
+                        sx={{ border: "1px solid var(--border)", borderRadius: "10px", width: 34, height: 34 }}
+                      >
+                        <QrCode2OutlinedIcon fontSize="small" />
+                      </IconButton>
 
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        copyTableUrl(table)
-                      }
-                    >
-                      <ContentCopyOutlinedIcon />
-                    </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label={`Copy order link for table ${table.tableNo}`}
+                        onClick={() => copyTableUrl(table)}
+                        sx={{ border: "1px solid var(--border)", borderRadius: "10px", width: 34, height: 34 }}
+                      >
+                        <ContentCopyOutlinedIcon fontSize="small" />
+                      </IconButton>
 
-                    <IconButton
-                      size="small"
-                      sx={{ color: "var(--primary)" }}
-                      onClick={() => openEditDialog(table)}
-                    >
-                      <EditOutlinedIcon />
-                    </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label={`Edit table ${table.tableNo}`}
+                        sx={{ color: "var(--primary)", border: "1px solid var(--border)", borderRadius: "10px", width: 34, height: 34 }}
+                        onClick={() => openEditDialog(table)}
+                      >
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
 
-                    <IconButton
-                      size="small"
-                      sx={{ color: "var(--status-inactive-fg)" }}
-                      onClick={() => {
-                        setSelectedTable(table);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <DeleteOutlineOutlinedIcon />
-                    </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label={`Delete table ${table.tableNo}`}
+                        sx={{ color: "var(--status-inactive-fg)", border: "1px solid var(--border)", borderRadius: "10px", width: 34, height: 34 }}
+                        onClick={() => {
+                          setSelectedTable(table);
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))
@@ -742,6 +784,31 @@ export default function TablesPage() {
         />
       </Paper>
 
+      <Menu
+        anchorEl={statusMenu?.anchor ?? null}
+        open={Boolean(statusMenu)}
+        onClose={() => setStatusMenu(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        slotProps={{ paper: { sx: { minWidth: 190, borderRadius: "14px", border: "1px solid var(--border)", mt: 0.5 } } }}
+      >
+        {statusMenu ? (
+          <>
+            <MenuItem onClick={() => void handleToggleActive(statusMenu.table)}>
+              {statusMenu.table.isActive ? "Mark as unavailable" : "Mark as available"}
+            </MenuItem>
+            {statusMenu.table.occupied ? (
+              <MenuItem
+                onClick={() => openReleaseDialog(statusMenu.table)}
+                sx={{ color: "var(--primary)", fontWeight: 700 }}
+              >
+                Free table…
+              </MenuItem>
+            ) : null}
+          </>
+        ) : null}
+      </Menu>
+
       {/* CREATE / EDIT DIALOG */}
 
       <Dialog
@@ -749,15 +816,49 @@ export default function TablesPage() {
         onClose={saving ? undefined : () => setDialogOpen(false)}
         fullWidth
         maxWidth="sm"
+        PaperProps={{
+          sx: {
+            width: { xs: "calc(100% - 16px)", sm: "100%" },
+            m: { xs: "8px", sm: "32px" },
+            borderRadius: { xs: "20px", sm: "24px" },
+            overflow: "hidden",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+            backgroundImage:
+              "radial-gradient(460px 220px at 92% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 70%)",
+            boxShadow: "0 30px 70px rgba(15, 23, 42, 0.28)",
+          },
+        }}
       >
-        <DialogTitle>
-          {dialogState.id ? "Edit Table" : "Add Table"}
+        <DialogTitle
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pt: { xs: 2.25, sm: 3 },
+            pb: 1.75,
+          }}
+        >
+          <Typography component="div" sx={{ fontSize: { xs: "1.2rem", sm: "1.4rem" }, fontWeight: 900, letterSpacing: "-0.01em" }}>
+            {dialogState.id ? "Edit Table" : "Add New Table"}
+          </Typography>
+          <Typography sx={{ mt: 0.6, color: "var(--muted-foreground)", fontSize: "0.92rem", fontWeight: 650 }}>
+            {dialogState.id
+              ? "Update table details, availability, or free an occupied table in one place."
+              : "Create a table and get a ready-to-use QR code for contactless ordering."}
+          </Typography>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2.5 }}>
+        <DialogContent
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pt: { xs: 2, sm: 2.5 },
+            pb: 2,
+            borderTop: "1px solid var(--border)",
+          }}
+        >
           <Stack spacing={2}>
             <TextField
-              label="Table Name / Number"
+              label="Table Number / Name"
+              placeholder="e.g. 1, A1, VIP-01"
               value={dialogState.tableNo}
               onChange={(event) =>
                 setDialogState((current) => ({
@@ -767,15 +868,154 @@ export default function TablesPage() {
               }
               fullWidth
               autoFocus
+              InputLabelProps={{ sx: { fontWeight: 700 } }}
             />
 
             <TextField
               label="Secure QR Token"
-              helperText="Generated automatically. Share only the QR code or copied order URL with customers."
-              value={dialogState.qrCode}
+              helperText="Auto-generated and unique per table. Use the QR/URL on the list to share with customers."
+              value={dialogState.qrCode || "Will be generated on save"}
               disabled
               fullWidth
+              InputLabelProps={{ sx: { fontWeight: 700 } }}
             />
+
+            {dialogState.id ? (
+              (() => {
+                const editingTable = tables.find((t) => t.id === dialogState.id);
+                const statusLabel = !dialogState.isActive ? "Inactive" : editingTable?.occupied ? (editingTable.stale ? "Likely left" : "Occupied") : "Available";
+                const statusColor = !dialogState.isActive ? "var(--status-inactive-fg)" : editingTable?.occupied ? (editingTable.stale ? "var(--status-pending-fg)" : "var(--primary)") : "var(--status-active-fg)";
+                const statusBg = !dialogState.isActive ? "var(--status-inactive-bg)" : editingTable?.occupied ? (editingTable.stale ? "var(--status-pending-bg)" : "color-mix(in srgb, var(--primary) 16%, transparent)") : "var(--status-active-bg)";
+                const statusBorder = !dialogState.isActive ? "var(--status-inactive-border)" : editingTable?.occupied ? (editingTable.stale ? "var(--status-pending-border)" : "color-mix(in srgb, var(--primary) 40%, transparent)") : "var(--status-active-border)";
+                return (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: { xs: 1.5, sm: 2 },
+                      borderRadius: "18px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "color-mix(in srgb, var(--muted) 28%, transparent)",
+                      display: "grid",
+                      gap: 1.5,
+                    }}
+                  >
+                    <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900 }}>Current status</Typography>
+                        <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.88rem", fontWeight: 650 }}>
+                          Live state based on orders and availability settings.
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={statusLabel}
+                        sx={{
+                          fontWeight: 800,
+                          borderRadius: "999px",
+                          color: statusColor,
+                          backgroundColor: statusBg,
+                          border: "1px solid",
+                          borderColor: statusBorder,
+                        }}
+                      />
+                    </Stack>
+
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: "14px",
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 800 }}>Allow ordering</Typography>
+                          <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>
+                            When disabled, this table won't be available for new orders.
+                          </Typography>
+                        </Box>
+                        <FormControlLabel
+                          label={dialogState.isActive ? "Enabled" : "Disabled"}
+                          labelPlacement="start"
+                          sx={{
+                            m: 0,
+                            gap: 1,
+                            "& .MuiFormControlLabel-label": {
+                              fontWeight: 800,
+                              color: dialogState.isActive ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+                            },
+                          }}
+                          control={
+                            <Switch
+                              checked={dialogState.isActive}
+                              onChange={(event) =>
+                                setDialogState((current) => ({
+                                  ...current,
+                                  isActive: event.target.checked,
+                                }))
+                              }
+                              color="success"
+                              slotProps={{ input: { "aria-label": "Toggle table ordering" } }}
+                            />
+                          }
+                        />
+                      </Stack>
+                    </Paper>
+
+                    {editingTable?.occupied ? (
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: "14px",
+                          border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
+                          backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)",
+                        }}
+                      >
+                        <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 900 }}>Free up this table</Typography>
+                            <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>
+                              Close all open orders for this table to make it available again.
+                            </Typography>
+                          </Box>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            disabled={releasing}
+                            onClick={() => {
+                              if (editingTable) {
+                                setDialogOpen(false);
+                                openReleaseDialog(editingTable);
+                              }
+                            }}
+                            sx={{ borderRadius: "12px", fontWeight: 800, textTransform: "none", flexShrink: 0, px: 2 }}
+                          >
+                            {releasing ? "Freeing..." : "Free table"}
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ) : null}
+                  </Paper>
+                );
+              })()
+            ) : (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  borderRadius: "14px",
+                  border: "1px dashed var(--border)",
+                  backgroundColor: "var(--background)",
+                }}
+              >
+                <Typography sx={{ fontWeight: 800 }}>Quick setup</Typography>
+                <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.88rem" }}>
+                  New tables are enabled by default. You can disable or free them later from this screen.
+                </Typography>
+              </Paper>
+            )}
 
             {error ? (
               <Typography
@@ -790,10 +1030,18 @@ export default function TablesPage() {
           </Stack>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.75, sm: 2 },
+            borderTop: "1px solid var(--border)",
+            gap: 1,
+          }}
+        >
           <Button
             onClick={() => setDialogOpen(false)}
             disabled={saving}
+            sx={{ borderRadius: "12px", fontWeight: 700, color: "var(--muted-foreground)" }}
           >
             Cancel
           </Button>
@@ -802,6 +1050,14 @@ export default function TablesPage() {
             variant="contained"
             onClick={handleSave}
             disabled={saving}
+            sx={{
+              borderRadius: "12px",
+              fontWeight: 800,
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "var(--primary)", boxShadow: "none", filter: "brightness(0.96)" },
+            }}
           >
             {saving
               ? "Saving..."
@@ -847,6 +1103,85 @@ export default function TablesPage() {
             disabled={saving}
           >
             {saving ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={releaseOpen}
+        onClose={
+          releasing
+            ? undefined
+            : () => {
+                setReleaseOpen(false);
+                setReleaseTarget(null);
+              }
+        }
+        fullWidth
+        maxWidth="xs"
+        sx={{ "& .MuiDialog-container": { alignItems: { xs: "flex-end", sm: "center" } } }}
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: "22px 22px 0 0", sm: "22px" },
+            width: { xs: "100%", sm: "100%" },
+            m: { xs: 0, sm: "32px" },
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1 }}>
+          Free table
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, pt: "12px !important" }}>
+          <Typography sx={{ color: "var(--muted-foreground)" }}>
+            Free <strong>Table {releaseTarget?.tableNo ?? ""}</strong>? Any open orders for this
+            table will be closed, and customers will need to start a new order.
+          </Typography>
+          {error ? (
+            <Typography sx={{ color: "#dc2626", fontSize: "0.88rem", fontWeight: 700, mt: 1.5 }}>
+              {error}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pt: 2,
+            pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2 },
+            gap: 1,
+          }}
+        >
+          <Button
+            onClick={() => {
+              setReleaseOpen(false);
+              setReleaseTarget(null);
+            }}
+            disabled={releasing}
+            sx={{
+              borderRadius: "12px",
+              flex: { xs: 1, sm: "0 0 auto" },
+              minHeight: 44,
+              textTransform: "none",
+              fontWeight: 700,
+              color: "var(--muted-foreground)",
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleRelease}
+            disabled={releasing}
+            sx={{
+              borderRadius: "12px",
+              fontWeight: 800,
+              flex: { xs: 1, sm: "0 0 auto" },
+              minHeight: 44,
+              textTransform: "none",
+            }}
+          >
+            {releasing ? "Freeing..." : "Free table"}
           </Button>
         </DialogActions>
       </Dialog>

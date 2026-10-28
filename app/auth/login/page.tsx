@@ -18,6 +18,8 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { apiRequest, resendVerification } from "@/lib/api";
+import { landingForRole } from "@/lib/role-home";
+import { useActiveSessionRedirect } from "@/lib/useActiveSessionRedirect";
 import { safeError } from "@/lib/safeError";
 import { useRouter } from "next/navigation";
 
@@ -29,20 +31,11 @@ export default function AuthPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [verificationRequired, setVerificationRequired] = React.useState(false);
     const [resending, setResending] = React.useState(false);
-    const [hasSession, setHasSession] = React.useState(false);
+    const checkingSession = useActiveSessionRedirect();
 
     const { showSnackbar } = useAppSnackbar();
     const router = useRouter();
     const handledQueryMessageRef = React.useRef(false);
-
-    React.useEffect(() => {
-        const sessionExists = document.cookie.includes("authSession=");
-        setHasSession(sessionExists);
-
-        if (sessionExists) {
-            showSnackbar("Existing session detected", "info");
-        }
-    }, [showSnackbar]);
 
     React.useEffect(() => {
         if (handledQueryMessageRef.current) return;
@@ -83,9 +76,8 @@ export default function AuthPage() {
 
             const params = new URLSearchParams(window.location.search);
             const redirectTo = params.get("redirect");
-            const role = data?.data?.user?.role;
-            const home = role === "super_admin" ? "/admin/users" : "/admin/dashboard";
-            router.replace(redirectTo?.startsWith("/admin") ? redirectTo : home);
+            const role = data?.data?.user?.role as string | undefined;
+            router.replace(landingForRole(role, redirectTo));
         } catch (err) {
             const message = safeError(err, "Login failed");
             setError(message);
@@ -227,9 +219,9 @@ export default function AuthPage() {
                         </Typography>
                     </Box>
 
-                    {hasSession && !error && (
-                        <Alert severity="success" sx={{ borderRadius: "14px" }}>
-                            Session detected. You can continue or sign in again.
+                    {checkingSession && !error && (
+                        <Alert severity="info" sx={{ borderRadius: "14px" }}>
+                            Session detected. Taking you to your dashboard…
                         </Alert>
                     )}
 

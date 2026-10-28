@@ -5,8 +5,16 @@ import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { createPortal } from "react-dom";
 import { createAppTheme } from "../../app/src/theme";
 import { usePathname } from "next/navigation";
+import {
+    applyThemeMode,
+    getThemeStorageKey,
+    readStoredThemeChoice,
+    resolveThemeMode,
+    type ThemeMode,
+} from "./theme-mode";
 
-type ThemeMode = "light" | "dark";
+const useIsomorphicLayoutEffect =
+    typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 interface ThemeOrigin {
     x: number;
@@ -26,47 +34,6 @@ export const ThemeContext = React.createContext<ThemeContextType>({
 export function useThemeToggle() {
     return React.useContext(ThemeContext);
 }
-
-const getThemeStorageKey = (pathname: string | null) => {
-    if (pathname?.startsWith("/admin") || pathname?.startsWith("/user")) {
-        return "adminTheme";
-    }
-
-    if (pathname?.startsWith("/order")) {
-        return "customerTheme";
-    }
-
-    return "theme";
-};
-
-const getPreferredThemeMode = (): ThemeMode => {
-    if (typeof window === "undefined") return "light";
-
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-};
-
-const readStoredThemeMode = (storageKey: string): ThemeMode | null => {
-    if (typeof window === "undefined") return null;
-
-    const saved = window.localStorage.getItem(storageKey);
-
-    return saved === "light" || saved === "dark" ? saved : null;
-};
-
-const applyThemeMode = (nextMode: ThemeMode, storageKey?: string) => {
-    if (typeof document === "undefined") return;
-
-    const root = document.documentElement;
-
-    root.classList.remove("light", "dark");
-    root.classList.add(nextMode);
-    root.setAttribute("data-theme", nextMode);
-    root.style.colorScheme = nextMode;
-
-    if (storageKey && typeof window !== "undefined") {
-        window.localStorage.setItem(storageKey, nextMode);
-    }
-};
 
 const readThemeVar = (name: string, mode: ThemeMode, fallback: string) => {
     if (typeof document === "undefined") return fallback;
@@ -114,16 +81,34 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
     const timersRef = React.useRef<number[]>([]);
     const busyRef = React.useRef(false);
 
-    React.useEffect(() => {
-        const nextMode = readStoredThemeMode(storageKey) ?? getPreferredThemeMode();
+    // Device preference decides the first load; an explicit in-app choice wins.
+    // The inline script in the root layout already applied it before paint, so
+    // sync React state before the browser paints the hydrated tree.
+    useIsomorphicLayoutEffect(() => {
+        const nextMode = resolveThemeMode(storageKey);
 
         setMode(nextMode);
         applyThemeMode(nextMode);
     }, [storageKey]);
 
+    // Follow live device theme changes until the user picks a mode manually.
     React.useEffect(() => {
-        applyThemeMode(mode, storageKey);
-    }, [mode, storageKey]);
+        if (typeof window === "undefined") return;
+
+        const media = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleDeviceThemeChange = (event: MediaQueryListEvent) => {
+            if (readStoredThemeChoice(storageKey)) return;
+
+            const nextMode: ThemeMode = event.matches ? "dark" : "light";
+
+            setMode(nextMode);
+            applyThemeMode(nextMode);
+        };
+
+        media.addEventListener("change", handleDeviceThemeChange);
+
+        return () => media.removeEventListener("change", handleDeviceThemeChange);
+    }, [storageKey]);
 
     const clearTimers = React.useCallback(() => {
         timersRef.current.forEach((id) => window.clearTimeout(id));

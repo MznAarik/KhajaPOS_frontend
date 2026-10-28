@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
-  Avatar,
   Box,
   Button,
   Chip,
@@ -24,11 +24,16 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import TableRestaurantOutlinedIcon from "@mui/icons-material/TableRestaurantOutlined";
 import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlined";
 import WhatshotOutlinedIcon from "@mui/icons-material/WhatshotOutlined";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import {
   getDashboardStats,
+  resolveMenuImageUrl,
   type DashboardPeriod,
   type DashboardStats,
   type OrderStatus,
+  type RecentOrderSummary,
+  type TopProduct,
 } from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
@@ -51,6 +56,129 @@ const statusMeta: Record<OrderStatus, { label: string; color: string; bg: string
 };
 
 const statusOrder: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "served", "cancelled", "closed"];
+
+const formatRelativeTime = (iso: string) => {
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return "—";
+
+  const minutes = Math.max(Math.floor((Date.now() - timestamp) / 60000), 0);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "Yesterday" : `${days}d ago`;
+};
+
+const ProductThumb = ({ product, rank }: { product: TopProduct; rank: number }) => {
+  const imageSrc = resolveMenuImageUrl(product.imageUrl);
+
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        width: { xs: 42, md: 48 },
+        height: { xs: 42, md: 48 },
+        flexShrink: 0,
+        borderRadius: "14px",
+        overflow: "hidden",
+        border: "1px solid var(--border)",
+        backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
+      }}
+    >
+      {imageSrc ? (
+        <Box
+          component="img"
+          src={imageSrc}
+          alt={product.name}
+          loading="lazy"
+          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      ) : (
+        <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center", color: "var(--primary)" }}>
+          <RestaurantMenuOutlinedIcon sx={{ fontSize: { xs: 19, md: 21 } }} />
+        </Box>
+      )}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 3,
+          left: 3,
+          minWidth: 18,
+          height: 18,
+          px: "4px",
+          borderRadius: "999px",
+          display: "grid",
+          placeItems: "center",
+          fontSize: "0.64rem",
+          fontWeight: 900,
+          color: "var(--primary-foreground)",
+          backgroundColor: "var(--primary)",
+          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.28)",
+        }}
+      >
+        {rank}
+      </Box>
+    </Box>
+  );
+};
+
+const RecentOrderRow = ({ order }: { order: RecentOrderSummary }) => {
+  const meta = statusMeta[order.status] ?? statusMeta.pending;
+
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1.25}
+      sx={{ py: 1, minWidth: 0, borderBottom: "1px dashed var(--border)", "&:last-of-type": { borderBottom: "none" } }}
+    >
+      <Box
+        sx={{
+          width: 34,
+          height: 34,
+          flexShrink: 0,
+          borderRadius: "11px",
+          display: "grid",
+          placeItems: "center",
+          color: "var(--primary)",
+          backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
+          fontWeight: 900,
+          fontSize: "0.74rem",
+        }}
+      >
+        #{order.id}
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography sx={{ fontWeight: 850, fontSize: "0.86rem", lineHeight: 1.2 }}>
+          {order.tableNo ? `Table ${order.tableNo}` : order.orderType === "takeaway" ? "Takeaway" : "Dine-in"}
+        </Typography>
+        <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", fontWeight: 700 }}>
+          {order.itemCount} {order.itemCount === 1 ? "item" : "items"} · {formatRelativeTime(order.createdAt)}
+        </Typography>
+      </Box>
+      <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+        <Typography sx={{ fontWeight: 900, fontSize: "0.84rem", whiteSpace: "nowrap" }}>
+          {formatCurrency(order.total)}
+        </Typography>
+        <Chip
+          label={meta.label}
+          size="small"
+          sx={{
+            mt: 0.25,
+            height: 20,
+            fontSize: "0.64rem",
+            fontWeight: 800,
+            color: meta.color,
+            backgroundColor: meta.bg,
+          }}
+        />
+      </Box>
+    </Stack>
+  );
+};
 
 type KpiCardProps = {
   label: string;
@@ -156,6 +284,32 @@ export default function AdminDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchStats]);
 
+  // Keep the dashboard live: refresh every minute and whenever the tab returns.
+  React.useEffect(() => {
+    let active = true;
+
+    const refreshQuietly = () => {
+      if (document.hidden) return;
+
+      getDashboardStats(period)
+        .then((data) => {
+          if (active) setStats(data);
+        })
+        .catch(() => {
+          // Background refresh failures should not interrupt the operator.
+        });
+    };
+
+    const interval = window.setInterval(refreshQuietly, 60_000);
+    document.addEventListener("visibilitychange", refreshQuietly);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshQuietly);
+    };
+  }, [period]);
+
   const handleRefresh = () => {
     setRefreshing(true);
     fetchStats(period);
@@ -203,7 +357,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const { kpis, topProducts, salesTrend, statusBreakdown } = stats;
+  const { kpis, topProducts, salesTrend, statusBreakdown, recentOrders } = stats;
   const trendRevenue = salesTrend.reduce((total, point) => total + point.revenue, 0);
   const bestDay = salesTrend.reduce<DashboardStats["salesTrend"][number] | null>(
     (best, point) => (best === null || point.revenue > best.revenue ? point : best),
@@ -411,19 +565,7 @@ export default function AdminDashboardPage() {
               {topProducts.map((product, index) => (
                 <Box key={product.menuItemId} sx={{ minWidth: 0 }}>
                   <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
-                    <Avatar
-                      sx={{
-                        width: 38,
-                        height: 38,
-                        flexShrink: 0,
-                        fontWeight: 900,
-                        fontSize: "0.85rem",
-                        color: "var(--primary-foreground)",
-                        backgroundColor: "var(--primary)",
-                      }}
-                    >
-                      {index + 1}
-                    </Avatar>
+                    <ProductThumb product={product} rank={index + 1} />
                     <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Typography sx={{ fontWeight: 850, fontSize: { xs: "0.88rem", md: "0.95rem" }, overflowWrap: "anywhere", lineHeight: 1.2 }}>
                         {product.name}
@@ -540,7 +682,21 @@ export default function AdminDashboardPage() {
 
           <Stack spacing={1.5} sx={{ mt: 1.5 }}>
             {[
-              { icon: TableRestaurantOutlinedIcon, label: "Active Tables", value: `${kpis.activeTables} / ${kpis.totalTables}` },
+              {
+                icon: TableRestaurantOutlinedIcon,
+                label: "Available Tables",
+                value: `${kpis.activeTables} / ${kpis.totalTables}`,
+                helper:
+                  kpis.occupiedTables > 0
+                    ? `${kpis.occupiedTables} occupied right now`
+                    : "No occupied tables",
+              },
+              {
+                icon: WhatshotOutlinedIcon,
+                label: "Occupied Tables",
+                value: `${kpis.occupiedTables}`,
+                helper: kpis.inactiveTables > 0 ? `${kpis.inactiveTables} table(s) turned off` : undefined,
+              },
               { icon: RestaurantMenuOutlinedIcon, label: "Menu Items", value: `${kpis.totalMenuItems}` },
               { icon: TrendingUpOutlinedIcon, label: "Best Day", value: bestDay ? `${bestDay.label} · ${formatCurrency(bestDay.revenue)}` : "—" },
             ].map((item) => (
@@ -564,8 +720,46 @@ export default function AdminDashboardPage() {
                     {item.label}
                   </Typography>
                   <Typography sx={{ fontWeight: 850, fontSize: "0.95rem", overflowWrap: "anywhere" }}>{item.value}</Typography>
+                  {item.helper ? (
+                    <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                      {item.helper}
+                    </Typography>
+                  ) : null}
                 </Box>
               </Stack>
+            ))}
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography sx={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Quick actions
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mt: 1 }}>
+            {[
+              { label: "Orders", href: "/admin/orders", icon: ReceiptLongOutlinedIcon },
+              { label: "Tables", href: "/admin/tables", icon: TableRestaurantOutlinedIcon },
+              { label: "Menu", href: "/admin/menu", icon: RestaurantMenuOutlinedIcon },
+              { label: "Categories", href: "/admin/category", icon: CategoryOutlinedIcon },
+            ].map((action) => (
+              <Button
+                key={action.label}
+                component={Link}
+                href={action.href}
+                size="small"
+                variant="outlined"
+                startIcon={<action.icon sx={{ fontSize: "16px !important" }} />}
+                sx={{
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  fontWeight: 800,
+                  minHeight: 34,
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
+                  "&:hover": { borderColor: "var(--primary)", color: "var(--primary)" },
+                }}
+              >
+                {action.label}
+              </Button>
             ))}
           </Stack>
 
@@ -575,6 +769,48 @@ export default function AdminDashboardPage() {
           </Typography>
         </Paper>
       </Box>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 1.75, md: 2.75 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          minWidth: 0,
+          boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>Recent Orders</Typography>
+            <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+              Latest activity across your tables
+            </Typography>
+          </Box>
+          <Button
+            component={Link}
+            href="/admin/orders"
+            size="small"
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{ flexShrink: 0, borderRadius: "10px", fontWeight: 800, textTransform: "none" }}
+          >
+            View all
+          </Button>
+        </Stack>
+
+        {recentOrders.length === 0 ? (
+          <Box sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)" }}>
+            <Typography sx={{ fontWeight: 700 }}>No orders yet.</Typography>
+          </Box>
+        ) : (
+          <Stack sx={{ mt: 1 }}>
+            {recentOrders.map((order) => (
+              <RecentOrderRow key={order.id} order={order} />
+            ))}
+          </Stack>
+        )}
+      </Paper>
     </Box>
   );
 }

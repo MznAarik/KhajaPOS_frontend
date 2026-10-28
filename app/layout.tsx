@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import { poppins } from "./src/fonts";
 import ThemeRegistry from "@/components/common/ThemeRegistry";
+import { THEME_INIT_SCRIPT } from "@/components/common/theme-mode";
 import { SnackbarProviderCustom } from "@/components/common/SnackBar";
 import { Analytics } from "@vercel/analytics/next"
 
@@ -58,8 +59,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <body className={poppins.className}>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <AppRouterCacheProvider>
           <ThemeRegistry>
             <SnackbarProviderCustom>

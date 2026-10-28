@@ -9,17 +9,20 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    FormControlLabel,
     IconButton,
     InputAdornment,
     MenuItem,
     Slider,
     Stack,
+    Switch,
     TextField,
     Typography,
 } from "@mui/material";
 import Cropper from "react-easy-crop";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
     createCategory,
     createMenu,
@@ -33,6 +36,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { foodTypeTone } from "./view";
 
 type MenuEditDialogProps = {
     open: boolean;
@@ -124,6 +128,24 @@ const fieldSx = {
         backgroundColor: "var(--background)",
     },
 };
+
+const sectionSx = {
+    p: { xs: 1.75, sm: 2 },
+    borderRadius: "18px",
+    border: "1px solid var(--border)",
+    backgroundColor: "color-mix(in srgb, var(--background) 55%, transparent)",
+};
+
+const SectionHeading = ({ title, subtitle }: { title: string; subtitle?: string }) => (
+    <Box sx={{ mb: 1.75 }}>
+        <Typography sx={{ fontWeight: 850, fontSize: "0.98rem" }}>{title}</Typography>
+        {subtitle ? (
+            <Typography sx={{ mt: 0.25, fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
+                {subtitle}
+            </Typography>
+        ) : null}
+    </Box>
+);
 
 export default function AddEditMenuDialog({
     open,
@@ -380,13 +402,17 @@ export default function AddEditMenuDialog({
 
 
 
+    const previewTone = foodTypeTone[form.foodType];
+    const previewCategory =
+        categories.find((category) => String(category.id) === form.categoryId)?.name ?? "Uncategorised";
+
     return (
         <>
             <Dialog
                 open={open}
                 onClose={saving ? undefined : onClose}
                 fullWidth
-                maxWidth="sm"
+                maxWidth="md"
                 PaperProps={{
                     sx: {
                         borderRadius: "22px",
@@ -403,8 +429,8 @@ export default function AddEditMenuDialog({
                         border: "1px solid var(--border)",
                         backgroundColor: "var(--card)",
                         backgroundImage:
-                            "radial-gradient(420px 200px at 90% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 65%)",
-                        boxShadow: "0 24px 60px rgba(31, 42, 43, 0.22)",
+                            "radial-gradient(520px 260px at 92% -10%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 65%)",
+                        boxShadow: "0 24px 60px rgba(31, 42, 43, 0.24)",
                         zIndex: (theme) => theme.zIndex.modal + 2,
                     },
                 }}
@@ -412,19 +438,54 @@ export default function AddEditMenuDialog({
                 <DialogTitle
                     sx={{
                         flexShrink: 0,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 2,
                         px: { xs: 2, sm: 3 },
                         pt: { xs: 2, sm: 2.5 },
                         pb: 1.75,
                     }}
                 >
-                    <Typography component="div" sx={{ fontSize: { xs: "1.15rem", sm: "1.3rem" }, fontWeight: 900 }}>
-                        {initialData ? "Update Menu Item" : "Add Menu Item"}
-                    </Typography>
-                    <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
-                        {initialData
-                            ? "Update menu details, availability, and image."
-                            : "Pick a category, or create one on the spot, then add the menu item."}
-                    </Typography>
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                            sx={{
+                                fontSize: "0.7rem",
+                                fontWeight: 800,
+                                letterSpacing: "0.12em",
+                                textTransform: "uppercase",
+                                color: "var(--muted-foreground)",
+                            }}
+                        >
+                            Menu item
+                        </Typography>
+                        <Typography
+                            component="div"
+                            sx={{ mt: 0.25, fontSize: { xs: "1.2rem", sm: "1.45rem" }, fontWeight: 900, lineHeight: 1.2 }}
+                        >
+                            {initialData ? "Edit menu item" : "Add menu item"}
+                        </Typography>
+                        <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                            {initialData
+                                ? "Update details, availability, pricing, and image."
+                                : "Pick a category, or create one on the spot, then add the menu item."}
+                        </Typography>
+                    </Box>
+                    <IconButton
+                        aria-label="Close menu editor"
+                        onClick={onClose}
+                        disabled={saving}
+                        size="small"
+                        sx={{
+                            flexShrink: 0,
+                            border: "1px solid var(--border)",
+                            backgroundColor: "color-mix(in srgb, var(--card) 80%, transparent)",
+                            color: "var(--foreground)",
+                            "&:hover": { backgroundColor: "var(--muted)" },
+                        }}
+                    >
+                        <CloseRoundedIcon fontSize="small" />
+                    </IconButton>
                 </DialogTitle>
                 <DialogContent
                     sx={{
@@ -437,7 +498,18 @@ export default function AddEditMenuDialog({
                         minHeight: 0,
                     }}
                 >
-                    <Stack spacing={2.25}>
+                <Box
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 300px" },
+                        gap: { xs: 2.25, md: 2.75 },
+                        alignItems: "start",
+                    }}
+                >
+                    <Stack spacing={2.25} sx={{ minWidth: 0 }}>
+                        <Box sx={sectionSx}>
+                            <SectionHeading title="Item details" subtitle="Name, category, pricing and description." />
+                            <Stack spacing={2}>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                             {creatingCategory ? (
                                 <TextField
@@ -561,16 +633,38 @@ export default function AddEditMenuDialog({
                             minRows={3}
                             sx={fieldSx}
                         />
+                            </Stack>
+                        </Box>
 
-                        <Box
-                            sx={{
-                                border: "1px dashed var(--border)",
-                                borderRadius: "18px",
-                                p: { xs: 1.5, sm: 2 },
-                                backgroundColor: "color-mix(in srgb, var(--background) 70%, transparent)",
-                            }}
-                        >
-                            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }}>
+                        <Box sx={sectionSx}>
+                            <SectionHeading title="Availability" subtitle="Turn ordering on or off for this item." />
+                            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Typography sx={{ fontWeight: 800 }}>
+                                        {form.isAvailable ? "Available to order" : "Hidden from customers"}
+                                    </Typography>
+                                    <Typography sx={{ mt: 0.25, fontSize: "0.84rem", color: "var(--muted-foreground)" }}>
+                                        {form.isAvailable
+                                            ? "Guests can see and order this item."
+                                            : "The item stays on the menu but cannot be ordered."}
+                                    </Typography>
+                                </Box>
+                                <Switch
+                                    checked={form.isAvailable}
+                                    onChange={(event) => handleFieldChange("isAvailable")(event.target.checked)}
+                                    color="success"
+                                    slotProps={{ input: { "aria-label": "Menu item availability" } }}
+                                />
+                            </Stack>
+                        </Box>
+
+                        <Box sx={sectionSx}>
+                            <SectionHeading title="Menu image" subtitle="Square crop works best. PNG, JPG, or JPEG." />
+                            <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={2}
+                                alignItems={{ xs: "stretch", sm: "center" }}
+                            >
                                 <Box
                                     sx={{
                                         width: { xs: "100%", sm: 112 },
@@ -592,10 +686,6 @@ export default function AddEditMenuDialog({
                                     )}
                                 </Box>
                                 <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
-                                    <Typography sx={{ fontWeight: 800 }}>Menu Image</Typography>
-                                    <Typography sx={{ fontSize: "0.83rem", color: "var(--muted-foreground)" }}>
-                                        Square crop works best. PNG, JPG, or JPEG.
-                                    </Typography>
                                     <input
                                         ref={imageInputRef}
                                         type="file"
@@ -603,6 +693,9 @@ export default function AddEditMenuDialog({
                                         onChange={handleImageChange}
                                         style={{ display: "none" }}
                                     />
+                                    <Typography sx={{ fontSize: "0.83rem", color: "var(--muted-foreground)" }}>
+                                        A cropper opens after you pick a file, so you can frame the dish.
+                                    </Typography>
                                     <Button
                                         type="button"
                                         variant="outlined"
@@ -620,7 +713,7 @@ export default function AddEditMenuDialog({
                                             textTransform: "none",
                                         }}
                                     >
-                                        Choose Image
+                                        {previewUrl ? "Replace image" : "Choose image"}
                                     </Button>
                                 </Stack>
                             </Stack>
@@ -642,6 +735,149 @@ export default function AddEditMenuDialog({
                             </Box>
                         ) : null}
                     </Stack>
+
+                    <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 0 }}>
+                        <Box
+                            sx={{
+                                borderRadius: "20px",
+                                overflow: "hidden",
+                                border: "1px solid var(--border)",
+                                backgroundColor: "var(--card)",
+                                boxShadow: "var(--soft-shadow)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    position: "relative",
+                                    aspectRatio: "4 / 3",
+                                    backgroundColor: "color-mix(in srgb, var(--muted) 60%, transparent)",
+                                }}
+                            >
+                                {previewUrl ? (
+                                    <Box
+                                        component="img"
+                                        src={previewUrl}
+                                        alt="Menu item preview"
+                                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                    />
+                                ) : (
+                                    <Stack alignItems="center" justifyContent="center" sx={{ height: "100%", p: 2 }}>
+                                        <Typography sx={{ fontSize: "0.84rem", fontWeight: 700, color: "var(--muted-foreground)" }}>
+                                            Image preview
+                                        </Typography>
+                                    </Stack>
+                                )}
+                                <Box
+                                    sx={{
+                                        position: "absolute",
+                                        top: 10,
+                                        left: 10,
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 0.75,
+                                        px: 1,
+                                        py: 0.4,
+                                        borderRadius: 999,
+                                        fontSize: "0.72rem",
+                                        fontWeight: 800,
+                                        backgroundColor: form.isAvailable
+                                            ? "var(--status-active-bg)"
+                                            : "var(--status-inactive-bg)",
+                                        color: form.isAvailable
+                                            ? "var(--status-active-fg)"
+                                            : "var(--status-inactive-fg)",
+                                        border: "1px solid",
+                                        borderColor: form.isAvailable
+                                            ? "var(--status-active-border)"
+                                            : "var(--status-inactive-border)",
+                                    }}
+                                >
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            width: 7,
+                                            height: 7,
+                                            borderRadius: "50%",
+                                            backgroundColor: "currentColor",
+                                        }}
+                                    />
+                                    {form.isAvailable ? "Available" : "Unavailable"}
+                                </Box>
+                            </Box>
+
+                            <Stack spacing={1.1} sx={{ p: 2 }}>
+                                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "0.68rem",
+                                            fontWeight: 800,
+                                            letterSpacing: "0.08em",
+                                            textTransform: "uppercase",
+                                            color: "var(--muted-foreground)",
+                                            overflowWrap: "anywhere",
+                                        }}
+                                    >
+                                        {previewCategory}
+                                    </Typography>
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            width: 3,
+                                            height: 3,
+                                            borderRadius: "50%",
+                                            backgroundColor: "var(--muted-foreground)",
+                                        }}
+                                    />
+                                    <Typography
+                                        sx={{
+                                            fontSize: "0.68rem",
+                                            fontWeight: 800,
+                                            letterSpacing: "0.08em",
+                                            textTransform: "uppercase",
+                                            color: previewTone,
+                                        }}
+                                    >
+                                        {getFoodTypeLabel(form.foodType)}
+                                    </Typography>
+                                </Stack>
+
+                                <Typography
+                                    sx={{ fontWeight: 900, fontSize: "1.15rem", lineHeight: 1.25, overflowWrap: "anywhere" }}
+                                >
+                                    {form.name.trim() || "Item name"}
+                                </Typography>
+
+                                <Typography
+                                    sx={{
+                                        fontSize: "0.84rem",
+                                        color: "var(--muted-foreground)",
+                                        display: "-webkit-box",
+                                        WebkitLineClamp: 3,
+                                        WebkitBoxOrient: "vertical",
+                                        overflow: "hidden",
+                                    }}
+                                >
+                                    {form.description.trim() || "Description preview appears here."}
+                                </Typography>
+
+                                <Typography sx={{ fontWeight: 900, fontSize: "1.35rem" }}>
+                                    Rs. {form.price.trim() || "0"}
+                                </Typography>
+                            </Stack>
+                        </Box>
+
+                        <Typography
+                            sx={{
+                                mt: 1,
+                                textAlign: "center",
+                                fontSize: "0.74rem",
+                                color: "var(--muted-foreground)",
+                            }}
+                        >
+                            Live preview
+                        </Typography>
+                    </Box>
+                </Box>
                 </DialogContent>
                 <DialogActions
                     sx={{

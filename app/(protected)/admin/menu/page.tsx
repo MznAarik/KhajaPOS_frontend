@@ -265,10 +265,10 @@ const MenuMobileCard = ({
         <Button variant="contained" size="small" onClick={() => onView(item)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0 }}>
           View
         </Button>
-        <IconButton size="small" onClick={() => onEdit(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
+        <IconButton size="small" aria-label={`Edit ${item.name}`} onClick={() => onEdit(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
           <EditOutlinedIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" color="error" onClick={() => onDelete(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+        <IconButton size="small" aria-label={`Delete ${item.name}`} color="error" onClick={() => onDelete(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
           <DeleteOutlineOutlinedIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -1053,6 +1053,7 @@ export default function MenuManagementPage() {
                   <TableCell align="center">
                     <IconButton
                       size="small"
+                      aria-label={`View ${item.name}`}
                       onClick={() =>
                         setViewItem(item)
                       }
@@ -1062,6 +1063,7 @@ export default function MenuManagementPage() {
 
                     <IconButton
                       size="small"
+                      aria-label={`Edit ${item.name}`}
                       onClick={() =>
                         openEditDialog(item)
                       }
@@ -1071,6 +1073,7 @@ export default function MenuManagementPage() {
 
                     <IconButton
                       size="small"
+                      aria-label={`Delete ${item.name}`}
                       sx={{ color: "var(--status-inactive-fg)" }}
                       onClick={() =>
                         handleDelete(item)
