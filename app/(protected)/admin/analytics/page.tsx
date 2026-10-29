@@ -30,14 +30,13 @@ import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import useMeasure from "react-use-measure";
 import {
   getPlatformAnalytics,
-  getRestaurants,
   type AnalyticsGrowth,
   type AnalyticsTrafficPoint,
   type AnalyticsTrendValue,
   type PlatformAnalytics,
-  type Restaurant,
 } from "@/lib/api";
 import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { api } from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
@@ -623,7 +622,7 @@ export default function AdminAnalyticsPage() {
   const [metric, setMetric] = React.useState<AnalyticsTrendValue>("businesses");
   const [trendMode, setTrendMode] = React.useState<"monthly" | "cumulative">("monthly");
   const [trafficRange, setTrafficRange] = React.useState<"hour" | "day">("hour");
-  const [businesses, setBusinesses] = React.useState<Restaurant[]>([]);
+  const [businesses, setBusinesses] = React.useState<any[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<string>("all");
   const { showSnackbar } = useAppSnackbar();
 
@@ -654,8 +653,11 @@ export default function AdminAnalyticsPage() {
     // Defer the initial request to a microtask so the fetch's state updates do
     // not cascade synchronously inside the effect.
     void Promise.resolve().then(() => fetchAnalytics("initial"));
-    getRestaurants()
-      .then((list) => setBusinesses(list))
+    api.get("/svc/superadmin/businesses")
+      .then((res: any) => {
+        const data = res.data?.data ?? res.data ?? [];
+        setBusinesses(Array.isArray(data) ? data : []);
+      })
       .catch(() => setBusinesses([]));
   }, [fetchAnalytics]);
 
