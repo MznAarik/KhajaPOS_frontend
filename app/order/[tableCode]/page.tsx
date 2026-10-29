@@ -892,7 +892,14 @@ export default function TableOrderPage() {
         backgroundImage: "none",
         color: "var(--foreground)",
         p: { xs: 1, md: 3 },
-        pb: { xs: cartItems.length ? 12 : 1, lg: 3 },
+        pb: {
+          xs: cartItems.length
+            ? mobileCartOpen
+              ? "calc(300px + env(safe-area-inset-bottom))"
+              : "calc(190px + env(safe-area-inset-bottom))"
+            : 1,
+          lg: 3,
+        },
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr)",
         alignContent: "start",
@@ -1006,6 +1013,7 @@ export default function TableOrderPage() {
             variant="outlined"
             size="small"
             onClick={() => {
+              setMobileCartOpen(false);
               setBestSellersOpen(true);
             }}
             sx={{ minHeight: 42, borderRadius: "12px", px: 1.5, fontWeight: 850, textTransform: "none" }}
@@ -1954,20 +1962,22 @@ export default function TableOrderPage() {
               overflow: "hidden",
             }}
           >
-            <Box sx={{ px: 1, pt: 1 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75, px: 0.5 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                  Serving
-                </Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: "0.78rem", color: "var(--primary)", ml: "auto" }}>
-                  {getOrderTypeLabel(orderType)}
-                </Typography>
-              </Stack>
-              {compactOrderTypeSelector}
-            </Box>
+            {bestSellersOpen && !mobileCartOpen ? null : (
+              <Box sx={{ px: 1, pt: 1 }}>
+                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75, px: 0.5 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                    Serving
+                  </Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: "0.78rem", color: "var(--primary)", ml: "auto" }}>
+                    {getOrderTypeLabel(orderType)}
+                  </Typography>
+                </Stack>
+                {compactOrderTypeSelector}
+              </Box>
+            )}
 
             {bestSellersOpen && !mobileCartOpen ? (
-              <Stack spacing={0.5} sx={{ px: 1.5, pt: 0.75, pb: 1, maxHeight: 116, overflowY: "auto" }} aria-label="Cart contents">
+              <Stack spacing={0.25} sx={{ px: 1.5, pt: 0.5, pb: 0.5, maxHeight: 76, overflowY: "auto" }} aria-label="Cart contents">
                 {cartItems.map((item) => (
                   <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
                     <Typography sx={{ minWidth: 0, flex: 1, fontSize: "0.76rem", fontWeight: 750, overflowWrap: "anywhere" }}>
@@ -1985,8 +1995,8 @@ export default function TableOrderPage() {
             ) : null}
 
             {mobileCartOpen ? (
-              <Stack spacing={1.25} sx={{ px: 1.5, pt: 1.25, pb: 1 }}>
-                <Stack spacing={0.75} sx={{ maxHeight: 150, overflowY: "auto", pr: 0.5 }}>
+              <Stack spacing={1} sx={{ px: 1.5, pt: 1, pb: 0.75 }}>
+                <Stack spacing={0.5} sx={{ maxHeight: 100, overflowY: "auto", pr: 0.5 }}>
                   {cartItems.map((item) => (
                     <Stack
                       key={item.id}
@@ -2016,7 +2026,7 @@ export default function TableOrderPage() {
                   label="Remarks"
                   size="small"
                   multiline
-                  minRows={2}
+                  minRows={1}
                   value={remarks}
                   onChange={(event) => setRemarks(event.target.value)}
                   placeholder="Less spicy, no onion, etc."
@@ -2108,7 +2118,7 @@ export default function TableOrderPage() {
             <IconButton onClick={() => setBestSellersOpen(false)} aria-label="Close best sellers" sx={{ width: 42, height: 42, border: "1px solid var(--border)", borderRadius: "12px" }}><CloseRoundedIcon /></IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.5, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "360px" : "280px" : 2, sm: 2.5 }, display: "grid", gap: 1 }}>
+        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.5, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "250px" : "190px" : 2, sm: 2.5 }, display: "grid", gap: 1 }}>
           <Typography sx={{ mb: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
           {menu?.topProducts.map((product, index) => {
             const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
