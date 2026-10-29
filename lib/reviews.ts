@@ -22,12 +22,18 @@ export const submitReview = async (payload: {
   customer_name?: string;
   customer_email?: string;
 }): Promise<Review> => {
-  const res = await api.post("/svc/reviews", payload);
+  const res = await api.post("/reviews", payload);
   return unwrapApiData<Review>(res.data);
 };
 
 export const getBusinessReviews = async (businessId: number): Promise<Review[]> => {
-  const res = await api.get(`/svc/businesses/${businessId}/reviews`);
+  const res = await api.get(`/businesses/${businessId}/reviews`);
+  const data = unwrapApiData<Review[]>(res.data);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getAdminReviews = async (): Promise<Review[]> => {
+  const res = await api.get("/admin/reviews");
   const data = unwrapApiData<Review[]>(res.data);
   return Array.isArray(data) ? data : [];
 };
