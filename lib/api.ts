@@ -290,6 +290,7 @@ export type PublicTableMenu = {
   table: AdminTable;
   business: { id: number; name: string; logo?: string | null } | null;
   categories: PublicMenuCategory[];
+  topProducts: TopProduct[];
 };
 
 type MenuCategoryResponse = {
@@ -380,6 +381,7 @@ type PublicMenuResponse = {
     table: AdminTableResponse;
     business?: { id: number; name: string; logo?: string | null } | null;
     categories: MenuCategoryResponse[];
+    topProducts?: TopProduct[];
   };
 };
 
@@ -673,9 +675,15 @@ export const updateAdminOrder = async (payload: {
   return normalizeOrder(unwrapApiData<AdminOrderResponse>(res.data));
 };
 
+const publicMenuRequests = new Map<string, Promise<PublicTableMenu>>();
+
 export const getPublicMenu = async (
   tableCode: string,
 ): Promise<PublicTableMenu> => {
+  const existingRequest = publicMenuRequests.get(tableCode);
+  if (existingRequest) return existingRequest;
+
+  const request = (async (): Promise<PublicTableMenu> => {
   const res = await api.get<PublicMenuResponse>(
     `/public/menu/${encodeURIComponent(tableCode)}`,
   );
@@ -692,6 +700,12 @@ export const getPublicMenu = async (
       createdAt: payload.table.created_at,
     },
     business: payload.business ?? null,
+    topProducts: (payload.topProducts ?? []).map((product) => ({
+      ...product,
+      name: toTitleCase(product.name),
+      category: toTitleCase(product.category),
+      foodType: normalizeFoodType(product.foodType),
+    })),
     categories: payload.categories.map((category) => ({
       id: category.id,
       name: toTitleCase(category.name),
@@ -706,6 +720,16 @@ export const getPublicMenu = async (
       })),
     })),
   };
+  })();
+
+  publicMenuRequests.set(tableCode, request);
+  try {
+    return await request;
+  } finally {
+    if (publicMenuRequests.get(tableCode) === request) {
+      publicMenuRequests.delete(tableCode);
+    }
+  }
 };
 
 export const placePublicOrder = async (payload: {
@@ -1452,6 +1476,7 @@ export type PlatformAnalytics = {
     statusCodes: Array<{ code: number; count: number }>;
   };
   data: {
+    businessScoped?: boolean;
     database: {
       name: string;
       sizeBytes: number;
@@ -1467,8 +1492,10 @@ export type PlatformAnalytics = {
   };
 };
 
-export const getPlatformAnalytics = async (): Promise<PlatformAnalytics> => {
-  const res = await api.get("/superadmin/analytics");
+export const getPlatformAnalytics = async (businessId?: number): Promise<PlatformAnalytics> => {
+  const res = await api.get("/superadmin/analytics", {
+    params: businessId ? { business_id: businessId } : undefined,
+  });
   return unwrapApiData<PlatformAnalytics>(res.data);
 };
 

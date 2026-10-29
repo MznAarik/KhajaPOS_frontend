@@ -13,7 +13,7 @@
         "@mui/material-nextjs": "^7.3.10",
         "@next/eslint-plugin-next": "^16.4.3",
         "@vercel/analytics": "^2.0.1",
-        "axios": "^1.20.0",
+        "axios": "^1.21.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "framer-motion": "^12.43.0",

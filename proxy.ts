@@ -10,7 +10,7 @@ const API_ORIGIN = (
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
 
   if (UNSAFE_METHODS.has(request.method)) {
