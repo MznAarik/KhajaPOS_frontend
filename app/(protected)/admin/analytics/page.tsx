@@ -631,7 +631,9 @@ export default function AdminAnalyticsPage() {
       if (mode === "manual") setRefreshing(true);
 
       try {
-        const analytics = await getPlatformAnalytics();
+        const analytics = await getPlatformAnalytics(
+          selectedBusinessId === "all" ? undefined : Number(selectedBusinessId),
+        );
         setData(analytics);
         setFailed(false);
       } catch (error) {
@@ -646,20 +648,23 @@ export default function AdminAnalyticsPage() {
         if (mode === "manual") setRefreshing(false);
       }
     },
-    [showSnackbar],
+    [selectedBusinessId, showSnackbar],
   );
 
   React.useEffect(() => {
-    // Defer the initial request to a microtask so the fetch's state updates do
-    // not cascade synchronously inside the effect.
+    // Refetch the analytics using the selected business scope.
     void Promise.resolve().then(() => fetchAnalytics("initial"));
-    api.get("/svc/superadmin/businesses")
+  }, [fetchAnalytics]);
+
+  React.useEffect(() => {
+    api.get("/superadmin/businesses")
       .then((res: any) => {
         const data = res.data?.data ?? res.data ?? [];
-        setBusinesses(Array.isArray(data) ? data : []);
+        const items = Array.isArray(data) ? data : data?.items;
+        setBusinesses(Array.isArray(items) ? items : []);
       })
       .catch(() => setBusinesses([]));
-  }, [fetchAnalytics]);
+  }, []);
 
   React.useEffect(() => {
     const interval = window.setInterval(() => {
@@ -696,6 +701,30 @@ export default function AdminAnalyticsPage() {
     if (!data) return [];
     return trafficRange === "hour" ? data.usage.requestsPerMinute : data.usage.requestsPerHour;
   }, [data, trafficRange]);
+
+  const businessesForSelection = data?.overview.topBusinesses ?? [];
+  const filteredBusiness = React.useMemo(() => {
+    if (selectedBusinessId === "all") return null;
+    const analyticsBusiness = businessesForSelection.find((business) => String(business.id) === selectedBusinessId);
+    if (analyticsBusiness) return analyticsBusiness;
+
+    const business = businesses.find((item) => String(item.id) === selectedBusinessId);
+    if (!business) return null;
+
+    return {
+      id: Number(business.id),
+      name: business.name,
+      businessType: business.business_type ?? "Unspecified",
+      isActive: Boolean(business.is_active),
+      orders: Number(business.orders_count ?? 0),
+      revenue: 0,
+      menuItems: Number(business.menu_items_count ?? 0),
+      tables: Number(business.tables_count ?? 0),
+      categories: 0,
+      users: 0,
+      resourceScore: 0,
+    };
+  }, [businesses, selectedBusinessId, businessesForSelection]);
 
   if (loading) {
     return (
@@ -739,13 +768,11 @@ export default function AdminAnalyticsPage() {
   }
 
   const { totals, growth, daily, businessTypes, topBusinesses } = data.overview;
+  const visibleBusinesses = selectedBusinessId === "all"
+    ? topBusinesses
+    : filteredBusiness ? [filteredBusiness] : [];
   const usage = data.usage;
   const footprint = data.data;
-
-  const filteredBusiness = React.useMemo(() => {
-    if (selectedBusinessId === "all") return null;
-    return topBusinesses.find((b) => String(b.id) === selectedBusinessId) ?? null;
-  }, [selectedBusinessId, topBusinesses]);
 
   const dailyRevenue = daily.reduce((sum, point) => sum + point.revenue, 0);
   const dailyOrders = daily.reduce((sum, point) => sum + point.orders, 0);
@@ -755,7 +782,7 @@ export default function AdminAnalyticsPage() {
   );
 
   const businessMax = Math.max(...businessTypes.map((type) => type.count), 1);
-  const tableSizeMax = Math.max(...footprint.tables.map((table) => table.sizeBytes), 1);
+  const tableSizeMax = Math.max(...footprint.tables.map((table) => footprint.businessScoped ? table.rows : table.sizeBytes), 1);
   const totalRows = footprint.tables.reduce((sum, table) => sum + table.rows, 0);
 
   const activeMeta = metricMeta[metric];
@@ -825,7 +852,7 @@ export default function AdminAnalyticsPage() {
               </Box>
             </Stack>
             <Typography sx={{ fontSize: { xs: "1.3rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
-              Platform growth &amp; usage
+              {filteredBusiness ? `${filteredBusiness.name} growth & usage` : "Platform growth & usage"}
             </Typography>
             <Typography
               sx={{
@@ -835,8 +862,9 @@ export default function AdminAnalyticsPage() {
                 fontWeight: 650,
               }}
             >
-              {formatNumber(totals.businesses)} businesses · {formatNumber(totals.orders)} orders ·{" "}
-              {formatCurrency(totals.revenue)} lifetime revenue
+              {filteredBusiness
+                ? `${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue`
+                : `${formatNumber(totals.businesses)} businesses · ${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue`}
             </Typography>
             <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", mt: 0.4 }}>
               Snapshot generated at {formatClock(data.generatedAt)} · auto-refreshes every 30 seconds
@@ -1095,7 +1123,7 @@ export default function AdminAnalyticsPage() {
               <Typography
                 sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
               >
-                Daily order revenue across all businesses
+                {filteredBusiness ? `Daily order revenue for ${filteredBusiness.name}` : "Daily order revenue across all businesses"}
               </Typography>
             </Box>
             <Box sx={{ textAlign: { xs: "left", sm: "right" }, flexShrink: 0 }}>
@@ -1126,14 +1154,14 @@ export default function AdminAnalyticsPage() {
                 Each business shown separately with its own usage, footprint &amp; activity
               </Typography>
             </Box>
-            <Chip label={`${topBusinesses.length} businesses`} sx={{ fontWeight: 800, borderRadius: "999px" }} />
+            <Chip label={`${visibleBusinesses.length} ${visibleBusinesses.length === 1 ? "business" : "businesses"}`} sx={{ fontWeight: 800, borderRadius: "999px" }} />
           </Stack>
 
           <Stack spacing={1.75} sx={{ mt: 2 }}>
-            {topBusinesses.length > 0 ? (
-              topBusinesses.map((business) => {
+            {visibleBusinesses.length > 0 ? (
+              visibleBusinesses.map((business) => {
                 const resourceScore = business.resourceScore ?? (business.menuItems * 2 + (business.tables ?? 0) * 1.5 + (business.categories ?? 0) + (business.users ?? 0) * 0.5);
-                const maxScore = Math.max(...topBusinesses.map((b) => b.resourceScore ?? (b.menuItems * 2 + (b.tables ?? 0) * 1.5 + (b.categories ?? 0) + (b.users ?? 0) * 0.5)), 1);
+                const maxScore = Math.max(...visibleBusinesses.map((b) => b.resourceScore ?? (b.menuItems * 2 + (b.tables ?? 0) * 1.5 + (b.categories ?? 0) + (b.users ?? 0) * 0.5)), 1);
                 const share = Math.round((resourceScore / maxScore) * 100);
 
                 return (
@@ -1231,6 +1259,7 @@ export default function AdminAnalyticsPage() {
               sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
             >
               {trafficRange === "hour" ? "Requests per minute · last 60 minutes" : "Requests per hour · last 24 hours"}
+              {filteredBusiness ? ` · ${filteredBusiness.name}` : ""}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", rowGap: 1 }}>
@@ -1407,21 +1436,25 @@ export default function AdminAnalyticsPage() {
           <Typography
             sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
           >
-            Storage this platform currently consumes
+            {footprint.businessScoped
+              ? `Record counts for ${filteredBusiness?.name ?? "the selected business"}. Database and file storage sizes are shared across businesses.`
+              : "Storage this platform currently consumes"}
           </Typography>
 
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gridTemplateColumns: footprint.businessScoped ? "1fr" : "repeat(2, minmax(0, 1fr))",
               gap: 1.5,
               mt: 1.75,
             }}
           >
-            {[
-              { label: "Database", value: formatBytes(footprint.database.sizeBytes), helper: footprint.database.name },
-              { label: "File storage", value: formatBytes(footprint.storage.sizeBytes), helper: `${formatNumber(totalRows)} rows tracked` },
-            ].map((item) => (
+            {(footprint.businessScoped
+              ? [{ label: "Business records", value: `${formatNumber(totalRows)} rows`, helper: "Across this business's data tables" }]
+              : [
+                  { label: "Database", value: formatBytes(footprint.database.sizeBytes), helper: footprint.database.name },
+                  { label: "File storage", value: formatBytes(footprint.storage.sizeBytes), helper: `${formatNumber(totalRows)} rows tracked` },
+                ]).map((item) => (
               <Box
                 key={item.label}
                 sx={{
@@ -1482,7 +1515,9 @@ export default function AdminAnalyticsPage() {
                     {table.name}
                   </Typography>
                   <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--muted-foreground)", flexShrink: 0 }}>
-                    {formatNumber(table.rows)} rows · {formatBytes(table.sizeBytes)}
+                    {footprint.businessScoped
+                      ? `${formatNumber(table.rows)} records`
+                      : `${formatNumber(table.rows)} rows · ${formatBytes(table.sizeBytes)}`}
                   </Typography>
                 </Stack>
                 <Box
@@ -1497,7 +1532,7 @@ export default function AdminAnalyticsPage() {
                   <Box
                     sx={{
                       height: "100%",
-                      width: `${Math.max((table.sizeBytes / tableSizeMax) * 100, table.sizeBytes > 0 ? 4 : 0)}%`,
+                      width: `${Math.max(((footprint.businessScoped ? table.rows : table.sizeBytes) / tableSizeMax) * 100, (footprint.businessScoped ? table.rows : table.sizeBytes) > 0 ? 4 : 0)}%`,
                       borderRadius: "999px",
                       backgroundColor: "var(--chart-1)",
                       opacity: 0.85,
@@ -1528,12 +1563,12 @@ export default function AdminAnalyticsPage() {
           </Box>
           <Chip
             size="small"
-            label={`${formatNumber(topBusinesses.length)} of ${formatNumber(totals.businesses)}`}
+            label={selectedBusinessId === "all" ? `${formatNumber(topBusinesses.length)} of ${formatNumber(totals.businesses)}` : `${formatNumber(visibleBusinesses.length)} selected`}
             sx={{ fontWeight: 800, borderRadius: "9px" }}
           />
         </Stack>
 
-        {topBusinesses.length > 0 ? (
+        {visibleBusinesses.length > 0 ? (
           <Box sx={{ overflowX: "auto", mt: 1.5 }}>
             <Table size="small" sx={{ minWidth: 620 }}>
               <TableHead>
@@ -1553,7 +1588,7 @@ export default function AdminAnalyticsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {topBusinesses.map((business, index) => (
+                {visibleBusinesses.map((business, index) => (
                   <TableRow key={business.id} hover>
                     <TableCell sx={bodyCellSx}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>

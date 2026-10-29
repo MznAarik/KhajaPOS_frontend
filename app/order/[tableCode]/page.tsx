@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   Paper,
   Skeleton,
   Stack,
@@ -18,6 +19,11 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
+import { Rating } from "@mui/material";
+import { MessageSquareQuote } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import {
   canCustomerCancelOrder,
@@ -45,6 +51,7 @@ import {
 } from "@/lib/api";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { useAppSnackbar } from "@/components/common/SnackBar";
+import { submitReview } from "@/lib/reviews";
 
 type CartState = Record<number, number>;
 
@@ -281,6 +288,14 @@ export default function TableOrderPage() {
   const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
   const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
   const [mobileCartOpen, setMobileCartOpen] = React.useState(false);
+  const [bestSellersOpen, setBestSellersOpen] = React.useState(false);
+  const [reviewOpen, setReviewOpen] = React.useState(false);
+  const [reviewRating, setReviewRating] = React.useState<number | null>(5);
+  const [reviewName, setReviewName] = React.useState("");
+  const [reviewEmail, setReviewEmail] = React.useState("");
+  const [reviewComment, setReviewComment] = React.useState("");
+  const [reviewSubmitting, setReviewSubmitting] = React.useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PublicMenuItem | null>(null);
   const [detailQty, setDetailQty] = React.useState(1);
 
@@ -324,27 +339,36 @@ export default function TableOrderPage() {
   React.useEffect(() => {
     let isCancelled = false;
     let timeout: number | undefined;
+    let lastMenuFetchAt = 0;
+    let menuFetchInProgress: Promise<void> | null = null;
 
     const loadMenu = async (silent: boolean) => {
-      if (!silent) setLoading(true);
-      try {
-        const data = await getPublicMenu(tableCode);
-        if (isCancelled) return;
-        setMenu(data);
-        setMessage("");
-      } catch (error) {
-        console.error("Failed to load public menu:", error);
-        if (!silent && !isCancelled) {
-          setMessage("We couldn't load this table menu right now.");
+      if (menuFetchInProgress) return menuFetchInProgress;
+      const request = (async () => {
+        if (!silent) setLoading(true);
+        try {
+          const data = await getPublicMenu(tableCode);
+          if (isCancelled) return;
+          setMenu(data);
+          setMessage("");
+          lastMenuFetchAt = Date.now();
+        } catch (error) {
+          console.error("Failed to load public menu:", error);
+          if (!silent && !isCancelled) {
+            setMessage("We couldn't load this table menu right now.");
+          }
+        } finally {
+          if (!silent && !isCancelled) setLoading(false);
+          menuFetchInProgress = null;
         }
-      } finally {
-        if (!silent && !isCancelled) setLoading(false);
-      }
+      })();
+      menuFetchInProgress = request;
+      return request;
     };
 
     const scheduleNext = () => {
       timeout = window.setTimeout(async () => {
-        await loadMenu(true);
+        if (document.visibilityState === "visible") await loadMenu(true);
         if (!isCancelled) scheduleNext();
       }, MENU_REFRESH_INTERVAL);
     };
@@ -354,7 +378,10 @@ export default function TableOrderPage() {
     });
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastMenuFetchAt >= MENU_REFRESH_INTERVAL
+      ) {
         void loadMenu(true);
       }
     };
@@ -774,27 +801,13 @@ export default function TableOrderPage() {
     };
 
     beat();
-    const interval = window.setInterval(beat, 45000);
-
-    let wakeLockSentinel: { release: () => Promise<void> } | null = null;
-    const requestWakeLock = async () => {
-      try {
-        const nav = navigator as Navigator & {
-          wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
-        };
-        if (nav.wakeLock) {
-          wakeLockSentinel = await nav.wakeLock.request("screen");
-        }
-      } catch {
-        wakeLockSentinel = null;
-      }
-    };
-    void requestWakeLock();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") beat();
+    }, 45000);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         beat();
-        void requestWakeLock();
       }
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -802,7 +815,6 @@ export default function TableOrderPage() {
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
-      void wakeLockSentinel?.release().catch(() => undefined);
     };
   }, [heartbeatKey]);
 
@@ -880,7 +892,14 @@ export default function TableOrderPage() {
         backgroundImage: "none",
         color: "var(--foreground)",
         p: { xs: 1, md: 3 },
-        pb: { xs: cartItems.length ? 12 : 1, lg: 3 },
+        pb: {
+          xs: cartItems.length
+            ? mobileCartOpen
+              ? "calc(300px + env(safe-area-inset-bottom))"
+              : "calc(190px + env(safe-area-inset-bottom))"
+            : 1,
+          lg: 3,
+        },
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr)",
         alignContent: "start",
@@ -987,6 +1006,36 @@ export default function TableOrderPage() {
           <ThemeToggle />
         </Stack>
       </Paper>
+
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+        {menu?.topProducts.length ? (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setMobileCartOpen(false);
+              setBestSellersOpen(true);
+            }}
+            sx={{ minHeight: 42, borderRadius: "12px", px: 1.5, fontWeight: 850, textTransform: "none" }}
+          >
+            Our best-selling foods
+          </Button>
+        ) : null}
+        {menu?.business?.id ? (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<MessageSquareQuote size={18} />}
+            onClick={() => {
+              setReviewSubmitted(false);
+              setReviewOpen(true);
+            }}
+            sx={{ minHeight: 42, borderRadius: "12px", px: 1.5, fontWeight: 850, textTransform: "none" }}
+          >
+            Write a review
+          </Button>
+        ) : null}
+      </Stack>
 
       {recentOrders.length ? (
         <Paper
@@ -1841,11 +1890,16 @@ export default function TableOrderPage() {
             ) : (
               <Stack spacing={1.25}>
                 {cartItems.map((item) => (
-                  <Stack key={item.id} direction="row" justifyContent="space-between">
-                    <Typography>{item.quantity}x {item.name}</Typography>
-                    <Typography sx={{ fontWeight: 700 }}>
-                      Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
-                    </Typography>
+                  <Stack key={item.id} direction="row" alignItems="center" spacing={0.75}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography sx={{ fontWeight: 750, overflowWrap: "anywhere" }}>{item.name}</Typography>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 700 }}>
+                        Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><RemoveRoundedIcon fontSize="small" /></IconButton>
+                    <Typography aria-live="polite" sx={{ minWidth: 20, textAlign: "center", fontWeight: 850 }}>{item.quantity}</Typography>
+                    <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><AddRoundedIcon fontSize="small" /></IconButton>
                   </Stack>
                 ))}
               </Stack>
@@ -1890,7 +1944,7 @@ export default function TableOrderPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 30,
+            zIndex: 2000,
             px: 1.25,
             pb: "calc(env(safe-area-inset-bottom) + 10px)",
             pointerEvents: "none",
@@ -1902,43 +1956,66 @@ export default function TableOrderPage() {
               pointerEvents: "auto",
               borderRadius: "22px",
               border: "1px solid var(--border)",
-                   backgroundColor: "color-mix(in srgb, var(--muted) 96%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--muted) 96%, transparent)",
               backdropFilter: "blur(18px)",
               boxShadow: "0 18px 46px rgba(31, 42, 43, 0.22)",
               overflow: "hidden",
             }}
           >
-            <Box sx={{ px: 1, pt: 1 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75, px: 0.5 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                  Serving
-                </Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: "0.78rem", color: "var(--primary)", ml: "auto" }}>
-                  {getOrderTypeLabel(orderType)}
-                </Typography>
+            {bestSellersOpen && !mobileCartOpen ? null : (
+              <Box sx={{ px: 1, pt: 1 }}>
+                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75, px: 0.5 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                    Serving
+                  </Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: "0.78rem", color: "var(--primary)", ml: "auto" }}>
+                    {getOrderTypeLabel(orderType)}
+                  </Typography>
+                </Stack>
+                {compactOrderTypeSelector}
+              </Box>
+            )}
+
+            {bestSellersOpen && !mobileCartOpen ? (
+              <Stack spacing={0.25} sx={{ px: 1.5, pt: 0.5, pb: 0.5, maxHeight: 76, overflowY: "auto" }} aria-label="Cart contents">
+                {cartItems.map((item) => (
+                  <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
+                    <Typography sx={{ minWidth: 0, flex: 1, fontSize: "0.76rem", fontWeight: 750, overflowWrap: "anywhere" }}>
+                      {item.name}
+                    </Typography>
+                    <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)" }}><RemoveRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
+                    <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontSize: "0.76rem", fontWeight: 850 }}>{item.quantity}</Typography>
+                    <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)" }}><AddRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
+                    <Typography sx={{ width: 62, flexShrink: 0, textAlign: "right", fontSize: "0.72rem", fontWeight: 800 }}>
+                      Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
+                    </Typography>
+                  </Stack>
+                ))}
               </Stack>
-              {compactOrderTypeSelector}
-            </Box>
+            ) : null}
 
             {mobileCartOpen ? (
-              <Stack spacing={1.25} sx={{ px: 1.5, pt: 1.25, pb: 1 }}>
-                <Stack spacing={0.75} sx={{ maxHeight: 150, overflowY: "auto", pr: 0.5 }}>
+              <Stack spacing={1} sx={{ px: 1.5, pt: 1, pb: 0.75 }}>
+                <Stack spacing={0.5} sx={{ maxHeight: 100, overflowY: "auto", pr: 0.5 }}>
                   {cartItems.map((item) => (
                     <Stack
                       key={item.id}
                       direction="row"
-                      justifyContent="space-between"
-                      spacing={1.5}
+                      alignItems="center"
+                      spacing={0.75}
                       sx={{
                         p: 1,
                         borderRadius: "14px",
                         backgroundColor: "var(--background)",
                       }}
                     >
-                      <Typography sx={{ fontWeight: 750, minWidth: 0, overflowWrap: "anywhere" }}>
-                        {item.quantity}x {item.name}
+                      <Typography sx={{ fontWeight: 750, minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
+                        {item.name}
                       </Typography>
-                      <Typography sx={{ fontWeight: 800, flexShrink: 0 }}>
+                      <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><RemoveRoundedIcon fontSize="small" /></IconButton>
+                      <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontWeight: 850 }}>{item.quantity}</Typography>
+                      <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><AddRoundedIcon fontSize="small" /></IconButton>
+                      <Typography sx={{ fontWeight: 800, flexShrink: 0, fontSize: "0.78rem" }}>
                         Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
                       </Typography>
                     </Stack>
@@ -1949,7 +2026,7 @@ export default function TableOrderPage() {
                   label="Remarks"
                   size="small"
                   multiline
-                  minRows={2}
+                  minRows={1}
                   value={remarks}
                   onChange={(event) => setRemarks(event.target.value)}
                   placeholder="Less spicy, no onion, etc."
@@ -2014,32 +2091,178 @@ export default function TableOrderPage() {
       ) : null}
 
       <Dialog
+        open={bestSellersOpen}
+        onClose={() => setBestSellersOpen(false)}
+        disableEnforceFocus
+        fullWidth
+        maxWidth="md"
+        scroll="paper"
+        sx={{
+          "& .MuiBackdrop-root": {
+            backgroundColor: "rgba(13, 20, 20, 0.62)",
+            backdropFilter: "blur(5px)",
+          },
+          "& .MuiDialog-container": {
+            alignItems: "center",
+            p: { xs: 1.25, sm: 3 },
+          },
+        }}
+        PaperProps={{ sx: { display: "flex", flexDirection: "column", width: "100%", maxWidth: 780, maxHeight: { xs: "calc(100dvh - 20px)", sm: "min(820px, calc(100dvh - 96px))" }, m: 0, borderRadius: "24px", overflow: "hidden", border: "1px solid color-mix(in srgb, var(--border) 75%, white)", backgroundColor: "var(--card)", color: "var(--foreground)", boxShadow: "0 28px 90px rgba(0, 0, 0, 0.38)" } }}
+      >
+        <DialogTitle sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+            <Box>
+              <Typography sx={{ color: "var(--primary)", fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase" }}>{menu?.business?.name ?? "Guest favorites"}</Typography>
+              <Typography sx={{ mt: 0.35, fontSize: { xs: "1.2rem", sm: "1.45rem" }, fontWeight: 900 }}>Our best-selling foods</Typography>
+            </Box>
+            <IconButton onClick={() => setBestSellersOpen(false)} aria-label="Close best sellers" sx={{ width: 42, height: 42, border: "1px solid var(--border)", borderRadius: "12px" }}><CloseRoundedIcon /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.5, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "250px" : "190px" : 2, sm: 2.5 }, display: "grid", gap: 1 }}>
+          <Typography sx={{ mb: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
+          {menu?.topProducts.map((product, index) => {
+            const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
+            if (!item) return null;
+            const quantity = cart[item.id] ?? 0;
+            const image = resolveMenuImageUrl(item.imageUrl ?? product.imageUrl);
+            return (
+              <Paper key={item.id} elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: { xs: "15px", sm: "18px" }, border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: quantity ? "color-mix(in srgb, var(--primary) 8%, var(--muted))" : "var(--muted)" }}>
+                <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} alignItems="center">
+                  <Typography sx={{ color: "var(--primary)", width: 26, flexShrink: 0, fontWeight: 950 }}>#{index + 1}</Typography>
+                  <Box sx={{ position: "relative", width: { xs: 72, sm: 88 }, height: { xs: 72, sm: 88 }, flexShrink: 0, overflow: "hidden", borderRadius: "13px", backgroundColor: "var(--card)", display: "grid", placeItems: "center" }}>
+                    {image ? <Box component="img" src={image} alt={item.name} sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Typography sx={{ fontSize: "0.65rem", color: "var(--muted-foreground)" }}>Food</Typography>}
+                    {quantity > 0 ? <Box sx={{ position: "absolute", top: 4, right: 4, minWidth: 21, height: 21, borderRadius: "50%", px: 0.5, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.7rem", fontWeight: 900 }}>{quantity}</Box> : null}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 850, fontSize: { xs: "0.88rem", sm: "0.98rem" }, overflowWrap: "anywhere" }}>{item.name}</Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.75rem", mt: 0.2 }}>{product.quantity} ordered · {product.category}</Typography>
+                      </Box>
+                      <Typography sx={{ flexShrink: 0, fontWeight: 900, fontSize: "0.85rem", whiteSpace: "nowrap" }}>Rs. {formatPrice(item.price)}</Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: 0.5 }}>
+                      <Button size="small" variant="contained" onClick={() => updateQuantity(item.id, quantity + 1)} disabled={quantity >= MAX_ORDER_QUANTITY} sx={{ minWidth: 74, minHeight: 34, borderRadius: "10px", fontWeight: 900, textTransform: "none" }}>Add</Button>
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Paper>
+            );
+          })}
+          {!menu?.topProducts.length ? <Typography sx={{ py: 4, color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 1.5, sm: 2.5 }, pt: 0, pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: 2.5 } }}>
+          <Button fullWidth variant="contained" disabled={placing || cartItems.length === 0} onClick={async () => {
+            setBestSellersOpen(false);
+            if (window.matchMedia("(max-width: 1023px)").matches) setMobileCartOpen(true);
+            else await handlePlaceOrder();
+          }} sx={{ minHeight: 52, borderRadius: "14px", fontWeight: 900, textTransform: "none" }}>
+            {placing ? cartActionBusyLabel : cartItems.length ? `${cartActionLabel} · Rs. ${totalAmount.toFixed(2)}` : "Add a favorite to your cart"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={reviewOpen}
+        onClose={() => !reviewSubmitting && setReviewOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        sx={{
+          "& .MuiBackdrop-root": { backgroundColor: "rgba(13, 20, 20, 0.62)", backdropFilter: "blur(5px)" },
+          "& .MuiDialog-container": { alignItems: "center", p: { xs: 1.25, sm: 3 } },
+        }}
+        PaperProps={{ sx: { width: "100%", maxHeight: { xs: "calc(100dvh - 20px)", sm: "min(760px, calc(100dvh - 96px))" }, m: 0, borderRadius: "24px", overflow: "hidden", border: "1px solid color-mix(in srgb, var(--border) 75%, white)", backgroundColor: "var(--card)", color: "var(--foreground)", boxShadow: "0 28px 90px rgba(0, 0, 0, 0.38)" } }}
+      >
+        {reviewSubmitted ? (
+          <>
+            <DialogContent sx={{ pt: 4, pb: 2, textAlign: "center" }}>
+              <MessageSquareQuote size={48} color="var(--primary)" />
+              <DialogTitle sx={{ px: 0, pt: 1, fontSize: "1.3rem", fontWeight: 900 }}>Thanks for your review!</DialogTitle>
+              <Typography sx={{ color: "var(--muted-foreground)" }}>Your feedback has been shared with {menu?.business?.name ?? "the restaurant"}.</Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, pt: 0 }}><Button fullWidth variant="contained" onClick={() => setReviewOpen(false)} sx={{ minHeight: 48, borderRadius: "13px", fontWeight: 900, textTransform: "none" }}>Done</Button></DialogActions>
+          </>
+        ) : (
+          <>
+            <DialogTitle sx={{ px: 2.5, pt: 2.5, pb: 1, fontWeight: 900 }}>Write a review</DialogTitle>
+            <DialogContent sx={{ display: "grid", gap: 2, pt: "8px !important" }}>
+              <Typography sx={{ color: "var(--muted-foreground)" }}>How was your experience at {menu?.business?.name ?? "this restaurant"}?</Typography>
+              <Box><Typography sx={{ mb: 0.5, fontSize: "0.86rem", fontWeight: 850 }}>Your rating</Typography><Rating value={reviewRating} onChange={(_event, value) => setReviewRating(value)} size="large" aria-label="Rate your experience from one to five stars" /></Box>
+              <TextField label="Name (optional)" value={reviewName} onChange={(event) => setReviewName(event.target.value)} fullWidth inputProps={{ maxLength: 100 }} />
+              <TextField label="Email (optional)" type="email" value={reviewEmail} onChange={(event) => setReviewEmail(event.target.value)} fullWidth inputProps={{ maxLength: 100 }} />
+              <TextField label="Your review (optional)" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} multiline minRows={3} maxRows={7} fullWidth inputProps={{ maxLength: 1000 }} helperText={`${reviewComment.length}/1000`} />
+              {message ? <Typography role="alert" sx={{ color: "var(--status-inactive-fg)", fontSize: "0.84rem", fontWeight: 700 }}>{message}</Typography> : null}
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5, pt: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+              <Button onClick={() => setReviewOpen(false)} disabled={reviewSubmitting} sx={{ minHeight: 48, borderRadius: "13px", fontWeight: 850, textTransform: "none" }}>Cancel</Button>
+              <Button variant="contained" disabled={reviewSubmitting || !menu?.business?.id || !reviewRating} onClick={async () => {
+                if (!menu?.business?.id || !reviewRating || reviewSubmitting) return;
+                setReviewSubmitting(true);
+                setMessage("");
+                try {
+                  await submitReview({ business_id: menu.business.id, rating: reviewRating, customer_name: reviewName.trim() || undefined, customer_email: reviewEmail.trim() || undefined, comment: reviewComment.trim() || undefined });
+                  setReviewSubmitted(true);
+                } catch (error) {
+                  console.error("Failed to submit customer review:", error);
+                  setMessage("Your review couldn't be sent. Please check your connection and try again.");
+                } finally {
+                  setReviewSubmitting(false);
+                }
+              }} sx={{ minHeight: 48, borderRadius: "13px", fontWeight: 900, textTransform: "none" }}>{reviewSubmitting ? "Sending…" : "Submit review"}</Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      <Dialog
         open={Boolean(selectedItem)}
         onClose={() => setSelectedItem(null)}
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
+        scroll="paper"
+        sx={{ "& .MuiDialog-container": { alignItems: { xs: "flex-end", sm: "center" } } }}
         PaperProps={{
           sx: {
-            borderRadius: "24px",
+            width: { xs: "100%", sm: "calc(100% - 48px)" },
+            maxWidth: { xs: "100%", sm: 720 },
+            maxHeight: { xs: "92dvh", sm: "calc(100% - 64px)" },
+            m: { xs: 0, sm: 3 },
+            borderRadius: { xs: "24px 24px 0 0", sm: "24px" },
             overflow: "hidden",
             border: "1px solid var(--border)",
-            backgroundColor: "var(--muted)",
+            backgroundColor: "var(--card)",
           },
         }}
       >
         {selectedItem ? (
           <>
-            <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>
-              {selectedItem.name}
+            <DialogTitle sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: { xs: "1.1rem", sm: "1.35rem" }, overflowWrap: "anywhere" }}>
+                    {selectedItem.name}
+                  </Typography>
+                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem", mt: 0.25 }}>
+                    Item details
+                  </Typography>
+                </Box>
+                <IconButton
+                  onClick={() => setSelectedItem(null)}
+                  aria-label="Close item details"
+                  sx={{ width: 42, height: 42, flexShrink: 0, border: "1px solid var(--border)", borderRadius: "12px" }}
+                >
+                  <CloseRoundedIcon />
+                </IconButton>
+              </Stack>
             </DialogTitle>
-            <DialogContent sx={{ display: "grid", gap: 2, pt: 1 }}>
+            <DialogContent sx={{ display: "grid", gap: { xs: 1.5, sm: 2 }, px: { xs: 2, sm: 3 }, pt: "8px !important", pb: 2 }}>
               <Box
                 sx={{
-                  minHeight: { xs: 240, sm: 340 },
-                   maxHeight: { xs: "58vh", sm: "64vh" },
-                   borderRadius: "20px",
-                   overflow: "auto",
-                   backgroundColor: "var(--muted)",
+                  height: { xs: "min(38dvh, 320px)", sm: 380 },
+                  minHeight: { xs: 210, sm: 280 },
+                  borderRadius: { xs: "17px", sm: "20px" },
+                  overflow: "hidden",
+                  backgroundColor: "var(--muted)",
                   display: "grid",
                   placeItems: "center",
                   border: "1px solid var(--border)",
@@ -2065,28 +2288,33 @@ export default function TableOrderPage() {
                 )}
               </Box>
 
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-                <Chip label={getFoodTypeLabel(selectedItem.foodType)} sx={{ fontWeight: 800 }} />
-                <Chip label={`Rs. ${formatPrice(selectedItem.price)}`} color="primary" sx={{ fontWeight: 900 }} />
-                <Box sx={{ flex: 1 }} />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                  <Chip label={getFoodTypeLabel(selectedItem.foodType)} sx={{ fontWeight: 800 }} />
+                  <Chip label={`Rs. ${formatPrice(selectedItem.price)}`} color="primary" sx={{ fontWeight: 900 }} />
+                </Stack>
                 <Stack
                   direction="row"
                   spacing={0.75}
                   alignItems="center"
+                  justifyContent="space-between"
                   sx={{
                     border: "1px solid var(--border)",
-                    borderRadius: "999px",
-                    px: 0.5,
-                    py: 0.5,
+                    borderRadius: "14px",
+                    px: 0.75,
+                    py: 0.4,
                     backgroundColor: "var(--background)",
+                    minHeight: 48,
+                    width: { xs: "100%", sm: 150 },
                   }}
                 >
+                  <Typography sx={{ pl: 0.75, fontSize: "0.84rem", fontWeight: 800 }}>Quantity</Typography>
                   <Button
                     size="small"
                     onClick={() => setDetailQty((current) => Math.max(1, current - 1))}
                     disabled={detailQty <= 1}
                     aria-label="Decrease quantity"
-                    sx={{ minWidth: 38, height: 34, borderRadius: "999px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}
+                    sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}
                   >
                     &minus;
                   </Button>
@@ -2104,23 +2332,21 @@ export default function TableOrderPage() {
                       (cart[selectedItem.id] ?? 0) + detailQty >= MAX_ORDER_QUANTITY
                     }
                     aria-label="Increase quantity"
-                    sx={{ minWidth: 38, height: 34, borderRadius: "999px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}
+                    sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}
                   >
                     +
                   </Button>
                 </Stack>
               </Stack>
 
-              <Typography sx={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
+              <Typography sx={{ color: "var(--muted-foreground)", lineHeight: 1.65, fontSize: { xs: "0.9rem", sm: "0.96rem" } }}>
                 {selectedItem.description || "Freshly prepared after you place the order."}
               </Typography>
             </DialogContent>
-            <DialogActions sx={{ p: 2, pt: 0 }}>
-              <Button onClick={() => setSelectedItem(null)} sx={{ borderRadius: "12px" }}>
-                Close
-              </Button>
+            <DialogActions sx={{ p: { xs: 2, sm: 3 }, pt: 0, pb: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 3 } }}>
               <Button
                 variant="contained"
+                fullWidth
                 disabled={(cart[selectedItem.id] ?? 0) + detailQty > MAX_ORDER_QUANTITY}
                 onClick={() => {
                   updateQuantity(
@@ -2132,7 +2358,7 @@ export default function TableOrderPage() {
                   );
                   setSelectedItem(null);
                 }}
-                sx={{ borderRadius: "12px", px: 2.5, fontWeight: 900 }}
+                sx={{ borderRadius: "14px", px: 2.5, minHeight: 52, fontWeight: 900, fontSize: "0.95rem", textTransform: "none" }}
               >
                 {(cart[selectedItem.id] ?? 0) > 0 ? `Add ${detailQty} more` : "Add to cart"} ·
                 Rs. {formatPrice(Number.parseFloat(selectedItem.price) * detailQty)}

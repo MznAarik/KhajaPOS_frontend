@@ -29,6 +29,7 @@ import { HouseIcon, type HouseIconHandle } from "@/components/ui/house-icon";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
+import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import { AuthProvider, useAuth, type SessionUser } from "@/lib/auth-context";
 import RoleGate from "@/components/admin/RoleGate";
 import { getBusinessSettings, resolveMenuImageUrl } from "@/lib/api";
@@ -54,6 +55,7 @@ const withNavIcon = (Component: React.ComponentType<any>) =>
 const UsersNavIcon = withNavIcon(PeopleAltOutlinedIcon);
 const RestaurantsNavIcon = withNavIcon(StorefrontOutlinedIcon);
 const AnalyticsNavIcon = withNavIcon(InsightsOutlinedIcon);
+const ReviewsNavIcon = withNavIcon(RateReviewOutlinedIcon);
 
 export default function SideNavLayout({
     children,
@@ -117,6 +119,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             { text: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
             { text: "Tables", href: "/admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
             { text: "Orders", href: "/admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+            { text: "Reviews", href: "/admin/reviews", icon: ReviewsNavIcon },
         ];
 
     const segmentLabels: Record<string, string> = {
@@ -130,6 +133,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         users: "Users",
         restaurants: "Businesses",
         analytics: "Analytics",
+        reviews: "Reviews",
         settings: "Settings",
     };
 
