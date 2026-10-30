@@ -296,6 +296,7 @@ export default function TableOrderPage() {
   const [reviewComment, setReviewComment] = React.useState("");
   const [reviewSubmitting, setReviewSubmitting] = React.useState(false);
   const [reviewSubmitted, setReviewSubmitted] = React.useState(false);
+  const [inlineReviewView, setInlineReviewView] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PublicMenuItem | null>(null);
   const [detailQty, setDetailQty] = React.useState(1);
 
@@ -303,6 +304,13 @@ export default function TableOrderPage() {
     setDetailQty(1);
   }, [selectedItem]);
   const [activeCategoryId, setActiveCategoryId] = React.useState<number | "all">("all");
+  const [inlineBestSellerView, setInlineBestSellerView] = React.useState<"list" | "detail" | null>(null);
+  const [inlineBestSellerItem, setInlineBestSellerItem] = React.useState<PublicMenuItem | null>(null);
+  const [inlineBestSellerQty, setInlineBestSellerQty] = React.useState(1);
+
+  React.useEffect(() => {
+    setInlineBestSellerQty(1);
+  }, [inlineBestSellerItem]);
   const [foodFilter, setFoodFilter] = React.useState<FoodFilterKey>("all");
   const [confirmingToken, setConfirmingToken] = React.useState<string | null>(null);
   const [cancellingToken, setCancellingToken] = React.useState<string | null>(null);
@@ -1010,11 +1018,20 @@ export default function TableOrderPage() {
       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
         {menu?.topProducts.length ? (
           <Button
-            variant="outlined"
+            variant={inlineBestSellerView ? "contained" : "outlined"}
             size="small"
             onClick={() => {
               setMobileCartOpen(false);
-              setBestSellersOpen(true);
+              if (inlineBestSellerView) {
+                setInlineBestSellerView(null);
+                setInlineBestSellerItem(null);
+              } else {
+                setInlineReviewView(false);
+                setReviewSubmitted(false);
+                setInlineBestSellerView("list");
+                setInlineBestSellerItem(null);
+              }
+              setBestSellersOpen(false);
             }}
             sx={{ minHeight: 42, borderRadius: "12px", px: 1.5, fontWeight: 850, textTransform: "none" }}
           >
@@ -1023,12 +1040,25 @@ export default function TableOrderPage() {
         ) : null}
         {menu?.business?.id ? (
           <Button
-            variant="outlined"
+            variant={inlineReviewView ? "contained" : "outlined"}
             size="small"
             startIcon={<MessageSquareQuote size={18} />}
             onClick={() => {
-              setReviewSubmitted(false);
-              setReviewOpen(true);
+              if (inlineReviewView) {
+                setInlineReviewView(false);
+              } else {
+                setInlineBestSellerView(null);
+                setInlineBestSellerItem(null);
+                setReviewSubmitted(false);
+                setInlineReviewView(true);
+                setReviewRating(5);
+                setReviewName("");
+                setReviewEmail("");
+                setReviewComment("");
+                setMessage("");
+              }
+              setReviewOpen(false);
+              setMobileCartOpen(false);
             }}
             sx={{ minHeight: 42, borderRadius: "12px", px: 1.5, fontWeight: 850, textTransform: "none" }}
           >
@@ -1215,7 +1245,7 @@ export default function TableOrderPage() {
         </Paper>
       ) : null}
 
-      <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, alignContent: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 360px" } }}>
+      <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, alignContent: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: (inlineBestSellerView || inlineReviewView) ? "minmax(0, 2fr) 360px" : "minmax(0, 1fr) 360px" } }}>
         <Box sx={{ display: "grid", gap: { xs: 1.25, md: 2 }, alignContent: "start", minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)" }}>
           {loading ? (
             <Stack spacing={{ xs: 1.25, md: 2 }}>
@@ -1351,7 +1381,7 @@ export default function TableOrderPage() {
             </Paper>
           ) : null}
 
-          {!loading && menu && flatItems.length > 0 ? (
+          {!loading && menu && flatItems.length > 0 && !inlineBestSellerView && !inlineReviewView ? (
             <Paper
               sx={{
                 p: { xs: 0.75, md: 1 },
@@ -1447,7 +1477,7 @@ export default function TableOrderPage() {
             </Paper>
           ) : null}
 
-          {!loading && menu?.categories.length ? (
+          {!loading && menu?.categories.length && !inlineBestSellerView && !inlineReviewView ? (
             <Paper
               elevation={0}
               sx={{
@@ -1533,6 +1563,8 @@ export default function TableOrderPage() {
           ) : null}
 
           {!loading &&
+            !inlineBestSellerView &&
+            !inlineReviewView &&
             visibleCategories.map((category) => (
               <Paper
                 key={category.id}
@@ -1826,7 +1858,9 @@ export default function TableOrderPage() {
           {!loading &&
             menu &&
             visibleCategories.length === 0 &&
-            flatItems.length > 0 ? (
+            flatItems.length > 0 &&
+            !inlineBestSellerView &&
+            !inlineReviewView ? (
             <Paper
               sx={{
                 p: { xs: 2, md: 3 },
@@ -1850,6 +1884,166 @@ export default function TableOrderPage() {
                 >
                   Show all {flatItems.length} items
                 </Button>
+              </Stack>
+            </Paper>
+          ) : null}
+
+          {inlineBestSellerView && menu ? (
+            <Paper
+              sx={{
+                p: { xs: 1.5, md: 3 },
+                borderRadius: { xs: "18px", md: "22px" },
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--muted)",
+                boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
+                animation: "khajapos-fade-slide-in 220ms ease-out",
+                "@keyframes khajapos-fade-slide-in": {
+                  "0%": { opacity: 0, transform: "translateY(10px)" },
+                  "100%": { opacity: 1, transform: "translateY(0)" },
+                },
+              }}
+            >
+              <Stack spacing={{ xs: 1.25, md: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                  <Box>
+                    <Typography sx={{ color: "var(--primary)", fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase" }}>{menu?.business?.name ?? "Guest favorites"}</Typography>
+                    <Typography sx={{ mt: 0.35, fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" }, fontWeight: 900 }}>Our best-selling foods</Typography>
+                  </Box>
+                  <Button variant="outlined" onClick={() => { setInlineBestSellerView(null); setInlineBestSellerItem(null); }} sx={{ borderRadius: "12px", fontWeight: 800, minHeight: 44, px: 2.5, fontSize: "0.9rem", whiteSpace: "nowrap" }}>Back to menu</Button>
+                </Stack>
+                <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
+
+                {inlineBestSellerView === "list" && !inlineBestSellerItem ? (
+                  <Stack spacing={1}>
+                    {menu?.topProducts.map((product, index) => {
+                      const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
+                      if (!item) return null;
+                      const quantity = cart[item.id] ?? 0;
+                      const image = resolveMenuImageUrl(item.imageUrl ?? product.imageUrl);
+                      return (
+                        <Paper
+                          key={item.id}
+                          onClick={() => { setInlineBestSellerItem(item); setInlineBestSellerQty(1); }}
+                          sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: { xs: "15px", sm: "18px" }, border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: quantity ? "color-mix(in srgb, var(--primary) 8%, var(--muted))" : "var(--muted)", cursor: "pointer", transition: "all 150ms ease", "&:hover": { boxShadow: "0 8px 20px color-mix(in srgb, var(--foreground) 8%, transparent)" } }}
+                        >
+                          <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} alignItems="center">
+                            <Typography sx={{ color: "var(--primary)", width: 26, flexShrink: 0, fontWeight: 950 }}>#{index + 1}</Typography>
+                            <Box sx={{ position: "relative", width: { xs: 72, sm: 88 }, height: { xs: 72, sm: 88 }, flexShrink: 0, overflow: "hidden", borderRadius: "13px", backgroundColor: "var(--card)", display: "grid", placeItems: "center" }}>
+                              {image ? <Box component="img" src={image} alt={item.name} sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Typography sx={{ fontSize: "0.65rem", color: "var(--muted-foreground)" }}>Food</Typography>}
+                              {quantity > 0 ? <Box sx={{ position: "absolute", top: 4, right: 4, minWidth: 21, height: 21, borderRadius: "50%", px: 0.5, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.7rem", fontWeight: 900 }}>{quantity}</Box> : null}
+                            </Box>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography sx={{ fontWeight: 850, fontSize: { xs: "0.88rem", sm: "0.98rem" }, overflowWrap: "anywhere" }}>{item.name}</Typography>
+                                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.75rem", mt: 0.2 }}>{product.quantity} ordered · {product.category}</Typography>
+                                </Box>
+                                <Typography sx={{ flexShrink: 0, fontWeight: 900, fontSize: "0.85rem", whiteSpace: "nowrap" }}>Rs. {formatPrice(item.price)}</Typography>
+                              </Stack>
+                              <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: 0.5 }}>
+                                <Button size="small" variant="contained" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, quantity + 1); }} disabled={quantity >= MAX_ORDER_QUANTITY} sx={{ minWidth: 74, minHeight: 34, borderRadius: "10px", fontWeight: 900, textTransform: "none" }}>+ Add</Button>
+                              </Stack>
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      );
+                    })}
+                    {!menu?.topProducts.length ? <Typography sx={{ py: 4, color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
+                  </Stack>
+                ) : inlineBestSellerItem ? (
+                  <Stack spacing={2}>
+                    <Box sx={{ position: "relative", height: { xs: "min(40dvh, 320px)", sm: 340 }, borderRadius: { xs: "17px", sm: "20px" }, overflow: "hidden", backgroundColor: "var(--card)", border: "1px solid var(--border)" }}>
+                      {resolveMenuImageUrl(inlineBestSellerItem.imageUrl) ? (
+                        <Box component="img" src={resolveMenuImageUrl(inlineBestSellerItem.imageUrl) ?? undefined} alt={inlineBestSellerItem.name} sx={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                      ) : (
+                        <Stack alignItems="center" justifyContent="center" sx={{ height: "100%" }}>
+                          <Typography sx={{ color: "var(--muted-foreground)", fontWeight: 800 }}>{getFoodTypeLabel(inlineBestSellerItem.foodType)}</Typography>
+                        </Stack>
+                      )}
+                    </Box>
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.25}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: { xs: "1.15rem", sm: "1.4rem" } }}>{inlineBestSellerItem.name}</Typography>
+                        <Stack direction="row" spacing={1} mt={0.75} flexWrap="wrap">
+                          <Chip label={getFoodTypeLabel(inlineBestSellerItem.foodType)} sx={{ fontWeight: 800 }} />
+                          <Chip label={`Rs. ${formatPrice(inlineBestSellerItem.price)}`} color="primary" sx={{ fontWeight: 900 }} />
+                        </Stack>
+                      </Box>
+                      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ border: "1px solid var(--border)", borderRadius: "14px", px: 0.75, py: 0.4, backgroundColor: "var(--background)", minHeight: 48, width: { xs: "100%", sm: 150 } }}>
+                        <Typography sx={{ pl: 0.75, fontSize: "0.84rem", fontWeight: 800 }}>Quantity</Typography>
+                        <Button size="small" onClick={() => setInlineBestSellerQty((current) => Math.max(1, current - 1))} disabled={inlineBestSellerQty <= 1} sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}>-</Button>
+                        <Typography sx={{ minWidth: 26, textAlign: "center", fontWeight: 900, ...qtyBumpSx }}>{inlineBestSellerQty}</Typography>
+                        <Button size="small" onClick={() => setInlineBestSellerQty((current) => Math.min(MAX_ORDER_QUANTITY, current + 1))} disabled={(cart[inlineBestSellerItem.id] ?? 0) + inlineBestSellerQty >= MAX_ORDER_QUANTITY} sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}>+</Button>
+                      </Stack>
+                    </Stack>
+                    <Typography sx={{ color: "var(--muted-foreground)", lineHeight: 1.65 }}>{inlineBestSellerItem.description || "Freshly prepared after you place the order."}</Typography>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button variant="outlined" onClick={() => { setInlineBestSellerItem(null); }} sx={{ borderRadius: "14px", minHeight: 48, fontWeight: 800 }}>Back to list</Button>
+                      <Button variant="contained" fullWidth onClick={() => { updateQuantity(inlineBestSellerItem.id, Math.min(MAX_ORDER_QUANTITY, (cart[inlineBestSellerItem.id] ?? 0) + inlineBestSellerQty)); setInlineBestSellerView(null); setInlineBestSellerItem(null); }} disabled={(cart[inlineBestSellerItem.id] ?? 0) + inlineBestSellerQty > MAX_ORDER_QUANTITY} sx={{ borderRadius: "14px", minHeight: 52, fontWeight: 900 }}>{(cart[inlineBestSellerItem.id] ?? 0) > 0 ? `Add ${inlineBestSellerQty} more` : "Add to cart"} · Rs. {formatPrice(Number.parseFloat(inlineBestSellerItem.price) * inlineBestSellerQty)}</Button>
+                    </Stack>
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Paper>
+          ) : null}
+
+          {inlineReviewView && menu?.business?.id ? (
+            <Paper
+              sx={{
+                p: { xs: 1.5, md: 3 },
+                borderRadius: { xs: "18px", md: "22px" },
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--muted)",
+                boxShadow: "0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent)",
+                animation: "khajapos-fade-slide-in 220ms ease-out",
+                "@keyframes khajapos-fade-slide-in": {
+                  "0%": { opacity: 0, transform: "translateY(10px)" },
+                  "100%": { opacity: 1, transform: "translateY(0)" },
+                },
+              }}
+            >
+              <Stack spacing={{ xs: 1.25, md: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                  <Box>
+                    <Typography sx={{ color: "var(--primary)", fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase" }}>{menu.business.name}</Typography>
+                    <Typography sx={{ mt: 0.35, fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" }, fontWeight: 900 }}>Write a review</Typography>
+                  </Box>
+                  <Button variant="outlined" onClick={() => setInlineReviewView(false)} sx={{ borderRadius: "12px", minHeight: { xs: 48, sm: 44 }, px: { xs: 2, sm: 2.5 }, fontSize: { xs: "0.95rem", sm: "0.9rem" }, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>Back to menu</Button>
+                </Stack>
+                {reviewSubmitted ? (
+                  <Stack spacing={2} alignItems="center" sx={{ py: 4, textAlign: "center" }}>
+                    <MessageSquareQuote size={48} color="var(--primary)" />
+                    <Typography sx={{ fontSize: "1.3rem", fontWeight: 900 }}>Thanks for your review!</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)" }}>Your feedback has been shared with {menu.business.name}.</Typography>
+                    <Button variant="contained" onClick={() => { setReviewSubmitted(false); setInlineReviewView(false); }} sx={{ mt: 1, borderRadius: "14px", px: 3, fontWeight: 900 }}>Done</Button>
+                  </Stack>
+                ) : (
+                  <Stack spacing={2}>
+                    <Typography sx={{ color: "var(--muted-foreground)" }}>How was your experience at {menu.business.name}?</Typography>
+                    <Box>
+                      <Typography sx={{ mb: 0.75, fontSize: "0.9rem", fontWeight: 850 }}>Your rating</Typography>
+                      <Rating value={reviewRating} onChange={(_event, value) => setReviewRating(value)} size="large" aria-label="Rate your experience from one to five stars" />
+                    </Box>
+                    <TextField label="Name (optional)" value={reviewName} onChange={(event) => setReviewName(event.target.value)} fullWidth inputProps={{ maxLength: 100 }} />
+                    <TextField label="Email (optional)" type="email" value={reviewEmail} onChange={(event) => setReviewEmail(event.target.value)} fullWidth inputProps={{ maxLength: 100 }} />
+                    <TextField label="Your review (optional)" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} multiline minRows={4} maxRows={8} fullWidth inputProps={{ maxLength: 1000 }} helperText={`${reviewComment.length}/1000`} />
+                    {message ? <Typography role="alert" sx={{ color: "var(--status-inactive-fg)", fontSize: "0.84rem", fontWeight: 700 }}>{message}</Typography> : null}
+                    <Button variant="contained" disabled={reviewSubmitting || !reviewRating} onClick={async () => {
+                      if (!menu?.business?.id || !reviewRating || reviewSubmitting) return;
+                      setReviewSubmitting(true);
+                      setMessage("");
+                      try {
+                        await submitReview({ business_id: menu.business.id, rating: reviewRating, customer_name: reviewName.trim() || undefined, customer_email: reviewEmail.trim() || undefined, comment: reviewComment.trim() || undefined });
+                        setReviewSubmitted(true);
+                      } catch (error) {
+                        console.error("Failed to submit customer review:", error);
+                        setMessage("Your review couldn't be sent. Please check your connection and try again.");
+                      } finally {
+                        setReviewSubmitting(false);
+                      }
+                    }} sx={{ borderRadius: "14px", minHeight: 52, fontWeight: 900 }}>{reviewSubmitting ? "Sending…" : "Submit review"}</Button>
+                  </Stack>
+                )}
               </Stack>
             </Paper>
           ) : null}
