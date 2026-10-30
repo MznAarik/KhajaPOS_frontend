@@ -40,6 +40,7 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 import ProfileComponent from "@/components/common/ProfileComponent";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { homeForRole } from "@/lib/role-home";
 import { HouseIcon, type HouseIconHandle } from "@/components/ui/house-icon";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
 import { LayoutListIcon, type LayoutListIconHandle } from "@/components/ui/layout-list-icon";
@@ -146,14 +147,17 @@ export default function UserProfilePage() {
       return;
     }
 
-    router.push("/admin/dashboard");
+    router.push(homeForRole(user?.role));
   };
 
+  const roleHome = homeForRole(user?.role);
   const navItems = [
-    { label: "Home", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+    { label: "Home", href: roleHome, icon: HouseIcon, ref: dashboardIconRef },
     { label: "Profile", href: "/user", icon: DashboardIcon, ref: profileIconRef },
-    { label: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: menuIconRef },
-    { label: "Orders", href: "/admin/orders", icon: CoffeeIcon, ref: ordersIconRef },
+    ...(user?.role === "admin" ? [
+      { label: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: menuIconRef },
+      { label: "Orders", href: "/business-admin/orders", icon: CoffeeIcon, ref: ordersIconRef },
+    ] : []),
   ];
 
   React.useEffect(() => {
@@ -368,7 +372,7 @@ export default function UserProfilePage() {
                 component={Link}
                 underline="hover"
                 color="inherit"
-                href="/admin/dashboard"
+                href={roleHome}
                 sx={{ color: "var(--muted-foreground)", fontWeight: 600 }}
               >
                 Home
