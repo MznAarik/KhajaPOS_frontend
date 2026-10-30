@@ -26,18 +26,25 @@ import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlin
 import WhatshotOutlinedIcon from "@mui/icons-material/WhatshotOutlined";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import {
   getDashboardStats,
+  getSuperAdminOverview,
   resolveMenuImageUrl,
   type DashboardPeriod,
   type DashboardStats,
   type OrderStatus,
   type RecentOrderSummary,
+  type SuperAdminOverview,
   type TopProduct,
 } from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { useAuth } from "@/lib/auth-context";
 
 const formatCurrency = (value: number, fractionDigits = 0) =>
   `Rs. ${Number(value ?? 0).toLocaleString("en-IN", {
@@ -257,6 +264,203 @@ const KpiCard = ({ label, value, helper, icon: Icon, accent }: KpiCardProps) => 
 );
 
 export default function AdminDashboardPage() {
+  const { isSuperAdmin, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
+        <Skeleton variant="rounded" height={140} sx={{ borderRadius: "22px" }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 2 }}>
+          {[0, 1, 2].map((key) => <Skeleton key={key} variant="rounded" height={150} sx={{ borderRadius: "18px" }} />)}
+        </Box>
+      </Box>
+    );
+  }
+
+  return isSuperAdmin ? <SuperAdminDashboard /> : <BusinessAdminDashboard />;
+}
+
+function SuperAdminDashboard() {
+  const [overview, setOverview] = React.useState<SuperAdminOverview | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  const { showSnackbar } = useAppSnackbar();
+
+  const fetchOverview = React.useCallback(async (quiet = false) => {
+    if (!quiet) setRefreshing(true);
+    try {
+      const data = await getSuperAdminOverview();
+      setOverview(data);
+      setFailed(false);
+    } catch (error) {
+      console.error("Failed to fetch super-admin overview:", error);
+      setFailed(true);
+      if (!quiet) showSnackbar(safeError(error, "Failed to load platform overview."), "error");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [showSnackbar]);
+
+  React.useEffect(() => {
+    void fetchOverview(true);
+  }, [fetchOverview]);
+
+  React.useEffect(() => {
+    const refreshQuietly = () => {
+      if (document.visibilityState === "visible") void fetchOverview(true);
+    };
+    const interval = window.setInterval(refreshQuietly, 60_000);
+    document.addEventListener("visibilitychange", refreshQuietly);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshQuietly);
+    };
+  }, [fetchOverview]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
+        <Skeleton variant="rounded" height={142} sx={{ borderRadius: "22px" }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 2 }}>
+          {[0, 1, 2].map((key) => <Skeleton key={key} variant="rounded" height={150} sx={{ borderRadius: "18px" }} />)}
+        </Box>
+        <Skeleton variant="rounded" height={220} sx={{ borderRadius: "22px" }} />
+      </Box>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, textAlign: "center", borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <Typography sx={{ fontSize: "1.1rem", fontWeight: 900 }}>Platform overview is unavailable</Typography>
+        <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)" }}>
+          {failed ? "The server could not load the overview. Try again." : "No overview data was returned."}
+        </Typography>
+        <Button onClick={() => void fetchOverview(false)} disabled={refreshing} variant="contained" sx={{ mt: 2, borderRadius: "12px", textTransform: "none", fontWeight: 850 }}>
+          {refreshing ? "Loading..." : "Try again"}
+        </Button>
+      </Paper>
+    );
+  }
+
+  const summaries = [
+    {
+      label: "Businesses",
+      value: overview.businesses.total,
+      helper: `${overview.businesses.active} active · ${overview.businesses.inactive} inactive`,
+      icon: BusinessOutlinedIcon,
+      accent: "var(--chart-1)",
+    },
+    {
+      label: "Active businesses",
+      value: overview.businesses.active,
+      helper: "Currently available on the platform",
+      icon: StorefrontOutlinedIcon,
+      accent: "var(--chart-2)",
+    },
+    {
+      label: "User accounts",
+      value: overview.users.total,
+      helper: `${overview.users.admin} owners · ${overview.users.user} customers`,
+      icon: PeopleAltOutlinedIcon,
+      accent: "var(--chart-3)",
+    },
+  ];
+
+  const destinations = [
+    { title: "Businesses", detail: "Review business profiles and activation status.", href: "/super-admin/businesses", icon: StorefrontOutlinedIcon },
+    { title: "Users", detail: "Manage owners, customers, and administrator accounts.", href: "/super-admin/users", icon: PeopleAltOutlinedIcon },
+    { title: "Analytics", detail: "Explore growth, revenue, and API usage in detail.", href: "/super-admin/analytics", icon: InsightsOutlinedIcon },
+  ];
+
+  return (
+    <Box sx={{ display: "grid", gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage: "linear-gradient(120deg, color-mix(in srgb, var(--chart-2) 12%, transparent), transparent 58%)",
+          boxShadow: "0 16px 36px rgba(31, 42, 43, 0.08)",
+        }}
+      >
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={2}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.72rem", fontWeight: 850, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              Super admin · Platform
+            </Typography>
+            <Typography sx={{ mt: 0.4, fontSize: { xs: "1.5rem", md: "2rem" }, lineHeight: 1.1, fontWeight: 900 }}>
+              Platform overview
+            </Typography>
+            <Typography sx={{ mt: 0.7, color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, maxWidth: 620 }}>
+              A quick snapshot of businesses and accounts. Use Analytics for revenue trends and detailed platform activity.
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button component={Link} href="/super-admin/analytics" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ minHeight: 44, borderRadius: "12px", textTransform: "none", fontWeight: 850 }}>
+              Open analytics
+            </Button>
+            <IconButton aria-label="Refresh platform overview" onClick={() => void fetchOverview(false)} disabled={refreshing} sx={{ width: 44, height: 44, borderRadius: "12px", border: "1px solid var(--border)" }}>
+              <RefreshIcon />
+            </IconButton>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1.25, md: 2 }, minWidth: 0 }}>
+        {summaries.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Paper key={item.label} elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, minWidth: 0, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+              <Stack direction="row" alignItems="center" spacing={1.25}>
+                <Box sx={{ width: 42, height: 42, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "13px", color: item.accent, backgroundColor: `color-mix(in srgb, ${item.accent} 14%, transparent)` }}>
+                  <Icon />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</Typography>
+                  <Typography sx={{ mt: 0.15, fontSize: { xs: "1.45rem", md: "1.7rem" }, lineHeight: 1.1, fontWeight: 900 }}>{item.value.toLocaleString("en-IN")}</Typography>
+                </Box>
+              </Stack>
+              <Typography sx={{ mt: 1.25, color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 650 }}>{item.helper}</Typography>
+            </Paper>
+          );
+        })}
+      </Box>
+
+      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Manage the platform</Typography>
+        <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Go directly to the area you need.</Typography>
+        <Box sx={{ mt: 1.75, display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
+          {destinations.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Paper key={item.title} component={Link} href={item.href} elevation={0} sx={{ p: 1.5, minWidth: 0, display: "flex", alignItems: "center", gap: 1.25, textDecoration: "none", color: "inherit", borderRadius: "15px", border: "1px solid var(--border)", backgroundColor: "var(--background)", transition: "border-color 160ms ease, transform 160ms ease", "&:hover": { borderColor: "var(--primary)", transform: "translateY(-2px)" } }}>
+                <Box sx={{ width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "12px", color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}><Icon fontSize="small" /></Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography sx={{ fontWeight: 850 }}>{item.title}</Typography>
+                  <Typography sx={{ mt: 0.2, color: "var(--muted-foreground)", fontSize: "0.75rem", lineHeight: 1.4 }}>{item.detail}</Typography>
+                </Box>
+                <ArrowForwardRoundedIcon sx={{ color: "var(--muted-foreground)", fontSize: 18, flexShrink: 0 }} />
+              </Paper>
+            );
+          })}
+        </Box>
+        <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
+        <Stack direction="row" useFlexGap flexWrap="wrap" spacing={{ xs: 1.5, sm: 3 }}>
+          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.super_admin}</strong> super admins</Typography>
+          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.admin}</strong> business owners</Typography>
+          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.user}</strong> customers</Typography>
+        </Stack>
+      </Paper>
+    </Box>
+  );
+}
+
+function BusinessAdminDashboard() {
   const [stats, setStats] = React.useState<DashboardStats | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -736,10 +940,10 @@ export default function AdminDashboardPage() {
           </Typography>
           <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mt: 1 }}>
             {[
-              { label: "Orders", href: "/admin/orders", icon: ReceiptLongOutlinedIcon },
-              { label: "Tables", href: "/admin/tables", icon: TableRestaurantOutlinedIcon },
-              { label: "Menu", href: "/admin/menu", icon: RestaurantMenuOutlinedIcon },
-              { label: "Categories", href: "/admin/category", icon: CategoryOutlinedIcon },
+              { label: "Orders", href: "/business-admin/orders", icon: ReceiptLongOutlinedIcon },
+              { label: "Tables", href: "/business-admin/tables", icon: TableRestaurantOutlinedIcon },
+              { label: "Menu", href: "/business-admin/menu", icon: RestaurantMenuOutlinedIcon },
+              { label: "Categories", href: "/business-admin/category", icon: CategoryOutlinedIcon },
             ].map((action) => (
               <Button
                 key={action.label}
@@ -790,7 +994,7 @@ export default function AdminDashboardPage() {
           </Box>
           <Button
             component={Link}
-            href="/admin/orders"
+            href="/business-admin/orders"
             size="small"
             endIcon={<ArrowForwardRoundedIcon />}
             sx={{ flexShrink: 0, borderRadius: "10px", fontWeight: 800, textTransform: "none" }}

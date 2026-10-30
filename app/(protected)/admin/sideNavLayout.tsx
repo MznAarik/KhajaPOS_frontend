@@ -109,17 +109,18 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
     const navItems: NavItem[] = isSuperAdmin
         ? [
-            { text: "Analytics", href: "/admin/analytics", icon: AnalyticsNavIcon },
-            { text: "Users", href: "/admin/users", icon: UsersNavIcon },
-            { text: "Businesses", href: "/admin/restaurants", icon: RestaurantsNavIcon },
+            { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
+            { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
+            { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
+            { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
         ]
         : [
-            { text: "Home", href: "/admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-            { text: "Category", href: "/admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
-            { text: "Menu", href: "/admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-            { text: "Tables", href: "/admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
-            { text: "Orders", href: "/admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-            { text: "Reviews", href: "/admin/reviews", icon: ReviewsNavIcon },
+            { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+            { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+            { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+            { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+            { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+            { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
         ];
 
     const segmentLabels: Record<string, string> = {
@@ -132,6 +133,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         orders: "Orders",
         users: "Users",
         restaurants: "Businesses",
+        businesses: "Businesses",
         analytics: "Analytics",
         reviews: "Reviews",
         settings: "Settings",
@@ -155,7 +157,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
     const drawer = (
         <Box sx={{ px: 2, py: { xs: 2, sm: 15 } }}>
-            <Link href="/admin/dashboard" style={{ textDecoration: "none" }}>
+            <Link href={isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard"} style={{ textDecoration: "none" }}>
                 <Box
                     sx={{
                         mb: 3,
@@ -430,7 +432,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                             component={Link}
                                             underline="hover"
                                             color="inherit"
-                                            href="/admin/dashboard"
+                                            href={isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard"}
                                             sx={{ color: "var(--muted-foreground)" }}
                                         >
                                             Home
@@ -554,7 +556,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             >
                 <BottomNavigation
                     showLabels
-                    value={navItems.find((item) => isActive(item.href))?.href ?? "/admin/dashboard"}
+                    value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
                     onChange={(_, value) => router.push(value)}
                     sx={{
                         height: 66,

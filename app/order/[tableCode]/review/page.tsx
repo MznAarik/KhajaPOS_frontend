@@ -69,7 +69,7 @@ export default function CustomerReviewPage() {
         <Button
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => router.push(`/order/${encodeURIComponent(tableCode)}`)}
-          sx={{ mx: { xs: 1, sm: 0 }, mt: { xs: 1, sm: 0 }, mb: 1, minHeight: 44, borderRadius: "12px", textTransform: "none", fontWeight: 800 }}
+          sx={{ mx: { xs: 1, sm: 0 }, mt: { xs: 1, sm: 0 }, mb: 1, minHeight: { xs: 52, sm: 48 }, px: { xs: 2.5, sm: 3 }, borderRadius: "14px", textTransform: "none", fontWeight: 800, fontSize: { xs: "1rem", sm: "1.05rem" } }}
         >
           Back to menu
         </Button>

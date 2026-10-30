@@ -7,7 +7,7 @@ export const THEME_STORAGE_KEYS = {
 } as const;
 
 export const getThemeStorageKey = (pathname: string | null | undefined) => {
-    if (pathname?.startsWith("/admin") || pathname?.startsWith("/user")) {
+    if (pathname?.startsWith("/admin") || pathname?.startsWith("/super-admin") || pathname?.startsWith("/business-admin") || pathname?.startsWith("/user")) {
         return THEME_STORAGE_KEYS.admin;
     }
 
@@ -69,7 +69,7 @@ export const THEME_INIT_SCRIPT = `(function () {
   try {
     var path = window.location.pathname || "";
     var key =
-      path.indexOf("/admin") === 0 || path.indexOf("/user") === 0
+      path.indexOf("/admin") === 0 || path.indexOf("/super-admin") === 0 || path.indexOf("/business-admin") === 0 || path.indexOf("/user") === 0
         ? "${THEME_STORAGE_KEYS.admin}"
         : path.indexOf("/order") === 0
           ? "${THEME_STORAGE_KEYS.customer}"

@@ -17,7 +17,7 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { clearAuthSession } from "@/lib/api";
 
 const getInitials = () => "KP";
@@ -30,6 +30,7 @@ export default function ProfileComponent({
     logoSrc?: string | null;
 }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
@@ -53,12 +54,12 @@ export default function ProfileComponent({
 
     const handleEditProfile = () => {
         handleClose();
-        router.push("/admin/settings");
+        router.push("/user");
     };
 
     const handleSettings = () => {
         handleClose();
-        router.push("/admin/settings");
+        router.push(pathname?.startsWith("/super-admin") ? "/super-admin/dashboard" : "/business-admin/settings");
     };
 
     const handleLogout = async () => {
