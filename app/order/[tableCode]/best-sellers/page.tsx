@@ -255,41 +255,43 @@ export default function BestSellersPage() {
           </Paper>
 
           {loading ? (
-            <Stack spacing={1.25}>{[0, 1, 2].map((key) => <Skeleton key={key} variant="rounded" height={132} sx={{ borderRadius: "18px" }} />)}</Stack>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: { xs: 0.75, sm: 1.25 } }}>{[0, 1, 2, 3, 4, 5].map((key) => <Skeleton key={key} variant="rounded" height={220} sx={{ borderRadius: "18px" }} />)}</Box>
           ) : menu?.topProducts.length ? (
-            <Stack spacing={1.25}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: { xs: 0.75, sm: 1.25 }, alignItems: "stretch" }}>
               {menu.topProducts.map((product, index) => {
                 const item = menuItems.get(product.menuItemId);
                 const image = resolveMenuImageUrl(item?.imageUrl ?? product.imageUrl);
                 const quantity = item ? cart[item.id] ?? 0 : 0;
                 return (
-                  <Paper key={product.menuItemId} elevation={0} sx={{ p: { xs: 1.25, sm: 1.75 }, borderRadius: "18px", border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                    <Stack direction="row" spacing={{ xs: 1.25, sm: 2 }} alignItems="center">
-                      <Typography sx={{ color: "var(--primary)", fontWeight: 950, fontSize: { xs: "0.9rem", sm: "1.1rem" }, width: 28, flexShrink: 0 }}>#{index + 1}</Typography>
-                      {image ? (
-                        <Box component="img" src={image} alt={product.name} sx={{ width: { xs: 76, sm: 104 }, height: { xs: 76, sm: 104 }, objectFit: "cover", borderRadius: "14px", backgroundColor: "var(--muted)", flexShrink: 0 }} />
-                      ) : null}
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.95rem", sm: "1.12rem" }, overflowWrap: "anywhere" }}>{product.name}</Typography>
-                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>{product.category}</Typography>
-                        {item?.description ? <Typography sx={{ display: { xs: "none", sm: "block" }, mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.84rem" }}>{item.description}</Typography> : null}
-                        <Typography sx={{ mt: 0.5, color: "var(--primary)", fontWeight: 850, fontSize: "0.78rem" }}>{product.quantity} ordered</Typography>
+                  <Paper key={product.menuItemId} elevation={0} sx={{ p: { xs: 0.9, sm: 1.5 }, minWidth: 0, borderRadius: "16px", border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                    <Stack spacing={0.85} sx={{ minWidth: 0, height: "100%" }}>
+                      <Box sx={{ position: "relative", width: "100%", height: { xs: 118, sm: 205, lg: 250 }, overflow: "hidden", borderRadius: { xs: "11px", sm: "14px" }, background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--muted)), var(--card))", display: "grid", placeItems: "center" }}>
+                        <Typography sx={{ position: "absolute", color: "var(--muted-foreground)", fontSize: { xs: "0.7rem", sm: "0.85rem" }, fontWeight: 750 }}>Food photo</Typography>
+                        {image ? <Box component="img" src={image} alt={product.name} onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }} sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                        <Typography sx={{ position: "absolute", top: 4, left: 4, px: 0.65, py: 0.2, borderRadius: "999px", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.68rem", fontWeight: 950 }}>#{index + 1}</Typography>
+                        {quantity > 0 ? <Typography sx={{ position: "absolute", top: 4, right: 4, minWidth: 21, height: 21, px: 0.5, borderRadius: "999px", display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.7rem", fontWeight: 900 }}>{quantity}</Typography> : null}
                       </Box>
-                    </Stack>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.8rem", sm: "1rem" }, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.2, minHeight: "2.4em" }}>{product.name}</Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.65rem", sm: "0.78rem" }, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.category}</Typography>
+                        <Typography sx={{ mt: 0.4, color: "var(--primary)", fontWeight: 850, fontSize: "0.72rem" }}>{product.quantity} ordered</Typography>
+                        {item?.description ? <Typography sx={{ display: { xs: "none", sm: "-webkit-box" }, mt: 0.5, color: "var(--muted-foreground)", fontSize: "0.78rem", overflow: "hidden", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{item.description}</Typography> : null}
+                      </Box>
                     {item ? (
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.25, pt: 1, borderTop: "1px solid var(--border)" }}>
-                        <Typography sx={{ fontWeight: 900, whiteSpace: "nowrap" }}>Rs. {Number(item.price).toFixed(2)}</Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <IconButton aria-label={`Remove one ${product.name}`} onClick={() => updateQuantity(item.id, quantity - 1)} disabled={!quantity} size="small" sx={{ width: 40, height: 40, border: "1px solid var(--border)" }}><RemoveRoundedIcon fontSize="small" /></IconButton>
-                          <Typography aria-live="polite" sx={{ minWidth: 22, textAlign: "center", fontWeight: 850 }}>{quantity}</Typography>
-                          <IconButton aria-label={`Add one ${product.name}`} onClick={() => updateQuantity(item.id, quantity + 1)} disabled={quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 40, height: 40, border: "1px solid var(--border)" }}><AddRoundedIcon fontSize="small" /></IconButton>
+                      <Stack spacing={0.6} sx={{ mt: 0.5, pt: 0.75, borderTop: "1px solid var(--border)" }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.72rem", sm: "0.86rem" }, whiteSpace: "nowrap" }}>Rs. {Number(item.price).toFixed(2)}</Typography>
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end" alignItems="center">
+                          <IconButton aria-label={`Remove one ${product.name}`} onClick={() => updateQuantity(item.id, quantity - 1)} disabled={!quantity} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><RemoveRoundedIcon fontSize="small" /></IconButton>
+                          <Typography aria-live="polite" sx={{ minWidth: 20, textAlign: "center", fontWeight: 850 }}>{quantity}</Typography>
+                          <IconButton aria-label={`Add one ${product.name}`} onClick={() => updateQuantity(item.id, quantity + 1)} disabled={quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><AddRoundedIcon fontSize="small" /></IconButton>
                         </Stack>
                       </Stack>
                     ) : null}
+                    </Stack>
                   </Paper>
                 );
               })}
-            </Stack>
+            </Box>
           ) : (
             <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)", textAlign: "center" }}>
               <Typography sx={{ fontWeight: 850 }}>Best sellers will appear here</Typography>
