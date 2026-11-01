@@ -18,6 +18,10 @@ import {
   ToggleButtonGroup,
   Typography,
   Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -26,12 +30,14 @@ import {
   FOOD_FILTER_ORDER,
   getAdminOrderDays,
   getAdminOrders,
+  getCategories,
   getOrderTypeLabel,
   matchesFoodFilter,
   updateAdminOrder,
   updateAdminOrderStatus,
   type FoodFilterKey,
   type KitchenOrder,
+  type CategoryOption,
   type OrderStatus,
   type OrderType,
 } from "@/lib/api";
@@ -42,6 +48,7 @@ const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "read
 const lockedStatuses: OrderStatus[] = ["served", "cancelled", "closed"];
 const MAX_ORDER_QUANTITY = 50;
 type OrderFilter = "active" | "all" | OrderStatus;
+const DIET_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg"];
 
 const getStatusStyle = (status: OrderStatus) => {
   switch (status) {
@@ -149,6 +156,8 @@ export default function OrdersPage() {
   const [selectedDate, setSelectedDate] = React.useState<string>("");
   const [foodFilter, setFoodFilter] = React.useState<FoodFilterKey>("all");
   const [availableDays, setAvailableDays] = React.useState<string[]>([]);
+  const [categories, setCategories] = React.useState<CategoryOption[]>([]);
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
   const [editingOrder, setEditingOrder] = React.useState<KitchenOrder | null>(null);
   const [editRemarks, setEditRemarks] = React.useState("");
   const [editOrderType, setEditOrderType] = React.useState<OrderType>("dine_in");
@@ -196,6 +205,18 @@ export default function OrdersPage() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [fetchDays]);
+
+  React.useEffect(() => {
+    let active = true;
+    getCategories()
+      .then((result) => {
+        if (active) setCategories(result);
+      })
+      .catch((error) => console.error("Failed to fetch order categories:", error));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     setLoading(true);
@@ -301,13 +322,16 @@ export default function OrdersPage() {
   };
 
   const foodFilteredOrders = React.useMemo(() => {
-    if (foodFilter === "all") return orders;
-    return orders.filter((order) =>
-      order.items.some((item) =>
+    return orders.filter((order) => {
+      const matchesDiet = foodFilter === "all" || order.items.some((item) =>
         matchesFoodFilter(item.foodType, foodFilter, { name: item.name }),
-      ),
-    );
-  }, [foodFilter, orders]);
+      );
+      const matchesCategory = categoryFilter === "all" || order.items.some((item) =>
+        String(item.categoryId ?? "") === categoryFilter,
+      );
+      return matchesDiet && matchesCategory;
+    });
+  }, [categoryFilter, foodFilter, orders]);
 
   const foodFilterCounts: Record<FoodFilterKey, number> = React.useMemo(() => {
     const counts: Record<FoodFilterKey, number> = {
@@ -453,7 +477,7 @@ export default function OrdersPage() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" },
             gap: { xs: 1, md: 2 },
             alignItems: "stretch",
             minWidth: 0,
@@ -594,7 +618,7 @@ export default function OrdersPage() {
                   },
                 }}
               >
-                {FOOD_FILTER_ORDER.map((key) => (
+                {DIET_FILTER_ORDER.map((key) => (
                   <ToggleButton key={key} value={key} aria-pressed={foodFilter === key}>
                     {FOOD_FILTER_LABELS[key]}
                     <Box
@@ -607,6 +631,41 @@ export default function OrdersPage() {
                 ))}
               </ToggleButtonGroup>
             </Stack>
+          </Box>
+
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontWeight: 850,
+                color: "var(--muted-foreground)",
+                fontSize: { xs: "0.72rem", md: "0.8rem" },
+                mb: 0.75,
+              }}
+            >
+              Category
+            </Typography>
+            <FormControl size="small" fullWidth>
+              <InputLabel id="order-category-filter-label">Category</InputLabel>
+              <Select
+                labelId="order-category-filter-label"
+                value={categoryFilter}
+                label="Category"
+                onChange={(event) => setCategoryFilter(event.target.value)}
+                sx={{
+                  borderRadius: "10px",
+                  backgroundColor: "var(--card)",
+                  fontWeight: 750,
+                  "& .MuiSelect-select": { py: 1.05, fontSize: { xs: "0.76rem", md: "0.84rem" } },
+                }}
+              >
+                <MenuItem value="all">All categories</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={String(category.id)}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </Box>
 
@@ -748,13 +807,16 @@ export default function OrdersPage() {
               <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 360 }}>
                 New orders will appear here automatically.
               </Typography>
-              {foodFilter !== "all" ? (
+              {foodFilter !== "all" || categoryFilter !== "all" ? (
                 <Button
                   variant="outlined"
-                  onClick={() => setFoodFilter("all")}
+                  onClick={() => {
+                    setFoodFilter("all");
+                    setCategoryFilter("all");
+                  }}
                   sx={{ borderRadius: "12px", fontWeight: 800, mt: 0.5 }}
                 >
-                  Show all diets
+                  Clear filters
                 </Button>
               ) : null}
             </Stack>
