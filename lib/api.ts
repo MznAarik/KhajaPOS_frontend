@@ -267,6 +267,7 @@ export type KitchenOrder = {
     quantity: number;
     price: string;
     foodType: MenuRow["foodType"];
+    categoryId: number | null;
   }>;
 };
 
@@ -363,6 +364,7 @@ type AdminOrderResponse = {
       id: number;
       name: string;
       food_type?: string;
+      category_id?: number | null;
     } | null;
   }>;
 };
@@ -618,6 +620,7 @@ const normalizeOrder = (order: AdminOrderResponse): KitchenOrder => ({
     quantity: item.quantity,
     price: item.price,
     foodType: normalizeFoodType(item.menu_item?.food_type ?? "non-veg"),
+    categoryId: item.menu_item?.category_id ?? null,
   })),
 });
 
