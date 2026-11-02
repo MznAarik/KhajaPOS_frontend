@@ -129,7 +129,7 @@ export type MenuRow = {
   prep: string;
   veg: boolean;
   isAvailable: boolean;
-  foodType: "veg" | "non-veg" | "egg" | "vegan";
+  foodType: "veg" | "non-veg" | "egg" | "vegan" | "beverage";
   imageUrl: string | null;
   createdAt: string;
 };
@@ -144,6 +144,8 @@ export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
       return "Egg";
     case "vegan":
       return "Vegan";
+    case "beverage":
+      return "Beverage";
     default:
       return foodType;
   }
@@ -489,7 +491,8 @@ const normalizeFoodType = (foodType: string): MenuRow["foodType"] => {
   return normalizedFoodType === "veg" ||
     normalizedFoodType === "non-veg" ||
     normalizedFoodType === "egg" ||
-    normalizedFoodType === "vegan"
+    normalizedFoodType === "vegan" ||
+    normalizedFoodType === "beverage"
     ? normalizedFoodType
     : "non-veg";
 };
