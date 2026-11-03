@@ -877,7 +877,7 @@ export default function MenuManagementPage() {
               xs: "none",
               md: "table",
             },
-            tableLayout: "fixed",
+            tableLayout: "auto",
           }}
         >
           <TableHead>
@@ -886,14 +886,12 @@ export default function MenuManagementPage() {
                 backgroundColor: "var(--background)",
               }}
             >
-              <TableCell sx={{ width: 100 }}>Image</TableCell>
+              <TableCell sx={{ pl: 3 }}>Image</TableCell>
               <TableCell>Menu Name</TableCell>
-              <TableCell sx={{ width: "18%" }}>Category</TableCell>
-              <TableCell sx={{ width: "10%" }}>Price</TableCell>
-              <TableCell sx={{ width: 140 }}>Status</TableCell>
-              <TableCell align="center" sx={{ width: 160 }}>
-                Actions
-              </TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell>Price</TableCell>
+              <TableCell align="center" sx={{ pr: 4 }}>Status</TableCell>
+              <TableCell align="center" sx={{ pl: 6 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
 
@@ -901,7 +899,7 @@ export default function MenuManagementPage() {
             {loading ? (
               skeletonRows.map((item) => (
                 <TableRow key={item}>
-                  <TableCell>
+                  <TableCell sx={{ pl: 3 }}>
                     <Skeleton
                       variant="rounded"
                       width={48}
@@ -921,23 +919,27 @@ export default function MenuManagementPage() {
                     <Skeleton width="40%" />
                   </TableCell>
 
-                  <TableCell>
-                    <Skeleton
-                      variant="rounded"
-                      width={90}
-                      height={28}
-                    />
+                  <TableCell align="center" sx={{ pr: 4 }}>
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <Skeleton
+                        variant="rounded"
+                        width={90}
+                        height={28}
+                      />
+                    </Box>
                   </TableCell>
 
-                  <TableCell>
-                    <Skeleton width="80%" />
+                  <TableCell align="center" sx={{ pl: 6 }}>
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <Skeleton width="80%" />
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
             ) : menus.length ? (
               menus.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>
+                  <TableCell sx={{ pl: 3 }}>
                     <Box
                       sx={{
                         width: 62,
@@ -975,7 +977,7 @@ export default function MenuManagementPage() {
                     {item.price}
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell align="center" sx={{ pr: 4 }}>
                     <Chip
                       clickable={updatingStatusId !== item.id}
                       label={
@@ -1050,7 +1052,7 @@ export default function MenuManagementPage() {
                     />
                   </TableCell>
 
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ pl: 6 }}>
                     <IconButton
                       size="small"
                       aria-label={`View ${item.name}`}

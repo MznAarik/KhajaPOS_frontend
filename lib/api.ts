@@ -151,17 +151,18 @@ export const getFoodTypeLabel = (foodType: MenuRow["foodType"]) => {
   }
 };
 
-export type FoodFilterKey = "all" | "veg" | "non-veg" | "drinks" | "others";
+export type FoodFilterKey = "all" | "veg" | "non-veg" | "beverage" | "drinks" | "others";
 
 export const FOOD_FILTER_LABELS: Record<FoodFilterKey, string> = {
   all: "All",
   veg: "Veg",
   "non-veg": "Non-Veg",
+  beverage: "Beverage",
   drinks: "Drinks",
   others: "Others",
 };
 
-export const FOOD_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg", "drinks", "others"];
+export const FOOD_FILTER_ORDER: FoodFilterKey[] = ["all", "veg", "non-veg", "beverage", "drinks", "others"];
 
 const DRINK_KEYWORDS_PATTERN =
   /\b(?:drinks?|juices?|beverages?|sodas?|cola|cokes?|pepsi|sprite|fanta|limca|thums\s?up|teas?|coffees?|latte|cappuccino|mocha|espresso|shakes?|lassi|smoothies?|lemonades?|water|milk\w*|matcha|cold[\s-]?drinks?)\b/i;
@@ -174,6 +175,7 @@ export const matchesFoodFilter = (
   if (filter === "all") return true;
   if (filter === "veg") return foodType === "veg" || foodType === "vegan";
   if (filter === "non-veg") return foodType === "non-veg";
+  if (filter === "beverage") return foodType === "beverage";
   if (filter === "drinks") {
     return (
       DRINK_KEYWORDS_PATTERN.test(ctx?.category ?? "") ||
@@ -504,7 +506,7 @@ export type MenuEditorPayload = {
   name: string;
   description: string;
   price: string;
-  foodType: "veg" | "non-veg" | "egg" | "vegan";
+  foodType: "veg" | "non-veg" | "egg" | "vegan" | "beverage";
   isAvailable: boolean;
   imageFile?: File | null;
   imageUrl?: string | null;

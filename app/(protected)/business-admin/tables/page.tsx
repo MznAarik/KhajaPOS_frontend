@@ -569,8 +569,8 @@ export default function TablesPage() {
               <TableCell>Table</TableCell>
               <TableCell>QR token</TableCell>
               <TableCell>Order link</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell align="center" sx={{ pr: 6 }}>Status</TableCell>
+              <TableCell align="center" sx={{ pl: 4 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
 
@@ -590,16 +590,23 @@ export default function TablesPage() {
                     <Skeleton width="100%" />
                   </TableCell>
 
-                  <TableCell>
-                    <Skeleton
-                      variant="rounded"
-                      width={100}
-                      height={30}
-                    />
+                  <TableCell align="center" sx={{ pr: 6 }}>
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <Skeleton
+                        variant="rounded"
+                        width={100}
+                        height={30}
+                      />
+                    </Box>
                   </TableCell>
 
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
+                  <TableCell align="center" sx={{ pl: 4 }}>
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <Skeleton
+                        variant="circular"
+                        width={30}
+                        height={30}
+                      />
                       <Skeleton
                         variant="circular"
                         width={30}
@@ -655,15 +662,15 @@ export default function TablesPage() {
 
                   {/* STATUS */}
 
-                  <TableCell>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
+                  <TableCell align="center" sx={{ pr: 6 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ flexWrap: "wrap" }}>
                       {renderStatusControl(table)}
                     </Stack>
                   </TableCell>
 
                   {/* ACTIONS */}
 
-                  <TableCell align="center" sx={{ px: 0.75, whiteSpace: "nowrap" }}>
+                  <TableCell align="center" sx={{ pl: 4, whiteSpace: "nowrap" }}>
                     <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" flexWrap="nowrap">
                       <IconButton size="small" aria-label={`Show QR code for table ${table.tableNo}`} onClick={() => setQrPreviewTable(table)} sx={{ border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
                         <QrCode2OutlinedIcon fontSize="small" />
