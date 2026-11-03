@@ -338,6 +338,7 @@ export default function OrdersPage() {
       all: orders.length,
       veg: 0,
       "non-veg": 0,
+      beverage: 0,
       drinks: 0,
       others: 0,
     };
@@ -477,7 +478,7 @@ export default function OrdersPage() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
             gap: { xs: 1, md: 2 },
             alignItems: "stretch",
             minWidth: 0,
@@ -611,6 +612,11 @@ export default function OrdersPage() {
                     color: "var(--food-drink) !important",
                     borderColor: "color-mix(in srgb, var(--food-drink) 55%, transparent) !important",
                   },
+                  "& .MuiToggleButton-root[value='beverage'].Mui-selected": {
+                    backgroundColor: "color-mix(in srgb, var(--food-drink) 14%, var(--card)) !important",
+                    color: "var(--food-drink) !important",
+                    borderColor: "color-mix(in srgb, var(--food-drink) 55%, transparent) !important",
+                  },
                   "& .MuiToggleButton-root[value='others'].Mui-selected": {
                     backgroundColor: "color-mix(in srgb, var(--food-egg) 14%, var(--card)) !important",
                     color: "var(--food-egg) !important",
@@ -633,17 +639,8 @@ export default function OrdersPage() {
             </Stack>
           </Box>
 
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontWeight: 850,
-                color: "var(--muted-foreground)",
-                fontSize: { xs: "0.72rem", md: "0.8rem" },
-                mb: 0.75,
-              }}
-            >
-              Category
-            </Typography>
+          <Box sx={{ minWidth: 0, pr: { xs: 0, md: 1 }, width: { xs: "100%", md: "180px" }, flexShrink: 0 }}>
+            <Box sx={{ height: { xs: "calc(0.72rem * 1.2 + 0.25rem)", md: "calc(0.8rem * 1.2 + 0.25rem)" } }} />
             <FormControl size="small" fullWidth>
               <InputLabel id="order-category-filter-label">Category</InputLabel>
               <Select
@@ -655,7 +652,8 @@ export default function OrdersPage() {
                   borderRadius: "10px",
                   backgroundColor: "var(--card)",
                   fontWeight: 750,
-                  "& .MuiSelect-select": { py: 1.05, fontSize: { xs: "0.76rem", md: "0.84rem" } },
+                  height: { xs: 32, md: 34 },
+                  "& .MuiSelect-select": { py: 0.5, fontSize: { xs: "0.74rem", md: "0.8rem" } },
                 }}
               >
                 <MenuItem value="all">All categories</MenuItem>
