@@ -208,6 +208,7 @@ const vegMarkTone = {
   vegan: { color: "var(--food-vegan)", label: "Vegan" },
   egg: { color: "var(--food-egg)", label: "Egg" },
   "non-veg": { color: "var(--food-nonveg)", label: "Non-veg" },
+  beverage: { color: "var(--food-drink)", label: "Beverage" },
 } as const;
 
 function VegMark({ foodType }: { foodType: PublicMenuItem["foodType"] }) {
