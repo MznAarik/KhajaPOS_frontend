@@ -56,6 +56,7 @@ export const foodTypeTone: Record<MenuRow["foodType"], string> = {
     vegan: "var(--food-vegan)",
     egg: "var(--food-egg)",
     "non-veg": "var(--food-nonveg)",
+    beverage: "var(--food-drink)",
 };
 
 export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogProps) {

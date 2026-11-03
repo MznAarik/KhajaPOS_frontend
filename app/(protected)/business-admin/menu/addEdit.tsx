@@ -53,7 +53,7 @@ type FormState = {
     name: string;
     description: string;
     price: string;
-    foodType: "veg" | "non-veg" | "egg" | "vegan";
+    foodType: "veg" | "non-veg" | "egg" | "vegan" | "beverage";
     isAvailable: boolean;
     imageFile: File | null;
     imageUrl: string | null;
@@ -602,6 +602,7 @@ export default function AddEditMenuDialog({
                                 <MenuItem value="non-veg">Non-Veg</MenuItem>
                                 <MenuItem value="egg">{getFoodTypeLabel("egg")}</MenuItem>
                                 <MenuItem value="vegan">{getFoodTypeLabel("vegan")}</MenuItem>
+                                <MenuItem value="beverage">{getFoodTypeLabel("beverage")}</MenuItem>
                             </TextField>
                         </Stack>
 
