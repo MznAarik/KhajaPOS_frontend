@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -285,6 +286,7 @@ export default function TableOrderPage() {
   const [loading, setLoading] = React.useState(true);
   const [placing, setPlacing] = React.useState(false);
   const [message, setMessage] = React.useState("");
+  const [platformError, setPlatformError] = React.useState<{ code?: string; message: string } | null>(null);
   const [recentOrders, setRecentOrders] = React.useState<RecentOrderSummary[]>([]);
   const [recentOrderStatuses, setRecentOrderStatuses] = React.useState<Record<string, KitchenOrder | null>>({});
   const [orderRefreshKey, setOrderRefreshKey] = React.useState(0);
@@ -361,10 +363,21 @@ export default function TableOrderPage() {
           setMenu(data);
           setMessage("");
           lastMenuFetchAt = Date.now();
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to load public menu:", error);
-          if (!silent && !isCancelled) {
-            setMessage("We couldn't load this table menu right now.");
+          if (!isCancelled) {
+            const data = error?.response?.data;
+            const code = data?.code;
+            if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
+              setPlatformError({
+                code,
+                message: data?.message || "This service is temporarily unavailable.",
+              });
+              setMessage("");
+            } else if (!silent) {
+              setPlatformError(null);
+              setMessage(data?.message || "We couldn't load this table menu right now.");
+            }
           }
         } finally {
           if (!silent && !isCancelled) setLoading(false);
@@ -1016,6 +1029,28 @@ export default function TableOrderPage() {
         </Stack>
       </Paper>
 
+      {platformError ? (
+        <Alert
+          severity={platformError.code === "MAINTENANCE_MODE" ? "warning" : "error"}
+          variant="filled"
+          sx={{
+            borderRadius: "16px",
+            alignItems: "flex-start",
+            "& .MuiAlert-message": { width: "100%" },
+          }}
+        >
+          <Typography sx={{ fontWeight: 900, fontSize: "1rem", lineHeight: 1.25 }}>
+            {platformError.code === "MAINTENANCE_MODE" ? "Temporarily unavailable" : "This business is unavailable"}
+          </Typography>
+          <Typography sx={{ mt: 0.4, fontSize: "0.9rem", fontWeight: 650, opacity: 0.96 }}>
+            {platformError.message}
+          </Typography>
+          <Typography sx={{ mt: 0.6, fontSize: "0.76rem", fontWeight: 800, opacity: 0.88, letterSpacing: "0.02em" }}>
+            {(platformError.code || "ERROR").replace(/_/g, " ")}
+          </Typography>
+        </Alert>
+      ) : null}
+
       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
         {menu?.topProducts.length ? (
           <Button
@@ -1371,15 +1406,17 @@ export default function TableOrderPage() {
               ))}
             </Stack>
           ) : !menu || menu.categories.length === 0 ? (
-            <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
-              <Stack spacing={1} alignItems="center" sx={{ textAlign: "center" }}>
-                <Typography sx={{ fontSize: "2rem", lineHeight: 1 }}>🍽️</Typography>
-                <Typography sx={{ fontWeight: 800 }}>Menu coming soon</Typography>
-                <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 360 }}>
-                  This table&apos;s menu isn&apos;t available yet. Please check back in a moment.
-                </Typography>
-              </Stack>
-            </Paper>
+            platformError ? null : (
+              <Paper sx={{ p: 4, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}>
+                <Stack spacing={1} alignItems="center" sx={{ textAlign: "center" }}>
+                  <Typography sx={{ fontSize: "2rem", lineHeight: 1 }}>🍽️</Typography>
+                  <Typography sx={{ fontWeight: 800 }}>Menu coming soon</Typography>
+                  <Typography sx={{ color: "var(--muted-foreground)", maxWidth: 360 }}>
+                    This table&apos;s menu isn&apos;t available yet. Please check back in a moment.
+                  </Typography>
+                </Stack>
+              </Paper>
+            )
           ) : null}
 
           {!loading && menu && flatItems.length > 0 && !inlineBestSellerView && !inlineReviewView ? (

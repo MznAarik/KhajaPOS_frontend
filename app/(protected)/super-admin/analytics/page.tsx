@@ -821,7 +821,7 @@ export default function AdminAnalyticsPage() {
                   color: "var(--muted-foreground)",
                 }}
               >
-                Super admin · Platform insights
+                Super admin · {filteredBusiness ? "Business analytics" : "Platform & business analytics"}
               </Typography>
               <Box
                 component="span"
@@ -852,7 +852,7 @@ export default function AdminAnalyticsPage() {
               </Box>
             </Stack>
             <Typography sx={{ fontSize: { xs: "1.3rem", md: "2rem" }, fontWeight: 900, mt: 0.4, lineHeight: 1.1 }}>
-              {filteredBusiness ? `${filteredBusiness.name} growth & usage` : "Platform growth & usage"}
+              {filteredBusiness ? `${filteredBusiness.name} — analytics` : "Platform & business analytics"}
             </Typography>
             <Typography
               sx={{
@@ -863,8 +863,8 @@ export default function AdminAnalyticsPage() {
               }}
             >
               {filteredBusiness
-                ? `${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue`
-                : `${formatNumber(totals.businesses)} businesses · ${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue`}
+                ? `${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue (scoped)`
+                : `${formatNumber(totals.businesses)} businesses · ${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} lifetime revenue. Select a business to focus analytics, or view all businesses below.`}
             </Typography>
             <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", mt: 0.4 }}>
               Snapshot generated at {formatClock(data.generatedAt)} · auto-refreshes every 30 seconds
@@ -1437,192 +1437,8 @@ export default function AdminAnalyticsPage() {
         </SectionCard>
       </Box>
 
-      {/* API traffic ------------------------------------------------------- */}
-      <SectionCard>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "center" }}
-          spacing={1.5}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <SpeedOutlinedIcon sx={{ color: "var(--chart-2)" }} />
-              <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>API traffic</Typography>
-            </Stack>
-            <Typography
-              sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
-            >
-              {trafficRange === "hour" ? "Requests per minute · last 60 minutes" : "Requests per hour · last 24 hours"}
-              {filteredBusiness ? ` · ${filteredBusiness.name}` : ""}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", rowGap: 1 }}>
-            <Chip
-              size="small"
-              label={`Now · ${formatNumber(trafficCurrent)}/${trafficRange === "hour" ? "min" : "hr"}`}
-              sx={{ fontWeight: 800, borderRadius: "9px", backgroundColor: "var(--status-active-bg)", color: "var(--status-active-fg)" }}
-            />
-            <Chip
-              size="small"
-              label={`Peak · ${formatNumber(trafficPeak)}${trafficRange === "hour" ? "/min" : "/hr"}`}
-              sx={{ fontWeight: 800, borderRadius: "9px" }}
-            />
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={trafficRange}
-              onChange={(_event, value: "hour" | "day" | null) => {
-                if (value) setTrafficRange(value);
-              }}
-              aria-label="Traffic range"
-              sx={toggleSx}
-            >
-              <ToggleButton value="hour">1 hour</ToggleButton>
-              <ToggleButton value="day">24 hours</ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
-        </Stack>
-
-        <Box sx={{ mt: 2 }}>
-          <RequestBars points={trafficPoints} />
-        </Box>
-
-        <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
-
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" },
-            gap: { xs: 1.5, md: 2 },
-          }}
-        >
-          {[
-            { label: "Requests · 24h", value: formatNumber(usage.last24h.requests) },
-            { label: "Error rate", value: `${usage.last24h.errorRate}%` },
-            { label: "Avg latency", value: `${formatNumber(usage.last24h.avgLatencyMs)} ms` },
-            { label: "p95 latency", value: `${formatNumber(usage.last24h.p95LatencyMs)} ms` },
-            { label: "Active API users", value: formatNumber(usage.last24h.uniqueUsers) },
-          ].map((item) => (
-            <Box key={item.label} sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: "0.64rem",
-                  fontWeight: 850,
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                  color: "var(--muted-foreground)",
-                }}
-              >
-                {item.label}
-              </Typography>
-              <Typography sx={{ fontSize: { xs: "1.02rem", md: "1.2rem" }, fontWeight: 900, lineHeight: 1.25 }}>
-                {item.value}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </SectionCard>
-
-      {/* Endpoints + data footprint ---------------------------------------- */}
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.35fr) minmax(0, 1fr)" },
-          gap: 2,
-          minWidth: 0,
-        }}
-      >
-        <SectionCard>
-          <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>Busiest endpoints</Typography>
-          <Typography
-            sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
-          >
-            Top API routes over the last 24 hours
-          </Typography>
-
-          {usage.routes.length > 0 ? (
-            <Box sx={{ overflowX: "auto", mt: 1.5 }}>
-              <Table size="small" sx={{ minWidth: 460 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={headCellSx}>Route</TableCell>
-                    <TableCell sx={headCellSx} align="right">
-                      Requests
-                    </TableCell>
-                    <TableCell sx={headCellSx} align="right">
-                      Avg
-                    </TableCell>
-                    <TableCell sx={headCellSx} align="right">
-                      Errors
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {usage.routes.map((route) => (
-                    <TableRow key={`${route.method}-${route.path}`} hover>
-                      <TableCell sx={bodyCellSx}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                          <Box
-                            component="span"
-                            sx={{
-                              px: 0.7,
-                              py: "1px",
-                              borderRadius: "6px",
-                              fontSize: "0.62rem",
-                              fontWeight: 900,
-                              letterSpacing: "0.04em",
-                              color: methodColor(route.method),
-                              backgroundColor: `color-mix(in srgb, ${methodColor(route.method)} 14%, transparent)`,
-                              border: `1px solid color-mix(in srgb, ${methodColor(route.method)} 32%, transparent)`,
-                            }}
-                          >
-                            {route.method}
-                          </Box>
-                          <Box
-                            component="span"
-                            title={route.path}
-                            sx={{
-                              fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
-                              fontSize: "0.76rem",
-                              fontWeight: 650,
-                              maxWidth: { xs: 160, md: 260 },
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              color: "var(--foreground)",
-                            }}
-                          >
-                            {route.path}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, textAlign: "right" }}>{formatNumber(route.requests)}</TableCell>
-                      <TableCell sx={{ ...bodyCellSx, textAlign: "right", color: "var(--muted-foreground)" }}>
-                        {formatNumber(route.avgMs)} ms
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          ...bodyCellSx,
-                          textAlign: "right",
-                          color: route.errors > 0 ? "var(--destructive)" : "var(--muted-foreground)",
-                        }}
-                      >
-                        {formatNumber(route.errors)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          ) : (
-            <EmptyState
-              title="No endpoint traffic yet"
-              hint="Requests are logged automatically as soon as clients call the API."
-            />
-          )}
-        </SectionCard>
-
+      {/* Data footprint (business/storage) -------------------------------- */}
+      <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
         <SectionCard>
           <Stack direction="row" spacing={1} alignItems="center">
             <StorageOutlinedIcon sx={{ color: "var(--chart-1)" }} />
@@ -1632,31 +1448,45 @@ export default function AdminAnalyticsPage() {
             sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
           >
             {footprint.businessScoped
-              ? `Record counts for ${filteredBusiness?.name ?? "the selected business"}. Database and file storage sizes are shared across businesses.`
-              : "Storage this platform currently consumes"}
+              ? `Database record counts and attributed image storage for ${filteredBusiness?.name ?? "the selected business"}. Database/file byte sizes are shared and not attributed per business.`
+              : "Storage this platform currently consumes, including known image storage attributed across businesses."}
           </Typography>
 
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: footprint.businessScoped ? "1fr" : "repeat(2, minmax(0, 1fr))",
-              gap: 1.5,
-              mt: 1.75,
-            }}
-          >
-            {(footprint.businessScoped
-              ? [{ label: "Business records", value: `${formatNumber(totalRows)} rows`, helper: "Across this business's data tables" }]
-              : [
-                  { label: "Database", value: formatBytes(footprint.database.sizeBytes), helper: footprint.database.name },
-                  { label: "File storage", value: formatBytes(footprint.storage.sizeBytes), helper: `${formatNumber(totalRows)} rows tracked` },
-                ]).map((item) => (
+              gridTemplateColumns: footprint.businessScoped ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))",
+                gap: 1.5,
+                mt: 1.75,
+              }}
+            >
+              {(() => {
+                const img = footprint.image_storage;
+                const imgValue = img?.available
+                  ? formatBytes(img.known_bytes ?? 0)
+                  : "Unavailable";
+                const imgHelper = img?.available
+                  ? `${formatNumber(img.total_images ?? 0)} images � ${img.fully_known ? "fully known" : `${formatNumber(img.unknown_images ?? 0)} unknown, ${formatNumber(img.missing_images ?? 0)} missing`} (known bytes only)`
+                  : (img?.reason || "Image storage metrics unavailable.");
+                const base = footprint.businessScoped
+                  ? [
+                      { label: "Image storage taken", value: imgValue, helper: imgHelper, accent: "var(--chart-2)" },
+                      { label: "Business records", value: `${formatNumber(totalRows)} records`, helper: "Database record count across this business's tables (not disk bytes).", accent: "var(--chart-1)" },
+                    ]
+                  : [
+                      { label: "Known image storage", value: imgValue, helper: imgHelper, accent: "var(--chart-2)" },
+                      { label: "Database", value: formatBytes(footprint.database.sizeBytes), helper: footprint.database.name, accent: "var(--chart-1)" },
+                      { label: "File storage", value: formatBytes(footprint.storage.sizeBytes), helper: `${formatNumber(totalRows)} rows tracked`, accent: "var(--chart-1)" },
+                    ];
+                return base;
+              })().map((item) => (
               <Box
                 key={item.label}
                 sx={{
                   p: 1.5,
                   borderRadius: "14px",
                   border: "1px solid var(--border)",
-                  backgroundColor: "color-mix(in srgb, var(--chart-1) 6%, transparent)",
+                  backgroundColor: `color-mix(in srgb, ${item.accent || "var(--chart-1)"} 8%, transparent)`,
                   minWidth: 0,
                 }}
               >
@@ -1740,7 +1570,7 @@ export default function AdminAnalyticsPage() {
         </SectionCard>
       </Box>
 
-      {/* Top businesses ---------------------------------------------------- */}
+      {/* Businesses details ------------------------------------------------ */}
       <SectionCard>
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -1749,37 +1579,39 @@ export default function AdminAnalyticsPage() {
           spacing={1}
         >
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>Top businesses</Typography>
+            <Typography sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, fontWeight: 900 }}>
+              {selectedBusinessId === "all"
+                ? "Gross business performance — all businesses (totals & details)"
+                : "Selected business — performance & details"}
+            </Typography>
             <Typography
               sx={{ fontSize: { xs: "0.76rem", md: "0.82rem" }, color: "var(--muted-foreground)", fontWeight: 650 }}
             >
-              Ranked by lifetime non-cancelled revenue
+              {selectedBusinessId === "all"
+                ? `Total ${formatNumber(totals.businesses)} businesses · ${formatNumber(totals.orders)} orders · ${formatCurrency(totals.revenue)} revenue. Per-business details below (filter to focus one business).`
+                : "Revenue and other details for the selected business."}
             </Typography>
           </Box>
           <Chip
             size="small"
-            label={selectedBusinessId === "all" ? `${formatNumber(topBusinesses.length)} of ${formatNumber(totals.businesses)}` : `${formatNumber(visibleBusinesses.length)} selected`}
+            label={selectedBusinessId === "all" ? `${formatNumber(topBusinesses.length)} shown` : `${formatNumber(visibleBusinesses.length)} selected`}
             sx={{ fontWeight: 800, borderRadius: "9px" }}
           />
         </Stack>
 
         {visibleBusinesses.length > 0 ? (
           <Box sx={{ overflowX: "auto", mt: 1.5 }}>
-            <Table size="small" sx={{ minWidth: 620 }}>
+            <Table size="small" sx={{ minWidth: 820 }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={headCellSx}>Business</TableCell>
                   <TableCell sx={headCellSx}>Type</TableCell>
                   <TableCell sx={headCellSx}>Status</TableCell>
-                  <TableCell sx={headCellSx} align="right">
-                    Menu
-                  </TableCell>
-                  <TableCell sx={headCellSx} align="right">
-                    Orders
-                  </TableCell>
-                  <TableCell sx={headCellSx} align="right">
-                    Revenue
-                  </TableCell>
+                  <TableCell sx={headCellSx} align="right">Menu</TableCell>
+                  <TableCell sx={headCellSx} align="right">Tables</TableCell>
+                  <TableCell sx={headCellSx} align="right">Users</TableCell>
+                  <TableCell sx={headCellSx} align="right">Orders</TableCell>
+                  <TableCell sx={headCellSx} align="right">Revenue</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1829,6 +1661,8 @@ export default function AdminAnalyticsPage() {
                       </Box>
                     </TableCell>
                     <TableCell sx={{ ...bodyCellSx, textAlign: "right" }}>{formatNumber(business.menuItems)}</TableCell>
+                    <TableCell sx={{ ...bodyCellSx, textAlign: "right" }}>{formatNumber(business.tables ?? 0)}</TableCell>
+                    <TableCell sx={{ ...bodyCellSx, textAlign: "right" }}>{formatNumber(business.users ?? 0)}</TableCell>
                     <TableCell sx={{ ...bodyCellSx, textAlign: "right" }}>{formatNumber(business.orders)}</TableCell>
                     <TableCell sx={{ ...bodyCellSx, textAlign: "right", fontWeight: 900 }}>
                       {formatCurrency(business.revenue)}
@@ -1839,7 +1673,7 @@ export default function AdminAnalyticsPage() {
             </Table>
           </Box>
         ) : (
-          <EmptyState title="No business revenue recorded yet" hint="Top performers will appear after orders are placed." />
+          <EmptyState title="No businesses found" hint="Business details will appear here once businesses exist." />
         )}
       </SectionCard>
 
