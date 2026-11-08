@@ -2178,7 +2178,7 @@ export default function TableOrderPage() {
             right: 0,
             bottom: 0,
             zIndex: 2000,
-            px: 1.25,
+            px: { xs: 1, md: 1.25 },
             pb: "calc(env(safe-area-inset-bottom) + 10px)",
             pointerEvents: "none",
           }}
