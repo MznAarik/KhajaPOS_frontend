@@ -69,9 +69,9 @@ interface DropletState {
     phase: DropletPhase;
 }
 
-const DROP_EXPAND_MS = 700;
-const DROP_FADE_DELAY_MS = 850;
-const DROP_TOTAL_MS = 1150;
+const DROP_EXPAND_MS = 1100;
+const DROP_FADE_DELAY_MS = 1250;
+const DROP_TOTAL_MS = 1650;
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -130,6 +130,48 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                 return;
             }
 
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const x = origin?.x ?? vw / 2;
+            const y = origin?.y ?? vh / 2;
+            const radius = Math.hypot(Math.max(x, vw - x), Math.max(y, vh - y)) * 1.12;
+
+            const startVT = (document as Document & { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> } }).startViewTransition;
+            if (typeof startVT === "function") {
+                busyRef.current = true;
+                const root = document.documentElement;
+                root.style.setProperty("--theme-vt-x", `${x}px`);
+                root.style.setProperty("--theme-vt-y", `${y}px`);
+                root.style.setProperty("--theme-vt-r", `${radius}px`);
+                root.dataset.themeVt = "reveal";
+                root.classList.add("theme-switching");
+
+                try {
+                    const transition = startVT.call(document, () => {
+                        setMode(nextMode);
+                        applyThemeMode(nextMode, storageKey);
+                    });
+                    void transition.finished
+                        .catch(() => {})
+                        .finally(() => {
+                            delete root.dataset.themeVt;
+                            root.style.removeProperty("--theme-vt-x");
+                            root.style.removeProperty("--theme-vt-y");
+                            root.style.removeProperty("--theme-vt-r");
+                            root.classList.remove("theme-switching");
+                            busyRef.current = false;
+                        });
+                    return;
+                } catch {
+                    delete root.dataset.themeVt;
+                    root.style.removeProperty("--theme-vt-x");
+                    root.style.removeProperty("--theme-vt-y");
+                    root.style.removeProperty("--theme-vt-r");
+                    root.classList.remove("theme-switching");
+                    busyRef.current = false;
+                }
+            }
+
             busyRef.current = true;
             clearTimers();
 
@@ -137,12 +179,6 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
 
             setMode(nextMode);
             applyThemeMode(nextMode, storageKey);
-
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const x = origin?.x ?? vw / 2;
-            const y = origin?.y ?? vh / 2;
-            const radius = Math.hypot(Math.max(x, vw - x), Math.max(y, vh - y)) * 1.1;
 
             const background = readThemeVar(
                 "--background",
@@ -201,8 +237,9 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         height: droplet.radius * 2,
                         borderRadius: "50%",
                         backgroundColor: droplet.background,
-                        border: `1.5px solid color-mix(in srgb, ${droplet.glow} 55%, transparent)`,
-                        transform: droplet.phase === "start" ? "translateZ(0) scale(0.001)" : "translateZ(0) scale(1)",
+                        border: `2px solid color-mix(in srgb, ${droplet.glow} 62%, transparent)`,
+                        boxShadow: `0 0 0 1px color-mix(in srgb, ${droplet.glow} 18%, transparent), 0 0 40px color-mix(in srgb, ${droplet.glow} 22%, transparent)`,
+                        transform: droplet.phase === "start" ? "translateZ(0) scale(0.015)" : "translateZ(0) scale(1)",
                         willChange: "transform",
                         backfaceVisibility: "hidden",
                         WebkitBackfaceVisibility: "hidden",
@@ -218,29 +255,30 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
                         width: droplet.radius * 2,
                         height: droplet.radius * 2,
                         borderRadius: "50%",
-                        border: `2px solid color-mix(in srgb, ${droplet.glow} 70%, transparent)`,
-                        transform: droplet.phase === "start" ? "scale(0.08)" : "scale(1.2)",
-                        opacity: droplet.phase === "start" ? 0.95 : 0,
+                        border: `2.5px solid color-mix(in srgb, ${droplet.glow} 78%, transparent)`,
+                        boxShadow: `0 0 24px color-mix(in srgb, ${droplet.glow} 28%, transparent)`,
+                        transform: droplet.phase === "start" ? "scale(0.04)" : "scale(1.15)",
+                        opacity: droplet.phase === "start" ? 1 : 0,
                         backfaceVisibility: "hidden",
                         WebkitBackfaceVisibility: "hidden",
                         transition:
-                            "transform 950ms cubic-bezier(0.16, 1, 0.3, 1), opacity 450ms ease 350ms",
+                            "transform 1150ms cubic-bezier(0.16, 1, 0.3, 1), opacity 520ms ease 380ms",
                     }}
                 />
                 <Box
                     key={`${droplet.id}-halo`}
                     sx={{
                         position: "absolute",
-                        left: droplet.x - 42,
-                        top: droplet.y - 42,
-                        width: 84,
-                        height: 84,
+                        left: droplet.x - 56,
+                        top: droplet.y - 56,
+                        width: 112,
+                        height: 112,
                         borderRadius: "50%",
-                        background: `radial-gradient(circle, color-mix(in srgb, ${droplet.glow} 45%, transparent) 0%, transparent 70%)`,
-                        transform: droplet.phase === "start" ? "scale(0.4)" : "scale(3.2)",
+                        background: `radial-gradient(circle, color-mix(in srgb, ${droplet.glow} 55%, transparent) 0%, color-mix(in srgb, ${droplet.glow} 18%, transparent) 45%, transparent 72%)`,
+                        transform: droplet.phase === "start" ? "scale(0.55)" : "scale(3.6)",
                         opacity: droplet.phase === "start" ? 1 : 0,
                         transition:
-                            "transform 650ms ease-out, opacity 550ms ease 180ms",
+                            "transform 780ms ease-out, opacity 620ms ease 220ms",
                     }}
                 />
             </Box>

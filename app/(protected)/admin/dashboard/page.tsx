@@ -37,6 +37,8 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import useMeasure from "react-use-measure";
 import {
   getDashboardStats,
@@ -56,6 +58,7 @@ import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 import { useAuth } from "@/lib/auth-context";
+import { cardTopRightAccent, cardTopRightAccentSoft, cardTopRightAccentFor } from "@/lib/ui";
 
 const formatNumber = (v: number) => Math.round(Number(v ?? 0)).toLocaleString("en-IN");
 const formatCurrency = (value: number, fractionDigits = 0) =>
@@ -205,15 +208,16 @@ type KpiCardProps = {
   helper?: string;
   icon: React.ElementType;
   accent: string;
+  warn?: boolean;
 };
 
-const KpiCard = ({ label, value, helper, icon: Icon, accent }: KpiCardProps) => (
+const KpiCard = ({ label, value, helper, icon: Icon, accent, warn = false }: KpiCardProps) => (
   <Paper
     elevation={0}
     sx={{
       p: { xs: 1.5, md: 2.25 },
       borderRadius: "18px",
-      border: "1px solid var(--border)",
+      border: warn ? `1px solid color-mix(in srgb, ${accent} 38%, var(--border))` : "1px solid var(--border)",
       backgroundColor: "var(--card)",
       position: "relative",
       overflow: "hidden",
@@ -262,7 +266,7 @@ const KpiCard = ({ label, value, helper, icon: Icon, accent }: KpiCardProps) => 
         >
           {label}
         </Typography>
-        <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.55rem" }, fontWeight: 900, mt: 0.25, lineHeight: 1.1, overflowWrap: "anywhere" }}>
+        <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.55rem" }, fontWeight: 900, mt: 0.25, lineHeight: 1.1, overflowWrap: "anywhere", color: warn ? accent : undefined }}>
           {value}
         </Typography>
       </Box>
@@ -410,7 +414,7 @@ function SuperAdminDashboard() {
 
   if (!overview) {
     return (
-      <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, textAlign: "center", borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, textAlign: "center", borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft }}>
         <Typography sx={{ fontSize: "1.1rem", fontWeight: 900 }}>Platform overview is unavailable</Typography>
         <Typography sx={{ mt: 0.5, color: "var(--muted-foreground)" }}>
           {failed ? "The server could not load the overview. Try again." : "No overview data was returned."}
@@ -424,21 +428,21 @@ function SuperAdminDashboard() {
 
   const k = overview.kpis;
   const summaries = [
-    { label: "MRR", value: formatCurrency(k?.mrr ?? 0), helper: `ARR ${formatCurrency(k?.arr ?? 0)}`, accent: "var(--chart-1)" },
-    { label: "Paid revenue (month)", value: formatCurrency(k?.paidRevenueThisMonth ?? 0), helper: "Subscription payments", accent: "var(--chart-2)" },
-    { label: "Order revenue", value: formatCurrency(k?.orderRevenue ?? 0), helper: `${(k?.totalOrders ?? 0).toLocaleString("en-IN")} orders`, accent: "var(--chart-3)" },
-    { label: "Overdue payments", value: String(k?.overduePayments ?? 0), helper: `${k?.failedPayments30d ?? 0} failed (30d)`, accent: "#dc2626", warn: (k?.overduePayments ?? 0) > 0 },
-    { label: "Businesses", value: String(overview.businesses?.total ?? 0), helper: `${overview.businesses?.active ?? 0} active · ${k?.suspendedBusinesses ?? overview.businesses?.inactive ?? 0} suspended`, accent: "var(--chart-4, var(--chart-1))" },
-    { label: "Past-due subs", value: String(k?.pastDueSubscriptions ?? 0), helper: `${k?.expiringSubscriptions14d ?? 0} expiring (14d)`, accent: "#f59e0b", warn: (k?.pastDueSubscriptions ?? 0) > 0 },
-    { label: "Open alerts", value: String(k?.openAlerts ?? 0), helper: "Warnings/critical", accent: "#7c3aed", warn: (k?.openAlerts ?? 0) > 0 },
-    { label: "User accounts", value: String(overview.users?.total ?? 0), helper: `${overview.users?.admin ?? 0} owners · ${overview.users?.user ?? 0} customers`, accent: "var(--chart-5, var(--chart-2))" },
+    { label: "MRR", value: formatCurrency(k?.mrr ?? 0), helper: `ARR ${formatCurrency(k?.arr ?? 0)}`, accent: "var(--chart-1)", icon: AccountBalanceWalletOutlinedIcon },
+    { label: "Paid revenue (month)", value: formatCurrency(k?.paidRevenueThisMonth ?? 0), helper: "Subscription payments", accent: "var(--chart-2)", icon: TrendingUpOutlinedIcon },
+    { label: "Order revenue", value: formatCurrency(k?.orderRevenue ?? 0), helper: `${(k?.totalOrders ?? 0).toLocaleString("en-IN")} orders`, accent: "var(--chart-3)", icon: ReceiptLongOutlinedIcon },
+    { label: "Overdue payments", value: String(k?.overduePayments ?? 0), helper: `${k?.failedPayments30d ?? 0} failed (30d)`, accent: "#dc2626", warn: (k?.overduePayments ?? 0) > 0, icon: WarningAmberOutlinedIcon },
+    { label: "Businesses", value: String(overview.businesses?.total ?? 0), helper: `${overview.businesses?.active ?? 0} active · ${k?.suspendedBusinesses ?? overview.businesses?.inactive ?? 0} suspended`, accent: "var(--chart-4, var(--chart-1))", icon: StorefrontOutlinedIcon },
+    { label: "Past-due subs", value: String(k?.pastDueSubscriptions ?? 0), helper: `${k?.expiringSubscriptions14d ?? 0} expiring (14d)`, accent: "#f59e0b", warn: (k?.pastDueSubscriptions ?? 0) > 0, icon: WarningAmberOutlinedIcon },
+    { label: "Open alerts", value: String(k?.openAlerts ?? 0), helper: "Warnings/critical", accent: "#7c3aed", warn: (k?.openAlerts ?? 0) > 0, icon: InsightsOutlinedIcon },
+    { label: "User accounts", value: String(overview.users?.total ?? 0), helper: `${overview.users?.admin ?? 0} owners · ${overview.users?.user ?? 0} customers`, accent: "var(--chart-5, var(--chart-2))", icon: PeopleAltOutlinedIcon },
   ];
 
   const destinations = [
-    { title: "Businesses", detail: "Profiles, suspension/reactivation, details.", href: "/super-admin/businesses", icon: StorefrontOutlinedIcon },
-    { title: "Subscriptions & Payments", detail: "Plans, payments, overdue reminders.", href: "/super-admin/subscriptions", icon: PaymentsOutlinedIcon },
-    { title: "Usage & Operations", detail: "Quotas, health, maintenance, backups.", href: "/super-admin/usage-operations", icon: InsightsOutlinedIcon },
-    { title: "Platform Analytics", detail: "Growth, revenue, and activity trends.", href: "/super-admin/platform-analytics", icon: TrendingUpOutlinedIcon },
+    { title: "Businesses", detail: "Profiles, suspension/reactivation, details.", href: "/super-admin/businesses", icon: StorefrontOutlinedIcon, accent: "var(--chart-3)" },
+    { title: "Subscriptions & Payments", detail: "Plans, payments, overdue reminders.", href: "/super-admin/subscriptions", icon: PaymentsOutlinedIcon, accent: "var(--chart-1)" },
+    { title: "Usage & Operations", detail: "Quotas, health, maintenance, backups.", href: "/super-admin/usage-operations", icon: InsightsOutlinedIcon, accent: "var(--chart-2)" },
+    { title: "Platform Analytics", detail: "Growth, revenue, and activity trends.", href: "/super-admin/platform-analytics", icon: TrendingUpOutlinedIcon, accent: "var(--chart-4, #0ea5e9)" },
   ];
   const health = overview.health;
   const bizTotals = analytics?.overview?.totals;
@@ -446,7 +450,17 @@ function SuperAdminDashboard() {
 
   return (
     <Box sx={{ display: "grid", gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-      <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: "linear-gradient(120deg, color-mix(in srgb, var(--chart-2) 12%, transparent), transparent 58%)", boxShadow: "0 16px 36px rgba(31, 42, 43, 0.08)" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: "22px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+          backgroundImage: `${cardTopRightAccentFor("var(--chart-2)", "medium")}, radial-gradient(520px 220px at 100% 100%, color-mix(in srgb, var(--chart-4) 8%, transparent), transparent 68%), linear-gradient(120deg, color-mix(in srgb, var(--chart-2) 10%, transparent), transparent 58%)`,
+          boxShadow: "0 16px 36px rgba(31, 42, 43, 0.08)",
+        }}
+      >
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={2}>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.72rem", fontWeight: 850, letterSpacing: "0.12em", textTransform: "uppercase" }}>Super admin · SaaS platform</Typography>
@@ -467,24 +481,28 @@ function SuperAdminDashboard() {
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: { xs: 1.25, md: 1.5 }, minWidth: 0 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: { xs: 1.25, md: 1.5 }, minWidth: 0 }}>
         {summaries.map((item) => (
-          <Paper key={item.label} elevation={0} sx={{ p: { xs: 1.35, md: 1.75 }, minWidth: 0, borderRadius: "18px", border: item.warn ? `1px solid color-mix(in srgb, ${item.accent} 35%, var(--border))` : "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</Typography>
-            <Typography sx={{ mt: 0.2, fontSize: { xs: "1.15rem", md: "1.45rem" }, lineHeight: 1.1, fontWeight: 900, color: item.warn ? item.accent : undefined, wordBreak: "break-word" }}>{item.value}</Typography>
-            <Typography sx={{ mt: 0.75, color: "var(--muted-foreground)", fontSize: "0.74rem", fontWeight: 650 }}>{item.helper}</Typography>
-          </Paper>
+          <KpiCard
+            key={item.label}
+            label={item.label}
+            value={item.value}
+            helper={item.helper}
+            icon={item.icon}
+            accent={item.accent}
+            warn={item.warn}
+          />
         ))}
       </Box>
 
-      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0 }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, minWidth: 0 }}>
           <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Monthly trends</Typography>
           <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Order revenue vs paid subscription revenue (last 12 months).</Typography>
           <Box sx={{ mt: 1.5 }}><MonthlySaasChart data={overview.monthly ?? []} /></Box>
         </Paper>
 
             {analytics?.usage ? (
-        <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0, overflow: "hidden" }}>
+        <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, minWidth: 0, overflow: "hidden" }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
             <Stack direction="row" spacing={1} alignItems="center">
               <SpeedOutlinedIcon sx={{ color: "var(--chart-2)" }} />
@@ -542,7 +560,7 @@ function SuperAdminDashboard() {
         </Paper>
       ) : null}
 
-<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0, overflow: "hidden" }}>
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, minWidth: 0, overflow: "hidden" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Project running — revenue & business details</Typography>
@@ -603,7 +621,7 @@ function SuperAdminDashboard() {
       </Paper>
 
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, minWidth: 0 }}>
-<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0 }}>
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, minWidth: 0 }}>
             <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>System health</Typography>
             <Stack spacing={1} sx={{ mt: 1.25 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Database</Typography><Chip size="small" label={health?.database?.ok ? "Connected" : "Issue"} sx={{ height: 22, fontWeight: 800, color: health?.database?.ok ? "#166534" : "#991b1b", backgroundColor: health?.database?.ok ? "#dcfce7" : "#fee2e2" }} /></Stack>
@@ -622,20 +640,69 @@ function SuperAdminDashboard() {
               <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last success: {health?.backups?.last_success_at ? new Date(health.backups.last_success_at).toLocaleString() : "None recorded"}{health?.backups?.automated_verification === false ? " · automated verification not instrumented" : ""}</Typography>
             </Stack>
           </Paper>
-<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft }}>
           <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Manage the platform</Typography>
           <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Go directly to the area you need.</Typography>
           <Box sx={{ mt: 1.75, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))", xl: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
             {destinations.map((item) => {
               const Icon = item.icon;
+              const accent = item.accent ?? "var(--primary)";
               return (
-                <Paper key={item.title} component={Link} href={item.href} elevation={0} sx={{ p: 1.5, minWidth: 0, display: "flex", alignItems: "center", gap: 1.25, textDecoration: "none", color: "inherit", borderRadius: "15px", border: "1px solid var(--border)", backgroundColor: "var(--background)", transition: "border-color 160ms ease, transform 160ms ease", "&:hover": { borderColor: "var(--primary)", transform: "translateY(-2px)" } }}>
-                  <Box sx={{ width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "12px", color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}><Icon fontSize="small" /></Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Paper
+                  key={item.title}
+                  component={Link}
+                  href={item.href}
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    minWidth: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.25,
+                    textDecoration: "none",
+                    color: "inherit",
+                    borderRadius: "15px",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--card)",
+                    position: "relative",
+                    overflow: "hidden",
+                    transition: "border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      inset: 0,
+                      backgroundImage: `radial-gradient(130px 130px at 100% 0%, color-mix(in srgb, ${accent} 26%, transparent), transparent 70%)`,
+                      pointerEvents: "none",
+                    },
+                    "&:hover": {
+                      borderColor: `color-mix(in srgb, ${accent} 38%, var(--border))`,
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 10px 24px rgba(31, 42, 43, 0.08)",
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      flexShrink: 0,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: "12px",
+                      color: accent,
+                      backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)`,
+                      border: `1px solid color-mix(in srgb, ${accent} 28%, transparent)`,
+                      position: "relative",
+                      zIndex: 1,
+                    }}
+                  >
+                    <Icon fontSize="small" />
+                  </Box>
+                  <Box sx={{ minWidth: 0, flex: 1, position: "relative", zIndex: 1 }}>
                     <Typography sx={{ fontWeight: 850 }}>{item.title}</Typography>
                     <Typography sx={{ mt: 0.2, color: "var(--muted-foreground)", fontSize: "0.75rem", lineHeight: 1.4 }}>{item.detail}</Typography>
                   </Box>
-                  <ArrowForwardRoundedIcon sx={{ color: "var(--muted-foreground)", fontSize: 18, flexShrink: 0 }} />
+                  <ArrowForwardRoundedIcon sx={{ color: "var(--muted-foreground)", fontSize: 18, flexShrink: 0, position: "relative", zIndex: 1 }} />
                 </Paper>
               );
             })}

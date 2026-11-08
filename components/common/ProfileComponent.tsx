@@ -22,6 +22,7 @@ import {
 import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { clearAuthSession } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { spring, useReducedMotion } from "@/lib/motion";
 
 const MotionIconButton = motion.create(IconButton);
@@ -31,13 +32,19 @@ const getInitials = () => "KP";
 export default function ProfileComponent({
     showSettings = false,
     logoSrc = null,
+    roleHint,
 }: {
     showSettings?: boolean;
     logoSrc?: string | null;
+    roleHint?: string | null;
 }) {
     const router = useRouter();
     const pathname = usePathname();
     const reducedMotion = useReducedMotion();
+    const { role, isSuperAdmin, isAdmin } = useAuth();
+    const effectiveRole = roleHint ?? role;
+    const effectiveIsSuperAdmin = effectiveRole === "super_admin" || isSuperAdmin;
+    const effectiveIsAdmin = effectiveRole === "admin" || isAdmin;
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
@@ -66,7 +73,16 @@ export default function ProfileComponent({
 
     const handleSettings = () => {
         handleClose();
-        router.push(pathname?.startsWith("/super-admin") ? "/super-admin/settings" : "/business-admin/settings");
+        if (effectiveIsSuperAdmin || pathname?.startsWith("/super-admin")) {
+            router.push("/super-admin/settings");
+            return;
+        }
+        if (effectiveIsAdmin || pathname?.startsWith("/business-admin")) {
+            router.push("/business-admin/settings");
+            return;
+        }
+        // Fallback: keep customers on their profile area.
+        router.push("/user");
     };
 
     const handleLogout = async () => {

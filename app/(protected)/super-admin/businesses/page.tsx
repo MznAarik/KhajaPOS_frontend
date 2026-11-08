@@ -48,6 +48,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { cardTopRightAccentFor } from "@/lib/ui";
 
 type FilterStatus = "all" | "active" | "inactive";
 
@@ -352,7 +353,7 @@ export default function SuperAdminBusinessesPage() {
                 </Stack>
             </Paper>
 
-            <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden", minWidth: 0 }}>
+            <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentFor("var(--chart-1)", "soft"), overflow: "hidden", minWidth: 0 }}>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: { xs: 1.5, md: 2.25 }, pb: { xs: 1, md: 1.5 } }}>
                     <TextField
                         size="small" fullWidth placeholder="Search by business, email or owner" value={search} onChange={(e) => setSearch(e.target.value)}
