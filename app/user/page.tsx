@@ -151,14 +151,21 @@ export default function UserProfilePage() {
   };
 
   const roleHome = homeForRole(user?.role);
-  const navItems = [
-    { label: "Home", href: roleHome, icon: HouseIcon, ref: dashboardIconRef },
-    { label: "Profile", href: "/user", icon: DashboardIcon, ref: profileIconRef },
-    ...(user?.role === "admin" ? [
-      { label: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: menuIconRef },
-      { label: "Orders", href: "/business-admin/orders", icon: CoffeeIcon, ref: ordersIconRef },
-    ] : []),
-  ];
+  const navItems = React.useMemo(
+    () => [
+      ...(roleHome && roleHome !== "/user"
+        ? [{ key: `home:${roleHome}`, label: "Home", href: roleHome, icon: HouseIcon, ref: dashboardIconRef }]
+        : []),
+      { key: "profile", label: roleHome === "/user" ? "My Profile" : "Profile", href: "/user", icon: DashboardIcon, ref: profileIconRef },
+      ...(user?.role === "admin"
+        ? [
+            { key: "menu", label: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: menuIconRef },
+            { key: "orders", label: "Orders", href: "/business-admin/orders", icon: CoffeeIcon, ref: ordersIconRef },
+          ]
+        : []),
+    ],
+    [roleHome, user?.role],
+  );
 
   React.useEffect(() => {
     const loadProfile = async () => {
@@ -394,7 +401,10 @@ export default function UserProfilePage() {
           </Box>
 
           <ThemeToggle />
-          <ProfileComponent />
+          <ProfileComponent
+            showSettings={user?.role === "super_admin" || user?.role === "admin"}
+            roleHint={user?.role ?? null}
+          />
         </Toolbar>
       </AppBar>
 
@@ -418,16 +428,34 @@ export default function UserProfilePage() {
         component="main"
         sx={{
           ml: { md: `${drawerWidth}px` },
-          pt: { xs: "76px", md: "100px" },
-          px: { xs: 1.5, sm: 2, md: 3 },
-          pb: 3,
-          maxWidth: "100%",
+          pt: { xs: "76px", md: "96px" },
+          px: { xs: 1.25, sm: 2, md: 3 },
+          pb: { xs: 3, md: 4 },
+          width: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
         }}
       >
-        <Stack spacing={3} sx={{ maxWidth: 1200, mx: "auto" }}>
-          <Card sx={{ borderRadius: "24px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-            <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems={{ xs: "flex-start", md: "center" }}>
+        <Stack spacing={{ xs: 2, md: 2.5 }} sx={{ maxWidth: 1200, mx: "auto", minWidth: 0 }}>
+          <Card
+            sx={{
+              borderRadius: "24px",
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--card)",
+              position: "relative",
+              overflow: "hidden",
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                backgroundImage:
+                  "radial-gradient(320px 220px at 100% 0%, color-mix(in srgb, var(--chart-3) 22%, transparent), transparent 70%), radial-gradient(260px 180px at 0% 100%, color-mix(in srgb, var(--chart-1) 10%, transparent), transparent 72%)",
+                pointerEvents: "none",
+              },
+            }}
+          >
+            <CardContent sx={{ position: "relative", zIndex: 1, p: { xs: 2, sm: 2.5, md: 4 } }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 2, md: 3 }} alignItems={{ xs: "flex-start", md: "center" }}>
                 <Avatar sx={{ width: 84, height: 84, bgcolor: "var(--primary)", color: "var(--primary-foreground)" }}>
                   <PersonOutlineRoundedIcon fontSize="large" />
                 </Avatar>

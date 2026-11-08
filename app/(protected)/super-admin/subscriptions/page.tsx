@@ -24,6 +24,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
 
 const fmtMoney = (v: number | string, currency = "NPR") =>
   `${currency} ${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -66,18 +67,32 @@ function MetaRow({ label, value, strong }: { label: string; value: React.ReactNo
   );
 }
 
-function MobileCard({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
+function MobileCard({ children, highlight, accent }: { children: React.ReactNode; highlight?: boolean; accent?: string }) {
+  const glow = highlight ? "#f59e0b" : accent;
   return (
     <Paper
       elevation={0}
       sx={{
         p: 1.4,
         borderRadius: "16px",
-        border: `1px solid ${highlight ? "rgba(245,158,11,0.45)" : "var(--border)"}`,
+        border: `1px solid ${highlight ? "rgba(245,158,11,0.45)" : glow ? `color-mix(in srgb, ${glow} 22%, var(--border))` : "var(--border)"}`,
         backgroundColor: highlight ? "rgba(245,158,11,0.05)" : "var(--background)",
+        position: "relative",
+        overflow: "hidden",
+        ...(glow
+          ? {
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `radial-gradient(130px 110px at 100% 0%, color-mix(in srgb, ${glow} 20%, transparent), transparent 70%)`,
+                pointerEvents: "none",
+              },
+            }
+          : {}),
       }}
     >
-      {children}
+      <Box sx={{ position: "relative", zIndex: 1, minWidth: 0 }}>{children}</Box>
     </Paper>
   );
 }
@@ -195,7 +210,7 @@ export default function SuperAdminSubscriptionsPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
-      <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)", minWidth: 0, overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentFor("var(--chart-1)", "medium"), boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)", minWidth: 0, overflow: "hidden" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
             <Box sx={{ width: 46, height: 46, borderRadius: "14px", display: "grid", placeItems: "center", color: "var(--chart-1)", backgroundColor: "color-mix(in srgb, var(--chart-1) 16%, transparent)", border: "1px solid color-mix(in srgb, var(--chart-1) 34%, transparent)", flexShrink: 0 }}>
@@ -218,11 +233,11 @@ export default function SuperAdminSubscriptionsPage() {
 
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(3,minmax(0,1fr))", lg: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
           {[
-            { label: "Plans", value: plans.length },
-            { label: "Active subs", value: subCounts.active ?? 0 },
-            { label: "Past due", value: subCounts.past_due ?? 0 },
-            { label: "Overdue payments", value: payCounts.overdue ?? overdue.length, warn: (payCounts.overdue ?? overdue.length) > 0 },
-            { label: "Paid revenue", value: fmtMoney(payCounts.revenue ?? 0) },
+            { label: "Plans", value: plans.length, accent: "var(--chart-1)" },
+            { label: "Active subs", value: subCounts.active ?? 0, accent: "#16a34a" },
+            { label: "Past due", value: subCounts.past_due ?? 0, accent: (subCounts.past_due ?? 0) > 0 ? "#f59e0b" : "var(--chart-2)", warn: (subCounts.past_due ?? 0) > 0 },
+            { label: "Overdue payments", value: payCounts.overdue ?? overdue.length, accent: (payCounts.overdue ?? overdue.length) > 0 ? "#dc2626" : "var(--chart-3)", warn: (payCounts.overdue ?? overdue.length) > 0 },
+            { label: "Paid revenue", value: fmtMoney(payCounts.revenue ?? 0), accent: "var(--chart-4, #0ea5e9)" },
           ].map((k, idx) => (
             <Paper
               key={k.label}
@@ -230,14 +245,23 @@ export default function SuperAdminSubscriptionsPage() {
               sx={{
                 p: 1.2,
                 borderRadius: "14px",
-                border: `1px solid ${k.warn ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
-                backgroundColor: k.warn ? "rgba(245,158,11,0.06)" : "var(--background)",
+                border: `1px solid color-mix(in srgb, ${k.accent} ${k.warn ? "38%" : "22%"}, var(--border))`,
+                backgroundColor: k.warn ? `color-mix(in srgb, ${k.accent} 6%, var(--background))` : "var(--background)",
                 minWidth: 0,
+                position: "relative",
+                overflow: "hidden",
                 gridColumn: { xs: idx === 4 ? "1 / -1" : "auto", sm: "auto" },
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `radial-gradient(120px 100px at 100% 0%, color-mix(in srgb, ${k.accent} 24%, transparent), transparent 70%)`,
+                  pointerEvents: "none",
+                },
               }}
             >
-              <Typography sx={{ fontSize: "0.66rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>{k.label}</Typography>
-              <Typography sx={{ fontSize: { xs: "1rem", sm: "1.12rem" }, fontWeight: 900, mt: 0.15, lineHeight: 1.2, wordBreak: "break-word" }}>
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: "0.66rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>{k.label}</Typography>
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "1rem", sm: "1.12rem" }, fontWeight: 900, mt: 0.15, lineHeight: 1.2, wordBreak: "break-word", color: k.warn ? k.accent : undefined }}>
                 {typeof k.value === "number" ? k.value.toLocaleString("en-IN") : k.value}
               </Typography>
             </Paper>
@@ -258,7 +282,16 @@ export default function SuperAdminSubscriptionsPage() {
       </Paper>
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
-        <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: "22px",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--card)",
+            backgroundImage: cardTopRightAccentFor(tab === 0 ? "var(--chart-1)" : tab === 1 ? "var(--chart-2)" : "var(--chart-4, #0ea5e9)", "soft"),
+            overflow: "hidden",
+          }}
+        >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={tab}
@@ -272,7 +305,7 @@ export default function SuperAdminSubscriptionsPage() {
             <>
               <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1, p: 1.25 }}>
                 {plans.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>No plans found. Create a plan to get started.</Typography> : plans.map((p) => (
-                  <MobileCard key={p.id}>
+                  <MobileCard key={p.id} accent="var(--chart-1)">
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                       <Box sx={{ minWidth: 0 }}>
                         <Typography sx={{ fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.2 }}>{p.name}</Typography>
@@ -330,7 +363,7 @@ export default function SuperAdminSubscriptionsPage() {
             <>
               <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1, p: 1.25 }}>
                 {subs.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>No subscriptions assigned yet.</Typography> : subs.map((s) => (
-                  <MobileCard key={s.id}>
+                  <MobileCard key={s.id} accent="var(--chart-2)">
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
                         <BusinessOutlinedIcon sx={{ fontSize: 18, color: "var(--muted-foreground)", flexShrink: 0 }} />
@@ -385,7 +418,7 @@ export default function SuperAdminSubscriptionsPage() {
                 {payments.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>No payment records yet.</Typography> : payments.map((p) => {
                   const od = isOverduePayment(p);
                   return (
-                    <MobileCard key={p.id} highlight={od}>
+                    <MobileCard key={p.id} highlight={od} accent="var(--chart-4, #0ea5e9)">
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                         <Box sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
                           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>

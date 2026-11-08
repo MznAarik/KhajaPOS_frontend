@@ -9,6 +9,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { getSuperAdminOperations, setSuperAdminMaintenance } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
 
 export default function SuperAdminSettingsPage() {
   const [loading, setLoading] = React.useState(true);
@@ -48,7 +49,7 @@ export default function SuperAdminSettingsPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
-      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)" }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentFor("var(--chart-1)", "medium"), boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ width: 44, height: 44, borderRadius: "14px", display: "grid", placeItems: "center", color: "var(--chart-1)", backgroundColor: "color-mix(in srgb, var(--chart-1) 16%, transparent)", border: "1px solid color-mix(in srgb, var(--chart-1) 34%, transparent)" }}><SettingsOutlinedIcon /></Box>
@@ -62,7 +63,7 @@ export default function SuperAdminSettingsPage() {
       </Paper>
 
       {loading ? <Skeleton variant="rounded" height={180} sx={{ borderRadius: "22px" }} /> : (
-        <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
             <Typography sx={{ fontWeight: 900, fontSize: "1.05rem" }}>Maintenance mode</Typography>
             <Chip size="small" label={maintenance.enabled ? "Enabled" : "Disabled"} sx={{ fontWeight: 800, color: maintenance.enabled ? "#92400e" : "#166534", backgroundColor: maintenance.enabled ? "#fef3c7" : "#dcfce7" }} />
