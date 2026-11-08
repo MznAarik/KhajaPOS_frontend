@@ -29,7 +29,7 @@ import {
 } from "@mui/material";
 import { AnimatePresence, motion } from "motion/react";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
-import { spring, useReducedMotion } from "@/lib/motion";
+import { spring, useReducedMotion, withViewTransition } from "@/lib/motion";
 
 const MotionIconButton = motion.create(IconButton);
 import ThemeToggle from "@/components/common/ThemeToggle";
@@ -415,7 +415,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                             disableTouchRipple={false}
                             TouchRippleProps={{ center: false }}
                             onClick={() => {
-                                router.push(item.href);
+                                void withViewTransition(() => router.push(item.href));
                             }}
                             onPointerEnter={() => startItemAnimation(item)}
                             onPointerLeave={() => stopItemAnimation(item)}
@@ -1025,7 +1025,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     <BottomNavigation
                         showLabels
                         value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
-                        onChange={(_, value) => router.push(value)}
+                        onChange={(_, value) => void withViewTransition(() => router.push(String(value)))}
                         sx={{
                             position: "relative",
                             zIndex: 1,

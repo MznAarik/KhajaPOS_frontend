@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { shakeKeyframes, shakeTransition, spring, useReducedMotion } from "@/lib/motion";
 
 const MotionButton = motion.create(Button);
@@ -242,44 +242,57 @@ export default function SuperAdminUsageOperationsPage() {
 
               {/* Mobile cards */}
               <Box sx={{ display: { xs: "grid", lg: "none" }, gap: 1, p: 1.25, pt: 0 }}>
-                {filteredUsage.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>{usage.items.length === 0 ? "No businesses found." : "No businesses match the current filter."}</Typography> : filteredUsage.map((row) => {
-                  const s = row.storage;
-                  const logo = s?.breakdown?.logo;
-                  const menuImgs = s?.breakdown?.menu_items;
-                  return (
-                    <MobileCard key={row.business.id}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography sx={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2 }} noWrap>{row.business.name}</Typography>
-                          <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: 0.15 }}>
-                            {row.plan?.name ?? "No plan"}{row.subscription_status ? ` · ${row.subscription_status}` : ""}
-                          </Typography>
-                        </Box>
-                        {!row.business.is_active ? <Chip size="small" label="Suspended" sx={{ fontWeight: 800, color: "#92400e", bgcolor: "#fef3c7", flexShrink: 0 }} /> : null}
-                      </Stack>
-                      <Box sx={{ mt: 1, p: 1, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--card) 70%, transparent)", border: "1px solid var(--border)" }}>
-                        <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap spacing={0.5}>
-                          <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Images: {s?.total_images ?? row.metrics?.image_count ?? 0}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Known: {fmtBytes(s?.known_bytes ?? 0)}</Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Logo {logo?.images ?? 0} ({fmtBytes(logo?.known_bytes ?? 0)}) · Menu {menuImgs?.images ?? 0} ({fmtBytes(menuImgs?.known_bytes ?? 0)})</Typography>
-                        {(s?.unknown_images ?? 0) > 0 || (s?.missing_images ?? 0) > 0 ? <Typography sx={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700, mt: 0.15 }}>Unknown {s?.unknown_images ?? 0} · Missing {s?.missing_images ?? 0}</Typography> : null}
-                      </Box>
-                      <Stack spacing={0.85} sx={{ mt: 1 }}>
-                        <QuotaBar label="Orders / mo" value={row.metrics?.orders_per_month ?? 0} limit={row.limits?.orders_per_month} />
-                        <QuotaBar label="Menu items" value={row.metrics?.menu_items ?? 0} limit={row.limits?.menu_items} />
-                        <QuotaBar label="Tables" value={row.metrics?.tables ?? 0} limit={row.limits?.tables} />
-                        <QuotaBar label="Users" value={row.metrics?.users ?? 0} limit={row.limits?.users} />
-                      </Stack>
-                      {row.warnings?.length ? (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                          {row.warnings.map((w, i) => <SevChip key={i} severity={w.severity} label={`${w.severity}: ${w.metric}`} />)}
-                        </Stack>
-                      ) : null}
-                      {row.warnings?.length ? <Typography sx={{ mt: 0.5, fontSize: "0.74rem", color: "var(--muted-foreground)" }}>{row.warnings.map((w) => w.message).join(" ")}</Typography> : null}
-                    </MobileCard>
-                  );
-                })}
+                {filteredUsage.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>{usage.items.length === 0 ? "No businesses found." : "No businesses match the current filter."}</Typography> : (
+                  <AnimatePresence initial={false}>
+                    {filteredUsage.map((row) => {
+                      const s = row.storage;
+                      const logo = s?.breakdown?.logo;
+                      const menuImgs = s?.breakdown?.menu_items;
+                      return (
+                        <motion.div
+                          key={row.business.id}
+                          layout={!reducedMotion}
+                          initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={reducedMotion ? undefined : { opacity: 0, y: -6, transition: { duration: 0.16 } }}
+                          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <MobileCard>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                              <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography sx={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2 }} noWrap>{row.business.name}</Typography>
+                                <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: 0.15 }}>
+                                  {row.plan?.name ?? "No plan"}{row.subscription_status ? ` · ${row.subscription_status}` : ""}
+                                </Typography>
+                              </Box>
+                              {!row.business.is_active ? <Chip size="small" label="Suspended" sx={{ fontWeight: 800, color: "#92400e", bgcolor: "#fef3c7", flexShrink: 0 }} /> : null}
+                            </Stack>
+                            <Box sx={{ mt: 1, p: 1, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--card) 70%, transparent)", border: "1px solid var(--border)" }}>
+                              <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap spacing={0.5}>
+                                <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Images: {s?.total_images ?? row.metrics?.image_count ?? 0}</Typography>
+                                <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Known: {fmtBytes(s?.known_bytes ?? 0)}</Typography>
+                              </Stack>
+                              <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Logo {logo?.images ?? 0} ({fmtBytes(logo?.known_bytes ?? 0)}) · Menu {menuImgs?.images ?? 0} ({fmtBytes(menuImgs?.known_bytes ?? 0)})</Typography>
+                              {(s?.unknown_images ?? 0) > 0 || (s?.missing_images ?? 0) > 0 ? <Typography sx={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700, mt: 0.15 }}>Unknown {s?.unknown_images ?? 0} · Missing {s?.missing_images ?? 0}</Typography> : null}
+                            </Box>
+                            <Stack spacing={0.85} sx={{ mt: 1 }}>
+                              <QuotaBar label="Orders / mo" value={row.metrics?.orders_per_month ?? 0} limit={row.limits?.orders_per_month} />
+                              <QuotaBar label="Menu items" value={row.metrics?.menu_items ?? 0} limit={row.limits?.menu_items} />
+                              <QuotaBar label="Tables" value={row.metrics?.tables ?? 0} limit={row.limits?.tables} />
+                              <QuotaBar label="Users" value={row.metrics?.users ?? 0} limit={row.limits?.users} />
+                            </Stack>
+                            {row.warnings?.length ? (
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                {row.warnings.map((w, i) => <SevChip key={i} severity={w.severity} label={`${w.severity}: ${w.metric}`} />)}
+                              </Stack>
+                            ) : null}
+                            {row.warnings?.length ? <Typography sx={{ mt: 0.5, fontSize: "0.74rem", color: "var(--muted-foreground)" }}>{row.warnings.map((w) => w.message).join(" ")}</Typography> : null}
+                          </MobileCard>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                )}
               </Box>
 
               {/* Desktop table */}
