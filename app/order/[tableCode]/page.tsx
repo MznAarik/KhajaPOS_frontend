@@ -2022,7 +2022,7 @@ export default function TableOrderPage() {
                                   src={image}
                                   alt={itemName}
                                   onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }}
-                                  sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", transition: "transform 260ms ease" }}
+                                  sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 260ms ease" }}
                                 />
                               ) : null}
                               <Box sx={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "linear-gradient(180deg, rgba(0,0,0,0.02) 35%, rgba(0,0,0,0.28) 100%)" }} />
@@ -2526,7 +2526,7 @@ export default function TableOrderPage() {
                         src={image}
                         alt={itemName}
                         onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }}
-                        sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", transition: "transform 260ms ease" }}
+                        sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 260ms ease" }}
                       />
                     ) : null}
                     <Box sx={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "linear-gradient(180deg, rgba(0,0,0,0.02) 35%, rgba(0,0,0,0.28) 100%)" }} />
