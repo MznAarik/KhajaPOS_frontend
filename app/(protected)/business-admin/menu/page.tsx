@@ -871,6 +871,7 @@ export default function MenuManagementPage() {
         </Dialog>
 
         {/* TABLE */}
+        <Box sx={{ overflowX: "auto", display: { xs: "none", md: "block" } }}>
         <Table
           sx={{
             display: {
@@ -878,6 +879,7 @@ export default function MenuManagementPage() {
               md: "table",
             },
             tableLayout: "auto",
+            minWidth: 720,
           }}
         >
           <TableHead>
@@ -1101,6 +1103,7 @@ export default function MenuManagementPage() {
             )}
           </TableBody>
         </Table>
+        </Box>
 
         {/* PAGINATION */}
         <TablePagination
