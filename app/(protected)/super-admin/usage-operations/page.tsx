@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { AnimatePresence, motion } from "motion/react";
-import { shakeKeyframes, shakeTransition, spring, useReducedMotion } from "@/lib/motion";
+import { shakeKeyframes, shakeTransition, spring, useOrigin, useReducedMotion } from "@/lib/motion";
 
 const MotionButton = motion.create(Button);
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -64,6 +64,7 @@ export default function SuperAdminUsageOperationsPage() {
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down("sm"));
   const reducedMotion = useReducedMotion();
+  const { origin: dialogOrigin, capture: captureDialogOrigin } = useOrigin();
   const [shakeMaintenance, setShakeMaintenance] = React.useState(0);
   const [shakeBackup, setShakeBackup] = React.useState(0);
 
@@ -176,8 +177,8 @@ export default function SuperAdminUsageOperationsPage() {
           </Stack>
           <Stack direction="row" spacing={0.75} flexWrap={{ xs: "wrap", sm: "nowrap" }} useFlexGap sx={{ minWidth: 0, maxWidth: "100%", width: { xs: "100%", sm: "auto" } }}>
             <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Refresh</MotionButton>
-            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={() => setMaintenanceDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</MotionButton>
-            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<BackupOutlinedIcon />} onClick={() => setBackupDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setMaintenanceDialog(true); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<BackupOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setBackupDialog(true); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</MotionButton>
           </Stack>
         </Stack>
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))", xl: "repeat(8,minmax(0,1fr))" }, gap: 1 }}>
@@ -416,7 +417,7 @@ export default function SuperAdminUsageOperationsPage() {
         fullWidth
         maxWidth="sm"
         slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
-        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Platform maintenance mode</DialogTitle>
@@ -440,7 +441,7 @@ export default function SuperAdminUsageOperationsPage() {
         fullWidth
         maxWidth="sm"
         slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
-        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Record backup event</DialogTitle>

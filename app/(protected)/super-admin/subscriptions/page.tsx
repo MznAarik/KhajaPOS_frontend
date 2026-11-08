@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion } from "motion/react";
-import { shakeKeyframes, shakeTransition, spring, useReducedMotion } from "@/lib/motion";
+import { shakeKeyframes, shakeTransition, spring, useOrigin, useReducedMotion } from "@/lib/motion";
 
 const MotionButton = motion.create(Button);
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -86,6 +86,7 @@ export default function SuperAdminSubscriptionsPage() {
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down("sm"));
   const reducedMotion = useReducedMotion();
+  const { origin: dialogOrigin, capture: captureDialogOrigin } = useOrigin();
   const [shakePlan, setShakePlan] = React.useState(0);
   const [shakeAssign, setShakeAssign] = React.useState(0);
   const [shakePay, setShakePay] = React.useState(0);
@@ -209,9 +210,9 @@ export default function SuperAdminSubscriptionsPage() {
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "stretch", sm: "flex-end" } }}>
             <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" }, minWidth: 0 }}>Refresh</MotionButton>
-            {tab === 0 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={() => setPlanDialog({ open: true, name: "", price: "0", currency: "NPR", billing_cycle: "monthly", trial_days: "0", description: "", is_active: true, is_default: false, limitsText: '{"orders_per_month":1000,"menu_items":200,"tables":30,"users":5}' })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>New plan</MotionButton> : null}
-            {tab === 1 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={() => setAssignDialog({ open: true, business_id: "", plan_id: plans[0]?.id ? String(plans[0].id) : "", status: "active", auto_renew: true, notes: "" })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Assign plan</MotionButton> : null}
-            {tab === 2 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<PaymentsOutlinedIcon />} onClick={() => setPayDialog({ open: true, business_id: "", amount: "", currency: "NPR", status: "paid", payment_method: "", reference: "", due_at: "", notes: "" })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Record payment</MotionButton> : null}
+            {tab === 0 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, name: "", price: "0", currency: "NPR", billing_cycle: "monthly", trial_days: "0", description: "", is_active: true, is_default: false, limitsText: '{"orders_per_month":1000,"menu_items":200,"tables":30,"users":5}' }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>New plan</MotionButton> : null}
+            {tab === 1 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={(e) => { captureDialogOrigin(e); setAssignDialog({ open: true, business_id: "", plan_id: plans[0]?.id ? String(plans[0].id) : "", status: "active", auto_renew: true, notes: "" }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Assign plan</MotionButton> : null}
+            {tab === 2 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<PaymentsOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setPayDialog({ open: true, business_id: "", amount: "", currency: "NPR", status: "paid", payment_method: "", reference: "", due_at: "", notes: "" }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Record payment</MotionButton> : null}
           </Stack>
         </Stack>
 
@@ -287,7 +288,7 @@ export default function SuperAdminSubscriptionsPage() {
                         ))}
                       </Stack>
                     ) : null}
-                    <Button size="small" variant="outlined" onClick={() => setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) })} sx={{ mt: 1.25, borderRadius: "10px", textTransform: "none", fontWeight: 800, alignSelf: "flex-start" }}>
+                    <Button size="small" variant="outlined" onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) }); }} sx={{ mt: 1.25, borderRadius: "10px", textTransform: "none", fontWeight: 800, alignSelf: "flex-start" }}>
                       Edit plan
                     </Button>
                   </MobileCard>
@@ -306,7 +307,7 @@ export default function SuperAdminSubscriptionsPage() {
                         <TableCell sx={{ fontSize: "0.76rem", maxWidth: 320 }}>{p.limits ? Object.entries(p.limits).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ") : "—"}</TableCell>
                         <TableCell>{p.subscriptions_count ?? 0}</TableCell>
                         <TableCell><StatusChip status={p.is_active ? "active" : "inactive"} onClick={() => void togglePlanActive(p)} disabled={togglingPlanId === p.id} /></TableCell>
-                        <TableCell><Button size="small" onClick={() => setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) })} sx={{ textTransform: "none", fontWeight: 800 }}>Edit</Button></TableCell>
+                        <TableCell><Button size="small" onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) }); }} sx={{ textTransform: "none", fontWeight: 800 }}>Edit</Button></TableCell>
                       </TableRow>
                     ))}
                     {plans.length === 0 ? <TableRow><TableCell colSpan={8} sx={{ py: 5, textAlign: "center", color: "var(--muted-foreground)" }}>No plans found.</TableCell></TableRow> : null}
@@ -433,7 +434,7 @@ export default function SuperAdminSubscriptionsPage() {
         fullWidth
         maxWidth="sm"
         slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
-        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>{planDialog.id ? "Edit plan" : "New plan"}</DialogTitle>
@@ -474,7 +475,7 @@ export default function SuperAdminSubscriptionsPage() {
         fullWidth
         maxWidth="sm"
         slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
-        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Assign subscription</DialogTitle>
@@ -502,7 +503,7 @@ export default function SuperAdminSubscriptionsPage() {
         fullWidth
         maxWidth="sm"
         slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
-        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Record payment</DialogTitle>
