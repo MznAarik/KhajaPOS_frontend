@@ -14,6 +14,7 @@ import {
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 import { spring, useReducedMotion } from "@/lib/motion";
+import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
 
 const MotionButton = motion.create(Button);
 
@@ -71,7 +72,7 @@ export default function SuperAdminNotificationsPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
-      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)" }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentFor("var(--chart-1)", "medium"), boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ width: 44, height: 44, borderRadius: "14px", display: "grid", placeItems: "center", color: "var(--chart-1)", backgroundColor: "color-mix(in srgb, var(--chart-1) 16%, transparent)", border: "1px solid color-mix(in srgb, var(--chart-1) 34%, transparent)" }}><NotificationsNoneRoundedIcon /></Box>
@@ -102,7 +103,7 @@ export default function SuperAdminNotificationsPage() {
       </Paper>
 
       {loading ? <Skeleton variant="rounded" height={220} sx={{ borderRadius: "22px" }} /> : (
-        <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+        <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, overflow: "hidden" }}>
           <Box sx={{ overflowX: "auto" }}>
             <Table size="small">
               <TableHead><TableRow>{["Severity", "Title / Message", "Business", "Type", "Created", "Status", "Action"].map((h) => <TableCell key={h} sx={{ fontWeight: 850 }}>{h}</TableCell>)}</TableRow></TableHead>

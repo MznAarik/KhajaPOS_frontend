@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
 
 const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
 const fmtBytes = (v?: number | null) => {
@@ -39,10 +40,32 @@ function SevChip({ severity, label }: { severity: string; label?: string }) {
   return <Chip size="small" label={label ?? severity} sx={{ height: 24, fontWeight: 800, fontSize: "0.72rem", color: tone[0], backgroundColor: tone[1], textTransform: "capitalize", maxWidth: "100%" }} />;
 }
 
-function MobileCard({ children }: { children: React.ReactNode }) {
+function MobileCard({ children, accent }: { children: React.ReactNode; accent?: string }) {
   return (
-    <Paper elevation={0} sx={{ p: 1.35, borderRadius: "16px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0, overflow: "hidden" }}>
-      {children}
+    <Paper
+      elevation={0}
+      sx={{
+        p: 1.35,
+        borderRadius: "16px",
+        border: accent ? `1px solid color-mix(in srgb, ${accent} 22%, var(--border))` : "1px solid var(--border)",
+        backgroundColor: "var(--background)",
+        minWidth: 0,
+        overflow: "hidden",
+        position: "relative",
+        ...(accent
+          ? {
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `radial-gradient(130px 110px at 100% 0%, color-mix(in srgb, ${accent} 22%, transparent), transparent 70%)`,
+                pointerEvents: "none",
+              },
+            }
+          : {}),
+      }}
+    >
+      <Box sx={{ position: "relative", zIndex: 1, minWidth: 0 }}>{children}</Box>
     </Paper>
   );
 }
@@ -166,7 +189,7 @@ export default function SuperAdminUsageOperationsPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
-      <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)", minWidth: 0, overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentFor("var(--chart-1)", "medium"), boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)", minWidth: 0, overflow: "hidden" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} sx={{ minWidth: 0 }}>
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
             <Box sx={{ width: 44, height: 44, borderRadius: "14px", display: "grid", placeItems: "center", color: "var(--chart-1)", backgroundColor: "color-mix(in srgb, var(--chart-1) 16%, transparent)", border: "1px solid color-mix(in srgb, var(--chart-1) 34%, transparent)", flexShrink: 0 }}><SpeedOutlinedIcon /></Box>
@@ -183,18 +206,37 @@ export default function SuperAdminUsageOperationsPage() {
         </Stack>
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))", xl: "repeat(8,minmax(0,1fr))" }, gap: 1 }}>
           {[
-            { label: "Usage warnings", value: usage.summary?.warnings ?? 0 },
-            { label: "Critical quotas", value: usage.summary?.critical ?? 0 },
-            { label: "Total images", value: usage.summary?.total_images ?? 0 },
-            { label: "Known storage", value: fmtBytes(usage.summary?.known_storage_bytes ?? 0) },
-            { label: "Unknown/missing", value: `${usage.summary?.unknown_images ?? 0} / ${usage.summary?.missing_images ?? 0}` },
-            { label: "Database", value: db.ok ? "OK" : "Error" },
-            { label: "Failed jobs", value: queue.failed_jobs ?? 0 },
-            { label: "Maintenance", value: maintenance.enabled ? "On" : "Off" },
+            { label: "Usage warnings", value: usage.summary?.warnings ?? 0, accent: (usage.summary?.warnings ?? 0) > 0 ? "#f59e0b" : "var(--chart-1)" },
+            { label: "Critical quotas", value: usage.summary?.critical ?? 0, accent: (usage.summary?.critical ?? 0) > 0 ? "#dc2626" : "var(--chart-2)" },
+            { label: "Total images", value: usage.summary?.total_images ?? 0, accent: "#8b5cf6" },
+            { label: "Known storage", value: fmtBytes(usage.summary?.known_storage_bytes ?? 0), accent: "var(--chart-4, #14b8a6)" },
+            { label: "Unknown/missing", value: `${usage.summary?.unknown_images ?? 0} / ${usage.summary?.missing_images ?? 0}`, accent: ((usage.summary?.unknown_images ?? 0) + (usage.summary?.missing_images ?? 0)) > 0 ? "#f59e0b" : "var(--chart-1)" },
+            { label: "Database", value: db.ok ? "OK" : "Error", accent: db.ok ? "#2563eb" : "#dc2626" },
+            { label: "Failed jobs", value: queue.failed_jobs ?? 0, accent: (queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2" },
+            { label: "Maintenance", value: maintenance.enabled ? "On" : "Off", accent: maintenance.enabled ? "#f59e0b" : "var(--chart-1)" },
           ].map((k) => (
-            <Paper key={k.label} elevation={0} sx={{ p: 1.15, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0 }}>
-              <Typography sx={{ fontSize: "0.64rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)", lineHeight: 1.2 }}>{k.label}</Typography>
-              <Typography sx={{ fontSize: { xs: "0.95rem", sm: "1.02rem" }, fontWeight: 900, wordBreak: "break-word", mt: 0.15, lineHeight: 1.2 }}>{typeof k.value === "number" ? k.value.toLocaleString("en-IN") : k.value}</Typography>
+            <Paper
+              key={k.label}
+              elevation={0}
+              sx={{
+                p: 1.15,
+                borderRadius: "14px",
+                border: `1px solid color-mix(in srgb, ${k.accent} 22%, var(--border))`,
+                backgroundColor: "var(--background)",
+                minWidth: 0,
+                position: "relative",
+                overflow: "hidden",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `radial-gradient(120px 110px at 100% 0%, color-mix(in srgb, ${k.accent} 24%, transparent), transparent 70%)`,
+                  pointerEvents: "none",
+                },
+              }}
+            >
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: "0.64rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)", lineHeight: 1.2 }}>{k.label}</Typography>
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "0.95rem", sm: "1.02rem" }, fontWeight: 900, wordBreak: "break-word", mt: 0.15, lineHeight: 1.2, color: ["#dc2626", "#f59e0b"].includes(k.accent) && typeof k.value !== "string" ? undefined : undefined }}>{typeof k.value === "number" ? k.value.toLocaleString("en-IN") : k.value}</Typography>
             </Paper>
           ))}
         </Box>
@@ -204,7 +246,7 @@ export default function SuperAdminUsageOperationsPage() {
       </Paper>
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
-        <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden", minWidth: 0 }}>
+        <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, overflow: "hidden", minWidth: 0 }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={tab}
@@ -257,6 +299,9 @@ export default function SuperAdminUsageOperationsPage() {
                       const s = row.storage;
                       const logo = s?.breakdown?.logo;
                       const menuImgs = s?.breakdown?.menu_items;
+                      const hasCritical = (row.warnings ?? []).some((w) => (w.severity || "").toLowerCase() === "critical");
+                      const hasWarn = (row.warnings ?? []).length > 0;
+                      const usageAccent = hasCritical ? "#dc2626" : hasWarn ? "#f59e0b" : "var(--chart-1)";
                       return (
                         <motion.div
                           key={row.business.id}
@@ -266,7 +311,7 @@ export default function SuperAdminUsageOperationsPage() {
                           exit={reducedMotion ? undefined : { opacity: 0, y: -6, transition: { duration: 0.16 } }}
                           transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                         >
-                          <MobileCard>
+                          <MobileCard accent={usageAccent}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                               <Box sx={{ minWidth: 0, flex: 1 }}>
                                 <Typography sx={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2 }} noWrap>{row.business.name}</Typography>
@@ -352,31 +397,67 @@ export default function SuperAdminUsageOperationsPage() {
             <Box sx={{ p: { xs: 1.25, md: 2.25 }, display: "grid", gap: 1.25, minWidth: 0 }}>
               {maintenance.enabled ? <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ borderRadius: "12px" }}>Maintenance mode is enabled: {maintenance.message}</Alert> : <Alert severity="success" sx={{ borderRadius: "12px" }}>Maintenance mode is off.</Alert>}
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2,minmax(0,1fr))" }, gap: 1.25 }}>
-                <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, mb: 1 }}>Database</Typography>
-                  <SevChip severity={db.ok ? "success" : "critical"} label={db.ok ? "Connected" : "Error"} />
-                  <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 1 }}>Name: {db.name || "—"}</Typography>
-                  {db.error ? <Typography sx={{ fontSize: "0.78rem", color: "#dc2626", mt: 0.5, wordBreak: "break-word" }}>{db.error}</Typography> : null}
-                </Paper>
-                <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, mb: 1 }}>Queues / Jobs</Typography>
-                  <Typography sx={{ fontSize: "0.85rem" }}>Pending: <strong>{queue.pending_jobs ?? 0}</strong> · Failed: <strong>{queue.failed_jobs ?? 0}</strong></Typography>
-                  <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Instrumented: {String(!!queue.instrumented)}. {health.workers?.note}</Typography>
-                </Paper>
-                <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, mb: 1, lineHeight: 1.25 }}>API request health <Box component="span" sx={{ display: "block", mt: 0.15, fontSize: "0.78em", fontWeight: 800, color: "var(--muted-foreground)" }}>(15 min)</Box></Typography>
-                  {requests.instrumented ? (
+                {(() => {
+                  const dbAccent = db.ok ? "#2563eb" : "#dc2626";
+                  const jobsAccent = (queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2";
+                  const apiAccent = requests.instrumented
+                    ? ((requests.server_errors ?? 0) > 0 || (requests.error_rate ?? 0) >= 5 ? "#dc2626" : (requests.errors ?? 0) > 0 ? "#f59e0b" : "var(--chart-2)")
+                    : "var(--chart-4, var(--chart-2))";
+                  const cacheAccent = "var(--chart-3)";
+                  const glow = (accent: string) => ({
+                    p: 1.5,
+                    borderRadius: "14px",
+                    border: `1px solid color-mix(in srgb, ${accent} 22%, var(--border))`,
+                    backgroundColor: "var(--background)",
+                    minWidth: 0,
+                    position: "relative" as const,
+                    overflow: "hidden",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      inset: 0,
+                      backgroundImage: `radial-gradient(140px 120px at 100% 0%, color-mix(in srgb, ${accent} 24%, transparent), transparent 70%)`,
+                      pointerEvents: "none",
+                    },
+                  });
+                  return (
                     <>
-                      <Typography sx={{ fontSize: "0.85rem" }}>Requests: <strong>{requests.requests}</strong> · Errors: <strong>{requests.errors}</strong> · Server errors: <strong>{requests.server_errors}</strong></Typography>
-                      <Typography sx={{ fontSize: "0.85rem", mt: 0.5 }}>Error rate: <strong>{requests.error_rate}%</strong></Typography>
+                      <Paper elevation={0} sx={glow(dbAccent)}>
+                        <Box sx={{ position: "relative", zIndex: 1 }}>
+                          <Typography sx={{ fontWeight: 900, mb: 1 }}>Database</Typography>
+                          <SevChip severity={db.ok ? "success" : "critical"} label={db.ok ? "Connected" : "Error"} />
+                          <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 1 }}>Name: {db.name || "—"}</Typography>
+                          {db.error ? <Typography sx={{ fontSize: "0.78rem", color: "#dc2626", mt: 0.5, wordBreak: "break-word" }}>{db.error}</Typography> : null}
+                        </Box>
+                      </Paper>
+                      <Paper elevation={0} sx={glow(jobsAccent)}>
+                        <Box sx={{ position: "relative", zIndex: 1 }}>
+                          <Typography sx={{ fontWeight: 900, mb: 1 }}>Queues / Jobs</Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Pending: <strong>{queue.pending_jobs ?? 0}</strong> · Failed: <strong>{queue.failed_jobs ?? 0}</strong></Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Instrumented: {String(!!queue.instrumented)}. {health.workers?.note}</Typography>
+                        </Box>
+                      </Paper>
+                      <Paper elevation={0} sx={glow(apiAccent)}>
+                        <Box sx={{ position: "relative", zIndex: 1 }}>
+                          <Typography sx={{ fontWeight: 900, mb: 1, lineHeight: 1.25 }}>API request health <Box component="span" sx={{ display: "block", mt: 0.15, fontSize: "0.78em", fontWeight: 800, color: "var(--muted-foreground)" }}>(15 min)</Box></Typography>
+                          {requests.instrumented ? (
+                            <>
+                              <Typography sx={{ fontSize: "0.85rem" }}>Requests: <strong>{requests.requests}</strong> · Errors: <strong>{requests.errors}</strong> · Server errors: <strong>{requests.server_errors}</strong></Typography>
+                              <Typography sx={{ fontSize: "0.85rem", mt: 0.5 }}>Error rate: <strong>{requests.error_rate}%</strong></Typography>
+                            </>
+                          ) : <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>API request logging is not instrumented (`api_request_logs` unavailable).</Typography>}
+                        </Box>
+                      </Paper>
+                      <Paper elevation={0} sx={glow(cacheAccent)}>
+                        <Box sx={{ position: "relative", zIndex: 1 }}>
+                          <Typography sx={{ fontWeight: 900, mb: 1 }}>Cache / Runtime</Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Cache driver: <strong>{health.cache?.driver || "—"}</strong></Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Worker heartbeats are not instrumented; queue table counts shown when available.</Typography>
+                        </Box>
+                      </Paper>
                     </>
-                  ) : <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>API request logging is not instrumented (`api_request_logs` unavailable).</Typography>}
-                </Paper>
-                <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)", minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, mb: 1 }}>Cache / Runtime</Typography>
-                  <Typography sx={{ fontSize: "0.85rem" }}>Cache driver: <strong>{health.cache?.driver || "—"}</strong></Typography>
-                  <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Worker heartbeats are not instrumented; queue table counts shown when available.</Typography>
-                </Paper>
+                  );
+                })()}
               </Box>
             </Box>
           )}
@@ -384,8 +465,11 @@ export default function SuperAdminUsageOperationsPage() {
           {tab === 2 && (
             <Box sx={{ minWidth: 0 }}>
               <Box sx={{ display: { xs: "grid", md: "none" }, gap: 1, p: 1.25 }}>
-                {backups.items.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>No backup records yet. Record manual/integrated backup events to monitor them here.</Typography> : backups.items.map((b) => (
-                  <MobileCard key={b.id}>
+                {backups.items.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>No backup records yet. Record manual/integrated backup events to monitor them here.</Typography> : backups.items.map((b) => {
+                  const st = (b.status || "").toLowerCase();
+                  const backupAccent = st === "failed" || st === "error" ? "#dc2626" : st === "success" || st === "completed" || st === "verified" ? "#16a34a" : "var(--chart-4, #0ea5e9)";
+                  return (
+                  <MobileCard key={b.id} accent={backupAccent}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                       <Typography sx={{ fontWeight: 900, fontSize: "0.92rem", lineHeight: 1.2, minWidth: 0, wordBreak: "break-word" }}>{b.name}</Typography>
                       <SevChip severity={b.status} />
@@ -394,7 +478,8 @@ export default function SuperAdminUsageOperationsPage() {
                     <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", mt: 0.25 }}>Completed: {fmtDate(b.completed_at)}{b.verified_at ? ` · Verified: ${fmtDate(b.verified_at)}` : ""}</Typography>
                     {b.notes || b.path ? <Typography sx={{ fontSize: "0.74rem", mt: 0.5, wordBreak: "break-word" }}>{b.notes || b.path}</Typography> : null}
                   </MobileCard>
-                ))}
+                  );
+                })}
               </Box>
               <Box sx={{ display: { xs: "none", md: "block" }, overflowX: "auto" }}>
                 <Table size="small">

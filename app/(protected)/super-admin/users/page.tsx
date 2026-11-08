@@ -42,6 +42,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { cardTopRightAccentFor } from "@/lib/ui";
 
 type FilterRole = UserRole | "";
 
@@ -259,9 +260,10 @@ export default function SuperAdminUsersPage() {
                     borderRadius: "22px",
                     border: "1px solid var(--border)",
                     backgroundColor: "var(--card)",
-                    backgroundImage:
-                        "radial-gradient(360px 160px at 90% 0%, color-mix(in srgb, var(--chart-3) 20%, transparent), transparent 65%)",
+                    backgroundImage: `${cardTopRightAccentFor("var(--chart-3)", "medium")}, radial-gradient(420px 180px at 100% 100%, color-mix(in srgb, var(--chart-1) 7%, transparent), transparent 70%)`,
                     boxShadow: "0 16px 40px rgba(31, 42, 43, 0.08)",
+                    minWidth: 0,
+                    overflow: "hidden",
                 }}
             >
                 <Stack
@@ -308,12 +310,57 @@ export default function SuperAdminUsersPage() {
                             color: "var(--primary-foreground)",
                             px: 2.25,
                             alignSelf: { xs: "stretch", sm: "flex-start" },
+                            minHeight: 44,
                             "&:hover": { backgroundColor: "color-mix(in srgb, var(--primary) 86%, black 14%)" },
                         }}
                     >
                         Add user
                     </Button>
                 </Stack>
+
+                <Box
+                    sx={{
+                        mt: 2,
+                        display: "grid",
+                        gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" },
+                        gap: 1,
+                    }}
+                >
+                    {[
+                        { label: "Total accounts", value: counts.total, accent: "var(--chart-3)" },
+                        { label: "Owners", value: counts.admin, accent: "var(--chart-1)" },
+                        { label: "Users", value: counts.user, accent: "var(--chart-2)" },
+                        { label: "Super admins", value: counts.super_admin, accent: "var(--chart-4, #0ea5e9)" },
+                    ].map((k) => (
+                        <Paper
+                            key={k.label}
+                            elevation={0}
+                            sx={{
+                                p: 1.15,
+                                borderRadius: "14px",
+                                border: `1px solid color-mix(in srgb, ${k.accent} 22%, var(--border))`,
+                                backgroundColor: "var(--background)",
+                                minWidth: 0,
+                                position: "relative",
+                                overflow: "hidden",
+                                "&::after": {
+                                    content: '""',
+                                    position: "absolute",
+                                    inset: 0,
+                                    backgroundImage: `radial-gradient(120px 100px at 100% 0%, color-mix(in srgb, ${k.accent} 24%, transparent), transparent 70%)`,
+                                    pointerEvents: "none",
+                                },
+                            }}
+                        >
+                            <Typography sx={{ position: "relative", zIndex: 1, fontSize: "0.64rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)", lineHeight: 1.2 }}>
+                                {k.label}
+                            </Typography>
+                            <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "1rem", sm: "1.08rem" }, fontWeight: 900, mt: 0.15, lineHeight: 1.2 }}>
+                                {k.value.toLocaleString("en-IN")}
+                            </Typography>
+                        </Paper>
+                    ))}
+                </Box>
 
                 <Divider sx={{ my: 2 }} />
 
@@ -352,6 +399,7 @@ export default function SuperAdminUsersPage() {
                     borderRadius: "22px",
                     border: "1px solid var(--border)",
                     backgroundColor: "var(--card)",
+                    backgroundImage: cardTopRightAccentFor("var(--chart-3)", "soft"),
                     overflow: "hidden",
                     minWidth: 0,
                 }}
@@ -551,10 +599,20 @@ export default function SuperAdminUsersPage() {
                                     <Box
                                         key={user.id}
                                         sx={{
-                                            border: "1px solid var(--border)",
+                                            border: `1px solid color-mix(in srgb, ${meta.color} 22%, var(--border))`,
                                             borderRadius: "16px",
                                             p: 1.5,
                                             backgroundColor: "var(--background)",
+                                            position: "relative",
+                                            overflow: "hidden",
+                                            "&::after": {
+                                                content: '""',
+                                                position: "absolute",
+                                                inset: 0,
+                                                backgroundImage: `radial-gradient(130px 110px at 100% 0%, color-mix(in srgb, ${meta.color} 20%, transparent), transparent 70%)`,
+                                                pointerEvents: "none",
+                                            },
+                                            "& > *": { position: "relative", zIndex: 1 },
                                         }}
                                     >
                                         <Stack direction="row" spacing={1.25} alignItems="flex-start">

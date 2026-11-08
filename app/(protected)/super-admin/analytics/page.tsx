@@ -41,6 +41,7 @@ import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 import { useReducedMotion, vtName, withViewTransition } from "@/lib/motion";
+import { cardTopRightAccentSoft } from "@/lib/ui";
 
 /* -------------------------------------------------------------------------- */
 /* Formatting helpers                                                          */
@@ -113,6 +114,7 @@ const SectionCard = ({ children, sx }: { children: React.ReactNode; sx?: object 
       borderRadius: "22px",
       border: "1px solid var(--border)",
       backgroundColor: "var(--card)",
+      backgroundImage: cardTopRightAccentSoft,
       minWidth: 0,
       boxShadow: "0 18px 40px rgba(31, 42, 43, 0.08)",
       ...sx,
@@ -945,22 +947,36 @@ export default function AdminAnalyticsPage() {
             </Button>
           </Stack>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2 }, mt: 2 }}>
-            <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)" }}>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>Orders</Typography>
-              <Typography sx={{ fontSize: "1.25rem", fontWeight: 900 }}>{formatNumber(filteredBusiness.orders)}</Typography>
-            </Paper>
-            <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)" }}>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>Revenue</Typography>
-              <Typography sx={{ fontSize: "1.25rem", fontWeight: 900 }}>{formatCurrency(filteredBusiness.revenue)}</Typography>
-            </Paper>
-            <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)" }}>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>Menu items</Typography>
-              <Typography sx={{ fontSize: "1.25rem", fontWeight: 900 }}>{formatNumber(filteredBusiness.menuItems)}</Typography>
-            </Paper>
-            <Paper elevation={0} sx={{ p: 1.5, borderRadius: "14px", border: "1px solid var(--border)" }}>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>Tables / Users</Typography>
-              <Typography sx={{ fontSize: "1.25rem", fontWeight: 900 }}>{formatNumber(filteredBusiness.tables ?? 0)} / {formatNumber(filteredBusiness.users ?? 0)}</Typography>
-            </Paper>
+            {[
+              { label: "Orders", value: formatNumber(filteredBusiness.orders), accent: "var(--chart-3)" },
+              { label: "Revenue", value: formatCurrency(filteredBusiness.revenue), accent: "var(--chart-1)" },
+              { label: "Menu items", value: formatNumber(filteredBusiness.menuItems), accent: "var(--chart-2)" },
+              { label: "Tables / Users", value: `${formatNumber(filteredBusiness.tables ?? 0)} / ${formatNumber(filteredBusiness.users ?? 0)}`, accent: "var(--chart-4, #0ea5e9)" },
+            ].map((item) => (
+              <Paper
+                key={item.label}
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  borderRadius: "14px",
+                  border: `1px solid color-mix(in srgb, ${item.accent} 22%, var(--border))`,
+                  backgroundColor: "var(--card)",
+                  position: "relative",
+                  overflow: "hidden",
+                  minWidth: 0,
+                  "&::after": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 0,
+                    backgroundImage: `radial-gradient(130px 110px at 100% 0%, color-mix(in srgb, ${item.accent} 24%, transparent), transparent 70%)`,
+                    pointerEvents: "none",
+                  },
+                }}
+              >
+                <Typography sx={{ position: "relative", zIndex: 1, fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>{item.label}</Typography>
+                <Typography sx={{ position: "relative", zIndex: 1, fontSize: "1.25rem", fontWeight: 900 }}>{item.value}</Typography>
+              </Paper>
+            ))}
           </Box>
         </SectionCard>
       ) : (
@@ -1011,57 +1027,62 @@ export default function AdminAnalyticsPage() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: filteredBusiness ? "repeat(4, minmax(0, 1fr))" : "repeat(4, minmax(0, 1fr))" },
-            gap: { xs: 1.5, md: 2 },
+            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" },
+            gap: { xs: 1.25, md: 1.5 },
           }}
         >
-          {filteredBusiness
+          {(filteredBusiness
             ? [
-                { label: "Menu items", value: formatNumber(filteredBusiness.menuItems) },
-                { label: "Categories", value: formatNumber(filteredBusiness.categories ?? 0) },
-                { label: "Tables", value: formatNumber(filteredBusiness.tables ?? 0) },
-                { label: "Users", value: formatNumber(filteredBusiness.users ?? 0) },
-              ].map((item) => (
-                <Box key={item.label} sx={{ minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      fontSize: "0.66rem",
-                      fontWeight: 850,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "var(--muted-foreground)",
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                  <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.35rem" }, fontWeight: 900, lineHeight: 1.2 }}>
-                    {item.value}
-                  </Typography>
-                </Box>
-              ))
+                { label: "Menu items", value: formatNumber(filteredBusiness.menuItems), accent: "var(--chart-2)" },
+                { label: "Categories", value: formatNumber(filteredBusiness.categories ?? 0), accent: "var(--chart-3)" },
+                { label: "Tables", value: formatNumber(filteredBusiness.tables ?? 0), accent: "var(--chart-4, #0ea5e9)" },
+                { label: "Users", value: formatNumber(filteredBusiness.users ?? 0), accent: "var(--chart-1)" },
+              ]
             : [
-                { label: "Menu items", value: formatNumber(totals.menuItems) },
-                { label: "Categories", value: formatNumber(totals.categories) },
-                { label: "Tables", value: formatNumber(totals.tables) },
-                { label: "Super admins", value: formatNumber(totals.superAdmins) },
-              ].map((item) => (
-                <Box key={item.label} sx={{ minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      fontSize: "0.66rem",
-                      fontWeight: 850,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "var(--muted-foreground)",
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                  <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.35rem" }, fontWeight: 900, lineHeight: 1.2 }}>
-                    {item.value}
-                  </Typography>
-                </Box>
-              ))}
+                { label: "Menu items", value: formatNumber(totals.menuItems), accent: "var(--chart-2)" },
+                { label: "Categories", value: formatNumber(totals.categories), accent: "var(--chart-3)" },
+                { label: "Tables", value: formatNumber(totals.tables), accent: "var(--chart-4, #0ea5e9)" },
+                { label: "Super admins", value: formatNumber(totals.superAdmins), accent: "var(--chart-1)" },
+              ]
+          ).map((item) => (
+            <Paper
+              key={item.label}
+              elevation={0}
+              sx={{
+                p: { xs: 1.15, md: 1.35 },
+                borderRadius: "14px",
+                border: `1px solid color-mix(in srgb, ${item.accent} 20%, var(--border))`,
+                backgroundColor: "var(--background)",
+                position: "relative",
+                overflow: "hidden",
+                minWidth: 0,
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `radial-gradient(120px 100px at 100% 0%, color-mix(in srgb, ${item.accent} 22%, transparent), transparent 70%)`,
+                  pointerEvents: "none",
+                },
+              }}
+            >
+              <Typography
+                sx={{
+                  position: "relative",
+                  zIndex: 1,
+                  fontSize: "0.66rem",
+                  fontWeight: 850,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--muted-foreground)",
+                }}
+              >
+                {item.label}
+              </Typography>
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "1.15rem", md: "1.35rem" }, fontWeight: 900, lineHeight: 1.2 }}>
+                {item.value}
+              </Typography>
+            </Paper>
+          ))}
         </Box>
       </SectionCard>
 
@@ -1235,7 +1256,8 @@ export default function AdminAnalyticsPage() {
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid var(--border)",
-                      background: "linear-gradient(180deg, color-mix(in srgb, var(--card) 98%, transparent) 0%, var(--background) 100%)",
+                      backgroundColor: "var(--card)",
+                      backgroundImage: `${cardTopRightAccentSoft}, linear-gradient(180deg, color-mix(in srgb, var(--card) 98%, transparent) 0%, var(--background) 100%)`,
                       overflow: "hidden",
                       transition: reducedMotion ? "none" : "border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease",
                       cursor: canFocus ? "pointer" : "default",
