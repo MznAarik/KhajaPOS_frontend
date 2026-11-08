@@ -975,64 +975,107 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     boxShadow: "0 18px 42px rgba(31, 42, 43, 0.2)",
                 }}
             >
-                <BottomNavigation
-                    showLabels
-                    value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
-                    onChange={(_, value) => router.push(value)}
-                    sx={{
-                        height: 66,
-                        backgroundColor: "transparent",
-                        "& .MuiBottomNavigationAction-root": {
-                            minWidth: 0,
-                            flex: "1 1 0",
-                            maxWidth: "none",
-                            px: 0.25,
-                            py: 0.65,
-                            color: "var(--muted-foreground)",
-                        },
-                        "& .MuiBottomNavigationAction-label": {
-                            fontSize: "0.68rem",
-                            fontWeight: 700,
-                            lineHeight: 1.1,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: "100%",
-                        },
-                        "& .Mui-selected": {
-                            color: "var(--primary)",
-                        },
-                    }}
-                >
-                    {navItems.map((item) => {
-                        const shortLabel: Record<string, string> = {
-                            "Dashboard": "Home",
-                            "Home": "Home",
-                            "Businesses": "Biz",
-                            "Analytics": "Stats",
-                            "Subscriptions & Payments": "Plans",
-                            "Usage & Operations": "Usage",
-                            "Users": "Users",
-                            "Category": "Category",
-                            "Menu": "Menu",
-                            "Tables": "Tables",
-                            "Orders": "Orders",
-                            "Reviews": "Reviews",
-                        };
-                        return (
-                            <BottomNavigationAction
-                                key={item.href}
-                                label={shortLabel[item.text] ?? item.text}
-                                value={item.href}
-                                icon={
-                                    <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
-                                        <item.icon size={18} />
-                                    </Box>
+                <Box sx={{ position: "relative", height: 66 }}>
+                    {(() => {
+                        const mobileActiveIndex = activeHref ? navItems.findIndex((item) => item.href === activeHref) : -1;
+                        const count = Math.max(1, navItems.length);
+                        const pct = 100 / count;
+                        return mobileActiveIndex >= 0 && navItems.length > 0 ? (
+                            <Box
+                                component={motion.div}
+                                aria-hidden
+                                initial={false}
+                                animate={
+                                    reducedMotion
+                                        ? { x: `${mobileActiveIndex * 100}%` }
+                                        : { x: `${mobileActiveIndex * 100}%` }
                                 }
-                            />
-                        );
-                    })}
-                </BottomNavigation>
+                                transition={reducedMotion ? { duration: 0 } : spring.indicator}
+                                sx={{
+                                    position: "absolute",
+                                    top: 5,
+                                    bottom: 5,
+                                    left: 0,
+                                    width: `${pct}%`,
+                                    px: 0.35,
+                                    zIndex: 0,
+                                    pointerEvents: "none",
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        width: "100%",
+                                        height: "100%",
+                                        borderRadius: "14px",
+                                        backgroundColor: "color-mix(in srgb, var(--primary) 14%, transparent)",
+                                        border: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)",
+                                    }}
+                                />
+                            </Box>
+                        ) : null;
+                    })()}
+                    <BottomNavigation
+                        showLabels
+                        value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
+                        onChange={(_, value) => router.push(value)}
+                        sx={{
+                            position: "relative",
+                            zIndex: 1,
+                            height: 66,
+                            backgroundColor: "transparent",
+                            "& .MuiBottomNavigationAction-root": {
+                                minWidth: 0,
+                                flex: "1 1 0",
+                                maxWidth: "none",
+                                px: 0.25,
+                                py: 0.65,
+                                color: "var(--muted-foreground)",
+                                transition: "color 180ms ease",
+                            },
+                            "& .MuiBottomNavigationAction-label": {
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                lineHeight: 1.1,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: "100%",
+                            },
+                            "& .Mui-selected, & .Mui-selected svg": {
+                                color: "var(--primary)",
+                            },
+                        }}
+                    >
+                        {navItems.map((item) => {
+                            const shortLabel: Record<string, string> = {
+                                "Dashboard": "Home",
+                                "Home": "Home",
+                                "Businesses": "Biz",
+                                "Analytics": "Stats",
+                                "Subscriptions & Payments": "Plans",
+                                "Usage & Operations": "Usage",
+                                "Users": "Users",
+                                "Category": "Category",
+                                "Menu": "Menu",
+                                "Tables": "Tables",
+                                "Orders": "Orders",
+                                "Reviews": "Reviews",
+                            };
+                            return (
+                                <BottomNavigationAction
+                                    key={item.href}
+                                    label={shortLabel[item.text] ?? item.text}
+                                    value={item.href}
+                                    icon={
+                                        <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
+                                            <item.icon size={18} />
+                                        </Box>
+                                    }
+                                />
+                            );
+                        })}
+                    </BottomNavigation>
+                </Box>
             </Paper>
         </Box>
     );
