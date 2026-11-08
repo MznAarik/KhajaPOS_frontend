@@ -27,7 +27,7 @@ import {
     BottomNavigation,
     BottomNavigationAction,
 } from "@mui/material";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
 import { spring, useReducedMotion } from "@/lib/motion";
 
@@ -728,63 +728,71 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                     </Typography>
                                 ) : (
                                     <Stack spacing={0.75}>
-                                        {notifItems.map((n) => {
-                                            const sev = (n.severity || "info").toLowerCase();
-                                            const tone = sev === "critical"
-                                                ? { fg: "#991b1b", bg: "#fee2e2", border: "#fecaca" }
-                                                : sev === "warning"
-                                                    ? { fg: "#92400e", bg: "#fef3c7", border: "#fde68a" }
-                                                    : { fg: "#1d4ed8", bg: "#dbeafe", border: "#bfdbfe" };
-                                            const primaryText = n.message || n.title || "Notification";
-                                            const secondaryText = n.message && n.title && n.title !== n.message ? n.title : null;
-                                            return (
-                                                <Box
-                                                    key={n.id}
-                                                    sx={{
-                                                        p: 1.1,
-                                                        borderRadius: "12px",
-                                                        border: `1px solid ${n.is_read ? "var(--border)" : tone.border}`,
-                                                        backgroundColor: n.is_read ? "var(--background)" : `color-mix(in srgb, ${tone.bg} 45%, var(--card))`,
-                                                    }}
-                                                >
-                                                    <Stack direction="row" spacing={0.75} alignItems="flex-start" justifyContent="space-between">
-                                                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                                                            <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.35 }}>
-                                                                <Chip
-                                                                    size="small"
-                                                                    label={(n.severity || "info").toUpperCase()}
-                                                                    sx={{ height: 20, fontSize: "0.62rem", fontWeight: 900, letterSpacing: "0.02em", color: tone.fg, bgcolor: tone.bg, border: `1px solid ${tone.border}`, flexShrink: 0 }}
-                                                                />
-                                                                <Typography
-                                                                    component="span"
-                                                                    sx={{
-                                                                        fontWeight: n.is_read ? 750 : 900,
-                                                                        fontSize: "0.84rem",
-                                                                        lineHeight: 1.3,
-                                                                        color: "var(--foreground)",
-                                                                        wordBreak: "break-word",
-                                                                    }}
-                                                                >
-                                                                    {primaryText}
+                                        <AnimatePresence initial={false}>
+                                            {notifItems.map((n) => {
+                                                const sev = (n.severity || "info").toLowerCase();
+                                                const tone = sev === "critical"
+                                                    ? { fg: "#991b1b", bg: "#fee2e2", border: "#fecaca" }
+                                                    : sev === "warning"
+                                                        ? { fg: "#92400e", bg: "#fef3c7", border: "#fde68a" }
+                                                        : { fg: "#1d4ed8", bg: "#dbeafe", border: "#bfdbfe" };
+                                                const primaryText = n.message || n.title || "Notification";
+                                                const secondaryText = n.message && n.title && n.title !== n.message ? n.title : null;
+                                                return (
+                                                    <Box
+                                                        key={n.id}
+                                                        component={motion.div}
+                                                        layout={!reducedMotion}
+                                                        initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.18 } }}
+                                                        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                                                        sx={{
+                                                            p: 1.1,
+                                                            borderRadius: "12px",
+                                                            border: `1px solid ${n.is_read ? "var(--border)" : tone.border}`,
+                                                            backgroundColor: n.is_read ? "var(--background)" : `color-mix(in srgb, ${tone.bg} 45%, var(--card))`,
+                                                        }}
+                                                    >
+                                                        <Stack direction="row" spacing={0.75} alignItems="flex-start" justifyContent="space-between">
+                                                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                                                <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.35 }}>
+                                                                    <Chip
+                                                                        size="small"
+                                                                        label={(n.severity || "info").toUpperCase()}
+                                                                        sx={{ height: 20, fontSize: "0.62rem", fontWeight: 900, letterSpacing: "0.02em", color: tone.fg, bgcolor: tone.bg, border: `1px solid ${tone.border}`, flexShrink: 0 }}
+                                                                    />
+                                                                    <Typography
+                                                                        component="span"
+                                                                        sx={{
+                                                                            fontWeight: n.is_read ? 750 : 900,
+                                                                            fontSize: "0.84rem",
+                                                                            lineHeight: 1.3,
+                                                                            color: "var(--foreground)",
+                                                                            wordBreak: "break-word",
+                                                                        }}
+                                                                    >
+                                                                        {primaryText}
+                                                                    </Typography>
+                                                                </Stack>
+                                                                {secondaryText ? (
+                                                                    <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", fontWeight: 700, lineHeight: 1.3, mb: 0.15 }}>
+                                                                        {secondaryText}
+                                                                    </Typography>
+                                                                ) : null}
+                                                                <Typography sx={{ fontSize: "0.68rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                                                                    {n.created_at ? new Date(n.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                                                                    {n.type ? ` · ${(n.type || "").replace(/_/g, " ")}` : ""}
                                                                 </Typography>
-                                                            </Stack>
-                                                            {secondaryText ? (
-                                                                <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", fontWeight: 700, lineHeight: 1.3, mb: 0.15 }}>
-                                                                    {secondaryText}
-                                                                </Typography>
+                                                            </Box>
+                                                            {!n.is_read ? (
+                                                                <Button size="small" onClick={() => void markNotifRead([n.id])} sx={{ minWidth: 0, px: 0.75, fontSize: "0.7rem", fontWeight: 800, textTransform: "none", flexShrink: 0, mt: -0.25 }}>Read</Button>
                                                             ) : null}
-                                                            <Typography sx={{ fontSize: "0.68rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
-                                                                {n.created_at ? new Date(n.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
-                                                                {n.type ? ` · ${(n.type || "").replace(/_/g, " ")}` : ""}
-                                                            </Typography>
-                                                        </Box>
-                                                        {!n.is_read ? (
-                                                            <Button size="small" onClick={() => void markNotifRead([n.id])} sx={{ minWidth: 0, px: 0.75, fontSize: "0.7rem", fontWeight: 800, textTransform: "none", flexShrink: 0, mt: -0.25 }}>Read</Button>
-                                                        ) : null}
-                                                    </Stack>
-                                                </Box>
-                                            );
-                                        })}
+                                                        </Stack>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </AnimatePresence>
                                     </Stack>
                                 )}
                             </Box>
