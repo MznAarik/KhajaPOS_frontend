@@ -222,6 +222,40 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
     const isActive = (href: string) => pathname.startsWith(href);
+    const activeHref = React.useMemo(() => {
+        const matches = navItems.filter((item) => pathname.startsWith(item.href));
+        return (matches.sort((a, b) => b.href.length - a.href.length)[0]?.href) ?? null;
+    }, [navItems, pathname]);
+    const navListRef = React.useRef<HTMLUListElement | null>(null);
+    const navItemRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+    const [navIndicator, setNavIndicator] = React.useState({ y: 0, h: 0, w: 0, visible: false });
+
+    React.useLayoutEffect(() => {
+        const update = () => {
+            if (!activeHref || !navListRef.current) {
+                setNavIndicator((s) => (s.visible ? { ...s, visible: false } : s));
+                return;
+            }
+            const el = navItemRefs.current[activeHref];
+            if (!el) {
+                setNavIndicator((s) => (s.visible ? { ...s, visible: false } : s));
+                return;
+            }
+            const list = navListRef.current;
+            const listRect = list.getBoundingClientRect();
+            const rect = el.getBoundingClientRect();
+            setNavIndicator({
+                y: rect.top - listRect.top,
+                h: rect.height,
+                w: rect.width,
+                visible: rect.height > 0,
+            });
+        };
+        update();
+        window.addEventListener("resize", update);
+        return () => window.removeEventListener("resize", update);
+    }, [activeHref, navItems]);
+
     const startItemAnimation = (item: NavItem) => {
         setHoveredItem(item.text);
         item.ref?.current?.startAnimation();
@@ -347,12 +381,36 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 boxSizing: "border-box",
             }}
         >
-            <List sx={{ display: "grid", gap: 1, width: "100%" }}>
+            <List ref={navListRef} sx={{ display: "grid", gap: 1, width: "100%", position: "relative" }}>
+                {navIndicator.visible ? (
+                    <Box
+                        component={motion.div}
+                        aria-hidden
+                        initial={false}
+                        animate={reducedMotion ? { y: navIndicator.y, height: navIndicator.h, opacity: 1 } : { y: navIndicator.y, height: navIndicator.h, opacity: 1 }}
+                        transition={reducedMotion ? { duration: 0 } : spring.indicator}
+                        sx={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            borderRadius: "16px",
+                            border: "2px solid var(--sidebar-border)",
+                            backgroundColor: "color-mix(in srgb, var(--sidebar-primary) 18%, transparent)",
+                            boxShadow: "0 14px 28px rgba(56, 75, 78, 0.25)",
+                            zIndex: 0,
+                            pointerEvents: "none",
+                        }}
+                    />
+                ) : null}
                 {navItems.map((item) => {
-                    const active = isActive(item.href);
+                    const active = item.href === activeHref || isActive(item.href);
                     return (
                         <ListItemButton
                             key={item.text}
+                            ref={(el) => {
+                                navItemRefs.current[item.href] = el;
+                            }}
                             disableRipple={false}
                             disableTouchRipple={false}
                             TouchRippleProps={{ center: false }}
@@ -372,23 +430,20 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 cursor: "pointer",
                                 position: "relative",
                                 overflow: "hidden",
+                                zIndex: 1,
 
-                                backgroundColor: active
-                                    ? "color-mix(in srgb, var(--sidebar-primary) 18%, transparent)"
-                                    : hoveredItem === item.text
-                                        ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
-                                        : "transparent",
+                                backgroundColor: !active && hoveredItem === item.text
+                                    ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
+                                    : "transparent",
 
-                                boxShadow: active
-                                    ? "0 14px 28px rgba(56, 75, 78, 0.25)"
-                                    : hoveredItem === item.text
-                                        ? "0 14px 28px rgba(56, 75, 78, 0.14)"
-                                        : "none",
+                                boxShadow: !active && hoveredItem === item.text
+                                    ? "0 14px 28px rgba(56, 75, 78, 0.14)"
+                                    : "none",
 
                                 "& .MuiListItemText-primary": {
                                     color: active ? "var(--sidebar-primary)" : "inherit",
                                     fontWeight: active ? 700 : 400,
-                                    transition: "all 200ms ease",
+                                    transition: "color 200ms ease, font-weight 200ms ease",
                                 },
 
                                 "& .nav-icon svg": {
