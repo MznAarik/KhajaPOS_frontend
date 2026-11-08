@@ -75,6 +75,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export type PlatformStatusAlert = {
+  code: "MAINTENANCE_MODE" | "BUSINESS_SUSPENDED" | string;
+  message: string;
+  data?: any;
+};
+
+const emitPlatformStatus = (alert: PlatformStatusAlert | null) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("khajapos:platform-status", { detail: alert }));
+};
+
 api.interceptors.response.use(
   (response) => {
     if (
@@ -83,6 +94,14 @@ api.interceptors.response.use(
       "status" in response.data &&
       Number(response.data.status) === 0
     ) {
+      const code = (response.data as any)?.code;
+      if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
+        emitPlatformStatus({
+          code,
+          message: (response.data as any)?.message || "Service is temporarily unavailable.",
+          data: response.data,
+        });
+      }
       const apiError = new Error(safeError({ response }, "Request failed."));
       Object.assign(apiError, { response });
       return Promise.reject(apiError);
@@ -91,6 +110,15 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    const data = error?.response?.data;
+    const code = data?.code;
+    if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
+      emitPlatformStatus({
+        code,
+        message: data?.message || "Service is temporarily unavailable.",
+        data,
+      });
+    }
     if (error?.response?.status === 401) {
       await redirectToLogin();
       return new Promise(() => {
@@ -1159,6 +1187,9 @@ export type SuperAdminBusiness = {
   address: string;
   isActive: boolean;
   createdAt: string;
+  suspendedAt?: string | null;
+  suspensionReason?: string | null;
+  reactivatedAt?: string | null;
   menuItemsCount: number;
   tablesCount: number;
   ordersCount: number;
@@ -1169,6 +1200,7 @@ export type SuperAdminBusinessCounts = {
   total: number;
   active: number;
   inactive: number;
+  suspended?: number;
 };
 
 export type SuperAdminBusinessPayload = {
@@ -1213,6 +1245,9 @@ type RawSuperAdminBusiness = {
   email: string;
   address?: string | null;
   is_active?: unknown;
+  suspended_at?: string | null;
+  suspension_reason?: string | null;
+  reactivated_at?: string | null;
   created_at: string;
   menu_items_count?: number;
   tables_count?: number;
@@ -1249,6 +1284,9 @@ const mapSuperAdminBusiness = (raw: RawSuperAdminBusiness): SuperAdminBusiness =
   email: raw.email,
   address: raw.address ?? "",
   isActive: parseAvailability(raw.is_active ?? true),
+  suspendedAt: raw.suspended_at ?? null,
+  suspensionReason: raw.suspension_reason ?? null,
+  reactivatedAt: raw.reactivated_at ?? null,
   createdAt: raw.created_at,
   menuItemsCount: raw.menu_items_count ?? 0,
   tablesCount: raw.tables_count ?? 0,
@@ -1492,6 +1530,20 @@ export type PlatformAnalytics = {
     storage: {
       sizeBytes: number;
     };
+    image_storage?: {
+      scope: "business" | "platform";
+      business_id?: number;
+      available: boolean;
+      reason?: string;
+      total_images?: number;
+      known_bytes?: number;
+      known_mb?: number;
+      unknown_images?: number;
+      missing_images?: number;
+      fully_known?: boolean;
+      breakdown?: any;
+      note?: string;
+    };
     tables: Array<{
       name: string;
       rows: number;
@@ -1548,4 +1600,240 @@ export const resendVerification = async (email: string): Promise<string> => {
   const res = await api.post("/resend-verification", { email });
   const payload = res.data as { message?: string };
   return payload.message ?? "Verification email sent.";
+};
+
+/* -------------------------------------------------------------------------- */
+/* Superadmin: SaaS platform management                                        */
+/* -------------------------------------------------------------------------- */
+
+export type SuperAdminSaasOverview = SuperAdminOverview & {
+  generatedAt?: string;
+  kpis?: {
+    totalBusinesses: number;
+    activeBusinesses: number;
+    suspendedBusinesses: number;
+    totalUsers: number;
+    totalOrders: number;
+    orderRevenue: number;
+    paidRevenueThisMonth: number;
+    mrr: number;
+    arr: number;
+    overduePayments: number;
+    failedPayments30d: number;
+    pastDueSubscriptions: number;
+    expiringSubscriptions14d: number;
+    openAlerts: number;
+  };
+  growth?: {
+    businesses: AnalyticsGrowth;
+    orderRevenue: AnalyticsGrowth;
+    paidRevenue: AnalyticsGrowth;
+  };
+  monthly?: Array<{ key: string; label: string; businesses: number; orders: number; orderRevenue: number; paidRevenue: number }>;
+  health?: any;
+};
+
+export type SubscriptionPlan = {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  price: number | string;
+  currency: string;
+  billing_cycle: string;
+  trial_days: number;
+  is_active: boolean;
+  is_default: boolean;
+  features?: string[] | Record<string, any> | null;
+  limits?: Record<string, number> | null;
+  subscriptions_count?: number;
+};
+
+export type BusinessSubscription = {
+  id: number;
+  business_id: number;
+  plan_id?: number | null;
+  status: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  trial_ends_at?: string | null;
+  renews_at?: string | null;
+  grace_ends_at?: string | null;
+  auto_renew: boolean;
+  notes?: string | null;
+  business?: { id: number; name: string; email?: string; is_active?: boolean } | null;
+  plan?: { id: number; name: string; slug?: string; price?: number | string; currency?: string; billing_cycle?: string; limits?: Record<string, number> } | null;
+};
+
+export type SubscriptionPayment = {
+  id: number;
+  business_id: number;
+  subscription_id?: number | null;
+  plan_id?: number | null;
+  amount: number | string;
+  currency: string;
+  status: string;
+  payment_method?: string | null;
+  reference?: string | null;
+  due_at?: string | null;
+  paid_at?: string | null;
+  failed_at?: string | null;
+  failure_reason?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  business?: { id: number; name: string; email?: string } | null;
+  plan?: { id: number; name: string } | null;
+  subscription?: { id: number; status: string } | null;
+};
+
+export type SuperAdminNotificationItem = {
+  id: number;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  business_id?: number | null;
+  is_read: boolean;
+  read_at?: string | null;
+  data?: any;
+  created_at: string;
+  business?: { id: number; name: string } | null;
+};
+
+export type BusinessUsageItem = {
+  business: { id: number; name: string; is_active: boolean };
+  plan?: { id: number; name: string } | null;
+  subscription_status?: string | null;
+  metrics: Record<string, number>;
+  limits: Record<string, number>;
+  warnings: Array<{ metric: string; message: string; severity: string; percent?: number; value?: number; limit?: number }>;
+  storage_instrumented?: boolean;
+  storage?: {
+    total_images?: number;
+    known_bytes?: number;
+    known_mb?: number;
+    unknown_images?: number;
+    missing_images?: number;
+    fully_known?: boolean;
+    breakdown?: {
+      logo?: { images?: number; known_bytes?: number; known_mb?: number; unknown_images?: number; missing_images?: number };
+      menu_items?: { images?: number; known_bytes?: number; known_mb?: number; unknown_images?: number; missing_images?: number };
+    };
+    note?: string;
+  };
+};
+
+export type BackupRecordItem = {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  source: string;
+  path?: string | null;
+  size_bytes?: number | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  verified_at?: string | null;
+  notes?: string | null;
+  created_at: string;
+};
+
+export const getSuperAdminSaasOverview = async (): Promise<SuperAdminSaasOverview> => {
+  const res = await api.get("/superadmin/overview");
+  return unwrapApiData<SuperAdminSaasOverview>(res.data);
+};
+
+export const getSuperAdminBusinessDetails = async (id: number) => {
+  const res = await api.get(`/superadmin/businesses/${id}/details`);
+  return unwrapApiData<any>(res.data);
+};
+
+export const suspendSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason: string }) => {
+  const res = await api.post(`/superadmin/businesses/${id}/suspend`, payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const reactivateSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason?: string }) => {
+  const res = await api.post(`/superadmin/businesses/${id}/reactivate`, payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminBusinessAnalytics = async (id: number) => {
+  const res = await api.get(`/superadmin/businesses/${id}/analytics`);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminPlans = async (): Promise<{ items: SubscriptionPlan[] }> => {
+  const res = await api.get("/superadmin/plans");
+  return unwrapApiData(res.data);
+};
+
+export const saveSuperAdminPlan = async (payload: any, id?: number) => {
+  const res = id ? await api.put(`/superadmin/plans/${id}`, payload) : await api.post("/superadmin/plans", payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminSubscriptions = async (params?: any): Promise<{ items: BusinessSubscription[]; counts: any }> => {
+  const res = await api.get("/superadmin/subscriptions", { params });
+  return unwrapApiData(res.data);
+};
+
+export const assignSuperAdminSubscription = async (businessId: number, payload: any) => {
+  const res = await api.post(`/superadmin/businesses/${businessId}/subscription`, payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminPayments = async (params?: any): Promise<{ items: SubscriptionPayment[]; counts: any }> => {
+  const res = await api.get("/superadmin/payments", { params });
+  return unwrapApiData(res.data);
+};
+
+export const recordSuperAdminPayment = async (payload: any) => {
+  const res = await api.post("/superadmin/payments", payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+  const res = await api.get("/superadmin/notifications", { params });
+  return unwrapApiData(res.data);
+};
+
+export const markSuperAdminNotificationsRead = async (ids?: number[]) => {
+  const res = await api.post("/superadmin/notifications/read", { ids: ids ?? [] });
+  return unwrapApiData<any>(res.data);
+};
+
+export const getAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+  const res = await api.get("/admin/notifications", { params });
+  return unwrapApiData(res.data);
+};
+
+export const markAdminNotificationsRead = async (ids?: number[]) => {
+  const res = await api.post("/admin/notifications/read", { ids: ids ?? [] });
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminUsage = async (): Promise<{ summary: any; items: BusinessUsageItem[] }> => {
+  const res = await api.get("/superadmin/usage");
+  return unwrapApiData(res.data);
+};
+
+export const getSuperAdminOperations = async () => {
+  const res = await api.get("/superadmin/operations");
+  return unwrapApiData<any>(res.data);
+};
+
+export const setSuperAdminMaintenance = async (payload: { enabled: boolean; message?: string; allow_super_admin?: boolean }) => {
+  const res = await api.post("/superadmin/operations/maintenance", payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const getSuperAdminBackups = async (): Promise<{ items: BackupRecordItem[]; summary: any }> => {
+  const res = await api.get("/superadmin/backups");
+  return unwrapApiData(res.data);
+};
+
+export const recordSuperAdminBackup = async (payload: any) => {
+  const res = await api.post("/superadmin/backups", payload);
+  return unwrapApiData<any>(res.data);
 };

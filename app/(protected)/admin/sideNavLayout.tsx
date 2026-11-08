@@ -2,10 +2,18 @@
 
 import * as React from "react";
 import {
+    Alert,
+    Badge,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Divider,
     Drawer,
+    IconButton,
     List,
     ListItemText,
-    Box,
+    Popover,
     Toolbar,
     Typography,
     Breadcrumbs,
@@ -30,9 +38,22 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
+import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
+
 import { AuthProvider, useAuth, type SessionUser } from "@/lib/auth-context";
 import RoleGate from "@/components/admin/RoleGate";
-import { getBusinessSettings, resolveMenuImageUrl } from "@/lib/api";
+import {
+    getAdminNotifications,
+    getAdminOrders,
+    getBusinessSettings,
+    getSuperAdminNotifications,
+    markAdminNotificationsRead,
+    markSuperAdminNotificationsRead,
+    resolveMenuImageUrl,
+    type PlatformStatusAlert,
+    type SuperAdminNotificationItem,
+} from "@/lib/api";
 
 const drawerWidth = 260;
 
@@ -83,6 +104,52 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const tablesIconRef = React.useRef<CoffeeIconHandle | null>(null);
     const ordersIconRef = React.useRef<DashboardIconHandle | null>(null);
     const mainRef = React.useRef<HTMLDivElement | null>(null);
+    const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
+    const [notifLoading, setNotifLoading] = React.useState(false);
+    const [notifItems, setNotifItems] = React.useState<SuperAdminNotificationItem[]>([]);
+    const [notifCounts, setNotifCounts] = React.useState<{ unread?: number; total?: number; critical?: number }>({});
+    const [notifSaving, setNotifSaving] = React.useState(false);
+    const [notifShowAll, setNotifShowAll] = React.useState(false);
+    const notifHasLoadedRef = React.useRef(false);
+    const lastMaxOrderIdRef = React.useRef<number | null>(null);
+    const audioCtxRef = React.useRef<AudioContext | null>(null);
+    const [platformStatus, setPlatformStatus] = React.useState<PlatformStatusAlert | null>(null);
+
+    React.useEffect(() => {
+        const onPlatformStatus = (event: Event) => {
+            const detail = (event as CustomEvent<PlatformStatusAlert | null>).detail ?? null;
+            if (!detail || (detail.code !== "MAINTENANCE_MODE" && detail.code !== "BUSINESS_SUSPENDED")) return;
+            setPlatformStatus(detail);
+        };
+        window.addEventListener("khajapos:platform-status", onPlatformStatus as EventListener);
+        return () => window.removeEventListener("khajapos:platform-status", onPlatformStatus as EventListener);
+    }, []);
+
+    const playNewOrderSound = React.useCallback(() => {
+        try {
+            const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+            if (!Ctx) return;
+            if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+            const ctx = audioCtxRef.current;
+            if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
+            const now = ctx.currentTime;
+            [880, 1174.66].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, now + i * 0.12);
+                gain.gain.setValueAtTime(0.0001, now + i * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.12, now + i * 0.12 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.18);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + i * 0.12);
+                osc.stop(now + i * 0.12 + 0.2);
+            });
+        } catch {
+            // ignore autoplay/audio failures
+        }
+    }, []);
 
     React.useEffect(() => {
         mainRef.current?.scrollTo({ top: 0 });
@@ -110,9 +177,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const navItems: NavItem[] = isSuperAdmin
         ? [
             { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
-            { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
-            { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
             { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
+            { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
+            { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
+            { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
+            { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
         ]
         : [
             { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
@@ -135,6 +204,10 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         restaurants: "Businesses",
         businesses: "Businesses",
         analytics: "Analytics",
+        "platform-analytics": "Analytics",
+        subscriptions: "Subscriptions & Payments",
+        "usage-operations": "Usage & Operations",
+        notifications: "Notifications",
         reviews: "Reviews",
         settings: "Settings",
     };
@@ -155,49 +228,119 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         document.title = `${pageTitle} - KhajaPOS Admin`;
     }, [pageTitle]);
 
+    const fetchNotifications = React.useCallback(async (opts?: { quiet?: boolean; limit?: number; showAll?: boolean }) => {
+        const quiet = opts?.quiet ?? false;
+        const showAll = opts?.showAll ?? notifShowAll;
+        const limit = showAll ? 200 : (opts?.limit ?? 20);
+        if (!quiet) setNotifLoading(true);
+        try {
+            const params: any = { limit };
+            const data = isSuperAdmin ? await getSuperAdminNotifications(params) : await getAdminNotifications(params);
+            setNotifItems(data.items ?? []);
+            setNotifCounts(data.counts ?? {});
+            notifHasLoadedRef.current = true;
+        } catch {
+            if (!quiet && !notifHasLoadedRef.current) {
+                setNotifItems([]);
+            }
+        } finally {
+            if (!quiet) setNotifLoading(false);
+        }
+    }, [isSuperAdmin, notifShowAll]);
+
+    React.useEffect(() => {
+        let active = true;
+        const loadCounts = async () => {
+            try {
+                const data = isSuperAdmin
+                    ? await getSuperAdminNotifications({ unread: "1", limit: 1, skip_alerts: "1" })
+                    : await getAdminNotifications({ unread: "1", limit: 1, skip_alerts: "1" });
+                if (active) setNotifCounts((prev) => ({ ...prev, ...(data.counts ?? {}) }));
+            } catch {
+                // silent
+            }
+        };
+        void loadCounts();
+        void fetchNotifications({ quiet: true, limit: 20 });
+        const t = window.setInterval(() => { if (document.visibilityState === "visible") void loadCounts(); }, 45000);
+        return () => { active = false; window.clearInterval(t); };
+    }, [isSuperAdmin, fetchNotifications]);
+
+    React.useEffect(() => {
+        if (isSuperAdmin) return;
+        let active = true;
+        const pollOrders = async () => {
+            try {
+                const data = await getAdminOrders();
+                if (!active) return;
+                const orders = data?.orders ?? [];
+                const maxId = orders.reduce((m, o) => Math.max(m, Number(o?.id) || 0), 0);
+                if (lastMaxOrderIdRef.current === null) {
+                    lastMaxOrderIdRef.current = maxId;
+                    return;
+                }
+                if (maxId > (lastMaxOrderIdRef.current ?? 0)) {
+                    // Detect genuinely new arrivals (not initial load). Any newly seen higher ID triggers sound.
+                    playNewOrderSound();
+                    lastMaxOrderIdRef.current = maxId;
+                    // refresh notification badge context lightly
+                    getAdminNotifications({ unread: "1" }).then((d) => { if (active) setNotifCounts((p) => ({ ...p, ...(d.counts ?? {}) })); }).catch(() => undefined);
+                }
+            } catch {
+                // silent
+            }
+        };
+        void pollOrders();
+        const t = window.setInterval(() => { if (document.visibilityState === "visible") void pollOrders(); }, 20000);
+        return () => { active = false; window.clearInterval(t); };
+    }, [isSuperAdmin, playNewOrderSound]);
+
+    const openNotif = (e: React.MouseEvent<HTMLElement>) => {
+        setNotifAnchor(e.currentTarget);
+        if (notifHasLoadedRef.current || notifItems.length > 0) {
+            void fetchNotifications({ quiet: true, limit: notifShowAll ? 200 : 20, showAll: notifShowAll });
+        } else {
+            void fetchNotifications({ quiet: false, limit: 20, showAll: false });
+        }
+    };
+    const closeNotif = () => setNotifAnchor(null);
+    const handleSeeAllNotifications = () => {
+        if (isSuperAdmin) {
+            closeNotif();
+            router.push("/super-admin/notifications");
+            return;
+        }
+        const next = !notifShowAll;
+        setNotifShowAll(next);
+        void fetchNotifications({ quiet: true, limit: next ? 200 : 20, showAll: next });
+    };
+    const markNotifRead = async (ids?: number[]) => {
+        setNotifSaving(true);
+        try {
+            if (isSuperAdmin) await markSuperAdminNotificationsRead(ids ?? []);
+            else await markAdminNotificationsRead(ids ?? []);
+            await fetchNotifications({ quiet: true, limit: notifShowAll ? 200 : 20, showAll: notifShowAll });
+        } catch {
+            // ignore
+        } finally {
+            setNotifSaving(false);
+        }
+    };
+
     const drawer = (
-        <Box sx={{ px: 2, py: { xs: 2, sm: 15 } }}>
-            <Link href={isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard"} style={{ textDecoration: "none" }}>
-                <Box
-                    sx={{
-                        mb: 3,
-                        border: "2px solid var(--sidebar-border)",
-                        borderRadius: "24px",
-                        px: 2.25,
-                        py: 2.25,
-                        backgroundImage:
-                            "linear-gradient(145deg, color-mix(in srgb, var(--sidebar-primary) 18%, transparent), color-mix(in srgb, var(--sidebar-accent) 34%, transparent) 52%, color-mix(in srgb, var(--sidebar) 86%, black 14%))",
-                        boxShadow: "0 16px 34px rgba(56, 75, 78, 0.18)",
-                        pointerEvents: "none",
-                    }}
-                >
-                    <Typography
-                        sx={{
-                            fontSize: "0.75rem",
-                            letterSpacing: "0.18em",
-                            textTransform: "uppercase",
-                            color: "var(--sidebar-foreground)",
-                            opacity: 0.7,
-                            mb: 0.5,
-                        }}
-                    >
-                        Workspace
-                    </Typography>
-                    <Typography sx={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--sidebar-foreground)" }}>
-                        {isSuperAdmin
-                            ? "KhajaPOS Super Admin"
-                            : brand?.name
-                                ? brand.name
-                                : "KhajaPOS Admin"}
-                    </Typography>
-                    <Typography sx={{ fontSize: "0.9rem", color: "var(--sidebar-foreground)", opacity: 0.8 }}>
-                        {isSuperAdmin
-                            ? "Manage platform analytics, users, owners and businesses"
-                            : "Manage food items, orders, and reporting"}
-                    </Typography>
-                </Box>
-            </Link>
-            <List sx={{ display: "grid", gap: 1 }}>
+        <Box
+            sx={{
+                px: 2,
+                pt: { xs: 2, sm: 10 },
+                pb: 2,
+                minHeight: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                boxSizing: "border-box",
+            }}
+        >
+            <List sx={{ display: "grid", gap: 1, width: "100%" }}>
                 {navItems.map((item) => {
                     const active = isActive(item.href);
                     return (
@@ -450,6 +593,144 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         alignItems="center"
                         sx={{ position: "relative", zIndex: (theme) => theme.zIndex.drawer + 3, pointerEvents: "auto" }}
                     >
+                        <IconButton
+                            aria-label="Notifications"
+                            onClick={openNotif}
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "12px",
+                                border: "1px solid var(--border)",
+                                backgroundColor: "color-mix(in srgb, var(--card) 70%, transparent)",
+                                color: "var(--foreground)",
+                            }}
+                        >
+                            <Badge badgeContent={notifCounts.unread ?? 0} color="error" max={99}>
+                                <NotificationsNoneRoundedIcon />
+                            </Badge>
+                        </IconButton>
+                        <Popover
+                            open={Boolean(notifAnchor)}
+                            anchorEl={notifAnchor}
+                            onClose={closeNotif}
+                            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                            transformOrigin={{ vertical: "top", horizontal: "right" }}
+                            slotProps={{
+                                paper: {
+                                    sx: {
+                                        mt: 1,
+                                        width: { xs: "min(92vw, 380px)", sm: 420 },
+                                        maxHeight: "min(70vh, 520px)",
+                                        borderRadius: "16px",
+                                        border: "1px solid var(--border)",
+                                        backgroundColor: "var(--card)",
+                                        boxShadow: "0 18px 50px rgba(31,42,43,0.18)",
+                                        overflow: "hidden",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                    },
+                                },
+                            }}
+                        >
+                            <Box sx={{ p: 1.5, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography sx={{ fontWeight: 900, fontSize: "0.98rem", lineHeight: 1.2 }}>Notifications</Typography>
+                                        <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                                            {isSuperAdmin ? "Platform notifications and alerts" : "Updates from Super Admin and system alerts"}
+                                        </Typography>
+                                    </Box>
+                                    <Button
+                                        size="small"
+                                        startIcon={<DoneAllRoundedIcon />}
+                                        onClick={() => void markNotifRead([])}
+                                        disabled={notifSaving || (notifCounts.unread ?? 0) === 0}
+                                        sx={{ textTransform: "none", fontWeight: 800, borderRadius: "10px", flexShrink: 0, whiteSpace: "nowrap" }}
+                                    >
+                                        Read all
+                                    </Button>
+                                </Stack>
+                            </Box>
+                            <Box sx={{ overflowY: "auto", p: 1, flex: 1, minHeight: 0 }}>
+                                {notifLoading && notifItems.length === 0 ? (
+                                    <Box sx={{ display: "grid", placeItems: "center", py: 4 }}><CircularProgress size={22} /></Box>
+                                ) : notifItems.length === 0 ? (
+                                    <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontSize: "0.84rem", fontWeight: 650 }}>
+                                        No notifications yet.
+                                    </Typography>
+                                ) : (
+                                    <Stack spacing={0.75}>
+                                        {notifItems.map((n) => {
+                                            const sev = (n.severity || "info").toLowerCase();
+                                            const tone = sev === "critical"
+                                                ? { fg: "#991b1b", bg: "#fee2e2", border: "#fecaca" }
+                                                : sev === "warning"
+                                                    ? { fg: "#92400e", bg: "#fef3c7", border: "#fde68a" }
+                                                    : { fg: "#1d4ed8", bg: "#dbeafe", border: "#bfdbfe" };
+                                            const primaryText = n.message || n.title || "Notification";
+                                            const secondaryText = n.message && n.title && n.title !== n.message ? n.title : null;
+                                            return (
+                                                <Box
+                                                    key={n.id}
+                                                    sx={{
+                                                        p: 1.1,
+                                                        borderRadius: "12px",
+                                                        border: `1px solid ${n.is_read ? "var(--border)" : tone.border}`,
+                                                        backgroundColor: n.is_read ? "var(--background)" : `color-mix(in srgb, ${tone.bg} 45%, var(--card))`,
+                                                    }}
+                                                >
+                                                    <Stack direction="row" spacing={0.75} alignItems="flex-start" justifyContent="space-between">
+                                                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                                                            <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.35 }}>
+                                                                <Chip
+                                                                    size="small"
+                                                                    label={(n.severity || "info").toUpperCase()}
+                                                                    sx={{ height: 20, fontSize: "0.62rem", fontWeight: 900, letterSpacing: "0.02em", color: tone.fg, bgcolor: tone.bg, border: `1px solid ${tone.border}`, flexShrink: 0 }}
+                                                                />
+                                                                <Typography
+                                                                    component="span"
+                                                                    sx={{
+                                                                        fontWeight: n.is_read ? 750 : 900,
+                                                                        fontSize: "0.84rem",
+                                                                        lineHeight: 1.3,
+                                                                        color: "var(--foreground)",
+                                                                        wordBreak: "break-word",
+                                                                    }}
+                                                                >
+                                                                    {primaryText}
+                                                                </Typography>
+                                                            </Stack>
+                                                            {secondaryText ? (
+                                                                <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", fontWeight: 700, lineHeight: 1.3, mb: 0.15 }}>
+                                                                    {secondaryText}
+                                                                </Typography>
+                                                            ) : null}
+                                                            <Typography sx={{ fontSize: "0.68rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                                                                {n.created_at ? new Date(n.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                                                                {n.type ? ` · ${(n.type || "").replace(/_/g, " ")}` : ""}
+                                                            </Typography>
+                                                        </Box>
+                                                        {!n.is_read ? (
+                                                            <Button size="small" onClick={() => void markNotifRead([n.id])} sx={{ minWidth: 0, px: 0.75, fontSize: "0.7rem", fontWeight: 800, textTransform: "none", flexShrink: 0, mt: -0.25 }}>Read</Button>
+                                                        ) : null}
+                                                    </Stack>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Stack>
+                                )}
+                            </Box>
+                            <Box sx={{ p: 1, borderTop: "1px solid var(--border)", flexShrink: 0, backgroundColor: "color-mix(in srgb, var(--card) 92%, var(--background))" }}>
+                                <Button
+                                    fullWidth
+                                    size="small"
+                                    onClick={handleSeeAllNotifications}
+                                    sx={{ textTransform: "none", fontWeight: 850, borderRadius: "10px", color: "var(--primary)", py: 0.75 }}
+                                >
+                                    {isSuperAdmin ? "See all notifications" : notifShowAll ? "Show fewer notifications" : "See all notifications"}
+                                </Button>
+                            </Box>
+                        </Popover>
                         <ThemeToggle />
                         <ProfileComponent showSettings={!isSuperAdmin} logoSrc={brand?.logo ?? null} />
                     </Stack>
@@ -462,12 +743,23 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     sx={{
                         "& .MuiDrawer-paper": {
                             width: drawerWidth,
-                            overflowY: "hidden",
+                            display: "flex",
+                            flexDirection: "column",
+                            overflowX: "hidden",
+                            overflowY: "auto",
+                            overscrollBehavior: "contain",
                             pt: "0px",
                             backgroundColor: "var(--sidebar)",
                             backgroundImage:
                                 "linear-gradient(180deg, color-mix(in srgb, var(--sidebar) 96%, white 4%), color-mix(in srgb, var(--sidebar-accent) 42%, var(--sidebar) 58%) 52%, color-mix(in srgb, var(--sidebar) 88%, black 12%))",
                             borderRight: "1px solid var(--sidebar-border)",
+                            scrollbarWidth: "thin",
+                            scrollbarColor: "color-mix(in srgb, var(--sidebar-foreground) 28%, transparent) transparent",
+                            "&::-webkit-scrollbar": { width: 8 },
+                            "&::-webkit-scrollbar-thumb": {
+                                backgroundColor: "color-mix(in srgb, var(--sidebar-foreground) 28%, transparent)",
+                                borderRadius: "999px",
+                            },
                         },
                     }}
                     open
@@ -483,6 +775,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     position: "relative",
                     flexGrow: 1,
                     minWidth: 0,
+                    maxWidth: "100%",
                     p: { xs: 1.5, sm: 3 },
                     width: { xs: "100%", sm: "auto" },
                     mt: { xs: "64px", sm: "92px" },
@@ -491,6 +784,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     pb: { xs: "calc(env(safe-area-inset-bottom) + 110px)", sm: 3 },
                     height: { xs: "auto", sm: "calc(100dvh - 108px)" },
                     boxSizing: "border-box",
+                    overflowX: "clip",
                     overflowY: { xs: "visible", sm: "auto" },
                     overscrollBehavior: { sm: "contain" },
                     scrollbarWidth: "thin",
@@ -518,6 +812,65 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 }}
             >
                 <RoleGate>
+                    {(() => {
+                        if (isSuperAdmin) {
+                            return platformStatus ? (
+                                <Alert
+                                    severity={platformStatus.code === "MAINTENANCE_MODE" ? "warning" : "error"}
+                                    variant="filled"
+                                    onClose={() => setPlatformStatus(null)}
+                                    sx={{ mb: 2, borderRadius: "14px", alignItems: "flex-start", boxShadow: "0 10px 24px rgba(15,23,42,0.12)", "& .MuiAlert-message": { width: "100%" } }}
+                                >
+                                    <Typography sx={{ fontWeight: 900, fontSize: "0.92rem", lineHeight: 1.25 }}>
+                                        {platformStatus.code === "MAINTENANCE_MODE" ? "Platform maintenance" : "Business access restricted"}
+                                    </Typography>
+                                    <Typography sx={{ mt: 0.35, fontSize: "0.84rem", fontWeight: 650, opacity: 0.96 }}>
+                                        {platformStatus.message || "Service is temporarily unavailable."}
+                                    </Typography>
+                                </Alert>
+                            ) : null;
+                        }
+                        const latestMaintenance = notifItems.find((n) => /maintenance mode/i.test(n.title || ""));
+                        const maintenanceActive = platformStatus?.code === "MAINTENANCE_MODE"
+                            || (latestMaintenance ? /enabled/i.test(latestMaintenance.title || "") : false);
+                        const maintenanceMessage = platformStatus?.code === "MAINTENANCE_MODE"
+                            ? (platformStatus.message || latestMaintenance?.message)
+                            : latestMaintenance?.message;
+                        const suspensionBlock = platformStatus?.code === "BUSINESS_SUSPENDED" ? platformStatus : null;
+                        return (
+                            <>
+                                {maintenanceActive ? (
+                                    <Alert
+                                        severity="warning"
+                                        variant="filled"
+                                        sx={{ mb: 2, borderRadius: "14px", alignItems: "flex-start", boxShadow: "0 10px 24px rgba(15,23,42,0.12)", "& .MuiAlert-message": { width: "100%" } }}
+                                    >
+                                        <Typography sx={{ fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.25 }}>
+                                            Maintenance mode
+                                        </Typography>
+                                        <Typography sx={{ mt: 0.35, fontSize: "0.84rem", fontWeight: 650, opacity: 0.96 }}>
+                                            {maintenanceMessage || "The platform is temporarily under maintenance. Some features may be unavailable."}
+                                        </Typography>
+                                    </Alert>
+                                ) : null}
+                                {suspensionBlock ? (
+                                    <Alert
+                                        severity="error"
+                                        variant="filled"
+                                        onClose={() => setPlatformStatus(null)}
+                                        sx={{ mb: 2, borderRadius: "14px", alignItems: "flex-start", boxShadow: "0 10px 24px rgba(15,23,42,0.12)", "& .MuiAlert-message": { width: "100%" } }}
+                                    >
+                                        <Typography sx={{ fontWeight: 900, fontSize: "0.95rem", lineHeight: 1.25 }}>
+                                            Business access restricted
+                                        </Typography>
+                                        <Typography sx={{ mt: 0.35, fontSize: "0.84rem", fontWeight: 650, opacity: 0.96 }}>
+                                            {suspensionBlock.message || "Service is temporarily unavailable."}
+                                        </Typography>
+                                    </Alert>
+                                ) : null}
+                            </>
+                        );
+                    })()}
                     <Box
                         key={pathname}
                         sx={{
@@ -583,18 +936,34 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         },
                     }}
                 >
-                    {navItems.map((item) => (
-                        <BottomNavigationAction
-                            key={item.href}
-                            label={item.text}
-                            value={item.href}
-                            icon={
-                                <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
-                                    <item.icon size={20} />
-                                </Box>
-                            }
-                        />
-                    ))}
+                    {navItems.map((item) => {
+                        const shortLabel: Record<string, string> = {
+                            "Dashboard": "Home",
+                            "Home": "Home",
+                            "Businesses": "Biz",
+                            "Analytics": "Stats",
+                            "Subscriptions & Payments": "Plans",
+                            "Usage & Operations": "Usage",
+                            "Users": "Users",
+                            "Category": "Category",
+                            "Menu": "Menu",
+                            "Tables": "Tables",
+                            "Orders": "Orders",
+                            "Reviews": "Reviews",
+                        };
+                        return (
+                            <BottomNavigationAction
+                                key={item.href}
+                                label={shortLabel[item.text] ?? item.text}
+                                value={item.href}
+                                icon={
+                                    <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
+                                        <item.icon size={18} />
+                                    </Box>
+                                }
+                            />
+                        );
+                    })}
                 </BottomNavigation>
             </Paper>
         </Box>

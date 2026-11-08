@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -12,6 +13,11 @@ import {
   Paper,
   Skeleton,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -30,15 +36,20 @@ import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
+import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
+import useMeasure from "react-use-measure";
 import {
   getDashboardStats,
-  getSuperAdminOverview,
+  getPlatformAnalytics,
+  getSuperAdminSaasOverview,
   resolveMenuImageUrl,
+  type AnalyticsGrowth,
   type DashboardPeriod,
   type DashboardStats,
   type OrderStatus,
+  type PlatformAnalytics,
   type RecentOrderSummary,
-  type SuperAdminOverview,
+  type SuperAdminSaasOverview,
   type TopProduct,
 } from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
@@ -46,6 +57,7 @@ import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 import { useAuth } from "@/lib/auth-context";
 
+const formatNumber = (v: number) => Math.round(Number(v ?? 0)).toLocaleString("en-IN");
 const formatCurrency = (value: number, fractionDigits = 0) =>
   `Rs. ${Number(value ?? 0).toLocaleString("en-IN", {
     minimumFractionDigits: fractionDigits,
@@ -280,8 +292,63 @@ export default function AdminDashboardPage() {
   return isSuperAdmin ? <SuperAdminDashboard /> : <BusinessAdminDashboard />;
 }
 
+function GrowthPill({ growth, label }: { growth?: AnalyticsGrowth; label: string }) {
+  if (!growth) return null;
+  const up = (growth.percent ?? 0) >= 0;
+  return (
+    <Chip
+      size="small"
+      label={`${label}: ${up ? "+" : ""}${growth.percent ?? 0}%`}
+      sx={{ height: 22, fontWeight: 800, fontSize: "0.68rem", color: up ? "#166534" : "#991b1b", backgroundColor: up ? "#dcfce7" : "#fee2e2" }}
+    />
+  );
+}
+
+function MonthlySaasChart({ data }: { data: Array<{ label: string; orderRevenue: number; paidRevenue: number; businesses: number }> }) {
+  const [ref, bounds] = useMeasure();
+  const width = Math.max(bounds.width || 320, 320);
+  const height = 220;
+  const pad = { t: 18, r: 12, b: 34, l: 12 };
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const max = Math.max(1, ...data.map((d) => Math.max(d.orderRevenue || 0, d.paidRevenue || 0)));
+  const x = (i: number) => pad.l + (data.length <= 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+  const y = (v: number) => pad.t + innerH - (v / max) * innerH;
+  const line = (key: "orderRevenue" | "paidRevenue") => data.map((d, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(d[key] || 0)}`).join(" ");
+  return (
+    <Box ref={ref} sx={{ width: "100%", minWidth: 0 }}>
+      {data.length === 0 ? (
+        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem", py: 4, textAlign: "center" }}>No monthly series data available.</Typography>
+      ) : (
+        <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="Monthly revenue chart">
+          {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+            const yy = pad.t + innerH * (1 - p);
+            return <line key={p} x1={pad.l} y1={yy} x2={width - pad.r} y2={yy} stroke="var(--border)" strokeDasharray="4 6" />;
+          })}
+          <path d={line("orderRevenue")} fill="none" stroke="var(--chart-1)" strokeWidth="2.5" strokeLinecap="round" />
+          <path d={line("paidRevenue")} fill="none" stroke="var(--chart-2)" strokeWidth="2.5" strokeLinecap="round" />
+          {data.map((d, i) => (
+            <g key={d.label + i}>
+              <circle cx={x(i)} cy={y(d.orderRevenue || 0)} r="3" fill="var(--chart-1)" />
+              <circle cx={x(i)} cy={y(d.paidRevenue || 0)} r="3" fill="var(--chart-2)" />
+              {(data.length <= 8 || i % Math.ceil(data.length / 6) === 0 || i === data.length - 1) ? (
+                <text x={x(i)} y={height - 10} textAnchor="middle" fontSize="10" fill="var(--muted-foreground)">{d.label.replace(/ \d{4}$/, "")}</text>
+              ) : null}
+            </g>
+          ))}
+        </svg>
+      )}
+      <Stack direction="row" spacing={2} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={0.75} alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: 999, bgcolor: "var(--chart-1)" }} /><Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", fontWeight: 700 }}>Order revenue</Typography></Stack>
+        <Stack direction="row" spacing={0.75} alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: 999, bgcolor: "var(--chart-2)" }} /><Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", fontWeight: 700 }}>Paid subscription revenue</Typography></Stack>
+      </Stack>
+    </Box>
+  );
+}
+
 function SuperAdminDashboard() {
-  const [overview, setOverview] = React.useState<SuperAdminOverview | null>(null);
+  const [overview, setOverview] = React.useState<SuperAdminSaasOverview | null>(null);
+  const [analytics, setAnalytics] = React.useState<PlatformAnalytics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
@@ -290,9 +357,19 @@ function SuperAdminDashboard() {
   const fetchOverview = React.useCallback(async (quiet = false) => {
     if (!quiet) setRefreshing(true);
     try {
-      const data = await getSuperAdminOverview();
-      setOverview(data);
-      setFailed(false);
+      const [saas, platform] = await Promise.allSettled([
+        getSuperAdminSaasOverview(),
+        getPlatformAnalytics(),
+      ]);
+      if (saas.status === "fulfilled") {
+        setOverview(saas.value);
+        setFailed(false);
+      } else {
+        console.error("Failed to fetch super-admin overview:", saas.reason);
+        setFailed(true);
+        if (!quiet) showSnackbar(safeError(saas.reason, "Failed to load platform overview."), "error");
+      }
+      if (platform.status === "fulfilled") setAnalytics(platform.value);
     } catch (error) {
       console.error("Failed to fetch super-admin overview:", error);
       setFailed(true);
@@ -323,10 +400,10 @@ function SuperAdminDashboard() {
     return (
       <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
         <Skeleton variant="rounded" height={142} sx={{ borderRadius: "22px" }} />
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 2 }}>
-          {[0, 1, 2].map((key) => <Skeleton key={key} variant="rounded" height={150} sx={{ borderRadius: "18px" }} />)}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((key) => <Skeleton key={key} variant="rounded" height={118} sx={{ borderRadius: "18px" }} />)}
         </Box>
-        <Skeleton variant="rounded" height={220} sx={{ borderRadius: "22px" }} />
+        <Skeleton variant="rounded" height={280} sx={{ borderRadius: "22px" }} />
       </Box>
     );
   }
@@ -345,117 +422,233 @@ function SuperAdminDashboard() {
     );
   }
 
+  const k = overview.kpis;
   const summaries = [
-    {
-      label: "Businesses",
-      value: overview.businesses.total,
-      helper: `${overview.businesses.active} active · ${overview.businesses.inactive} inactive`,
-      icon: BusinessOutlinedIcon,
-      accent: "var(--chart-1)",
-    },
-    {
-      label: "Active businesses",
-      value: overview.businesses.active,
-      helper: "Currently available on the platform",
-      icon: StorefrontOutlinedIcon,
-      accent: "var(--chart-2)",
-    },
-    {
-      label: "User accounts",
-      value: overview.users.total,
-      helper: `${overview.users.admin} owners · ${overview.users.user} customers`,
-      icon: PeopleAltOutlinedIcon,
-      accent: "var(--chart-3)",
-    },
+    { label: "MRR", value: formatCurrency(k?.mrr ?? 0), helper: `ARR ${formatCurrency(k?.arr ?? 0)}`, accent: "var(--chart-1)" },
+    { label: "Paid revenue (month)", value: formatCurrency(k?.paidRevenueThisMonth ?? 0), helper: "Subscription payments", accent: "var(--chart-2)" },
+    { label: "Order revenue", value: formatCurrency(k?.orderRevenue ?? 0), helper: `${(k?.totalOrders ?? 0).toLocaleString("en-IN")} orders`, accent: "var(--chart-3)" },
+    { label: "Overdue payments", value: String(k?.overduePayments ?? 0), helper: `${k?.failedPayments30d ?? 0} failed (30d)`, accent: "#dc2626", warn: (k?.overduePayments ?? 0) > 0 },
+    { label: "Businesses", value: String(overview.businesses?.total ?? 0), helper: `${overview.businesses?.active ?? 0} active · ${k?.suspendedBusinesses ?? overview.businesses?.inactive ?? 0} suspended`, accent: "var(--chart-4, var(--chart-1))" },
+    { label: "Past-due subs", value: String(k?.pastDueSubscriptions ?? 0), helper: `${k?.expiringSubscriptions14d ?? 0} expiring (14d)`, accent: "#f59e0b", warn: (k?.pastDueSubscriptions ?? 0) > 0 },
+    { label: "Open alerts", value: String(k?.openAlerts ?? 0), helper: "Warnings/critical", accent: "#7c3aed", warn: (k?.openAlerts ?? 0) > 0 },
+    { label: "User accounts", value: String(overview.users?.total ?? 0), helper: `${overview.users?.admin ?? 0} owners · ${overview.users?.user ?? 0} customers`, accent: "var(--chart-5, var(--chart-2))" },
   ];
 
   const destinations = [
-    { title: "Businesses", detail: "Review business profiles and activation status.", href: "/super-admin/businesses", icon: StorefrontOutlinedIcon },
-    { title: "Users", detail: "Manage owners, customers, and administrator accounts.", href: "/super-admin/users", icon: PeopleAltOutlinedIcon },
-    { title: "Analytics", detail: "Explore growth, revenue, and API usage in detail.", href: "/super-admin/analytics", icon: InsightsOutlinedIcon },
+    { title: "Businesses", detail: "Profiles, suspension/reactivation, details.", href: "/super-admin/businesses", icon: StorefrontOutlinedIcon },
+    { title: "Subscriptions & Payments", detail: "Plans, payments, overdue reminders.", href: "/super-admin/subscriptions", icon: PaymentsOutlinedIcon },
+    { title: "Usage & Operations", detail: "Quotas, health, maintenance, backups.", href: "/super-admin/usage-operations", icon: InsightsOutlinedIcon },
+    { title: "Platform Analytics", detail: "Growth, revenue, and activity trends.", href: "/super-admin/platform-analytics", icon: TrendingUpOutlinedIcon },
   ];
+  const health = overview.health;
+  const bizTotals = analytics?.overview?.totals;
+  const bizList = analytics?.overview?.topBusinesses ?? [];
 
   return (
     <Box sx={{ display: "grid", gap: { xs: 1.5, md: 2 }, minWidth: 0 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: "22px",
-          border: "1px solid var(--border)",
-          backgroundColor: "var(--card)",
-          backgroundImage: "linear-gradient(120deg, color-mix(in srgb, var(--chart-2) 12%, transparent), transparent 58%)",
-          boxShadow: "0 16px 36px rgba(31, 42, 43, 0.08)",
-        }}
-      >
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={2}>
+      <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: "linear-gradient(120deg, color-mix(in srgb, var(--chart-2) 12%, transparent), transparent 58%)", boxShadow: "0 16px 36px rgba(31, 42, 43, 0.08)" }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={2}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.72rem", fontWeight: 850, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-              Super admin · Platform
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.72rem", fontWeight: 850, letterSpacing: "0.12em", textTransform: "uppercase" }}>Super admin · SaaS platform</Typography>
+            <Typography sx={{ mt: 0.4, fontSize: { xs: "1.5rem", md: "2rem" }, lineHeight: 1.1, fontWeight: 900 }}>Platform overview</Typography>
+            <Typography sx={{ mt: 0.7, color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, maxWidth: 720 }}>
+              Real-time SaaS metrics, subscription revenue, alerts, and system health. Data is aggregated server-side.
             </Typography>
-            <Typography sx={{ mt: 0.4, fontSize: { xs: "1.5rem", md: "2rem" }, lineHeight: 1.1, fontWeight: 900 }}>
-              Platform overview
-            </Typography>
-            <Typography sx={{ mt: 0.7, color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, maxWidth: 620 }}>
-              A quick snapshot of businesses and accounts. Use Analytics for revenue trends and detailed platform activity.
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+              <GrowthPill growth={overview.growth?.businesses} label="Businesses" />
+              <GrowthPill growth={overview.growth?.orderRevenue} label="Order rev" />
+              <GrowthPill growth={overview.growth?.paidRevenue} label="Paid rev" />
+            </Stack>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Button component={Link} href="/super-admin/analytics" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ minHeight: 44, borderRadius: "12px", textTransform: "none", fontWeight: 850 }}>
-              Open analytics
-            </Button>
-            <IconButton aria-label="Refresh platform overview" onClick={() => void fetchOverview(false)} disabled={refreshing} sx={{ width: 44, height: 44, borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <RefreshIcon />
-            </IconButton>
+            <Button component={Link} href="/super-admin/platform-analytics" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ minHeight: 44, borderRadius: "12px", textTransform: "none", fontWeight: 850 }}>Platform analytics</Button>
+            <IconButton aria-label="Refresh platform overview" onClick={() => void fetchOverview(false)} disabled={refreshing} sx={{ width: 44, height: 44, borderRadius: "12px", border: "1px solid var(--border)" }}><RefreshIcon /></IconButton>
           </Stack>
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1.25, md: 2 }, minWidth: 0 }}>
-        {summaries.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Paper key={item.label} elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, minWidth: 0, borderRadius: "18px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-              <Stack direction="row" alignItems="center" spacing={1.25}>
-                <Box sx={{ width: 42, height: 42, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "13px", color: item.accent, backgroundColor: `color-mix(in srgb, ${item.accent} 14%, transparent)` }}>
-                  <Icon />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</Typography>
-                  <Typography sx={{ mt: 0.15, fontSize: { xs: "1.45rem", md: "1.7rem" }, lineHeight: 1.1, fontWeight: 900 }}>{item.value.toLocaleString("en-IN")}</Typography>
-                </Box>
-              </Stack>
-              <Typography sx={{ mt: 1.25, color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 650 }}>{item.helper}</Typography>
-            </Paper>
-          );
-        })}
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: { xs: 1.25, md: 1.5 }, minWidth: 0 }}>
+        {summaries.map((item) => (
+          <Paper key={item.label} elevation={0} sx={{ p: { xs: 1.35, md: 1.75 }, minWidth: 0, borderRadius: "18px", border: item.warn ? `1px solid color-mix(in srgb, ${item.accent} 35%, var(--border))` : "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</Typography>
+            <Typography sx={{ mt: 0.2, fontSize: { xs: "1.15rem", md: "1.45rem" }, lineHeight: 1.1, fontWeight: 900, color: item.warn ? item.accent : undefined, wordBreak: "break-word" }}>{item.value}</Typography>
+            <Typography sx={{ mt: 0.75, color: "var(--muted-foreground)", fontSize: "0.74rem", fontWeight: 650 }}>{item.helper}</Typography>
+          </Paper>
+        ))}
       </Box>
 
-      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-        <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Manage the platform</Typography>
-        <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Go directly to the area you need.</Typography>
-        <Box sx={{ mt: 1.75, display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
-          {destinations.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Paper key={item.title} component={Link} href={item.href} elevation={0} sx={{ p: 1.5, minWidth: 0, display: "flex", alignItems: "center", gap: 1.25, textDecoration: "none", color: "inherit", borderRadius: "15px", border: "1px solid var(--border)", backgroundColor: "var(--background)", transition: "border-color 160ms ease, transform 160ms ease", "&:hover": { borderColor: "var(--primary)", transform: "translateY(-2px)" } }}>
-                <Box sx={{ width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "12px", color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}><Icon fontSize="small" /></Box>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 850 }}>{item.title}</Typography>
-                  <Typography sx={{ mt: 0.2, color: "var(--muted-foreground)", fontSize: "0.75rem", lineHeight: 1.4 }}>{item.detail}</Typography>
-                </Box>
-                <ArrowForwardRoundedIcon sx={{ color: "var(--muted-foreground)", fontSize: 18, flexShrink: 0 }} />
+      <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0 }}>
+          <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Monthly trends</Typography>
+          <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Order revenue vs paid subscription revenue (last 12 months).</Typography>
+          <Box sx={{ mt: 1.5 }}><MonthlySaasChart data={overview.monthly ?? []} /></Box>
+        </Paper>
+
+            {analytics?.usage ? (
+        <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0, overflow: "hidden" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <SpeedOutlinedIcon sx={{ color: "var(--chart-2)" }} />
+              <Box>
+                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>API health & requests</Typography>
+                <Typography sx={{ mt: 0.2, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Traffic, errors, and latency (last 24h) to help spot issues quickly.</Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label={`Now: ${formatNumber(analytics.usage.last24h.currentPerMinute)}/min`} sx={{ fontWeight: 800, bgcolor: "var(--status-active-bg, #dcfce7)", color: "var(--status-active-fg, #166534)" }} />
+              <Chip size="small" label={`Peak: ${formatNumber(analytics.usage.last24h.peakPerMinute)}/min`} sx={{ fontWeight: 800 }} />
+              <Chip size="small" label={`Errors: ${formatNumber(analytics.usage.last24h.errors)} (${analytics.usage.last24h.errorRate}%)`} sx={{ fontWeight: 800, color: (analytics.usage.last24h.errorRate ?? 0) > 0 ? "#991b1b" : "#166534", bgcolor: (analytics.usage.last24h.errorRate ?? 0) > 0 ? "#fee2e2" : "#dcfce7" }} />
+            </Stack>
+          </Stack>
+          <Box sx={{ mt: 1.5, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(5,minmax(0,1fr))" }, gap: 1.25 }}>
+            {[
+              { label: "Requests (24h)", value: formatNumber(analytics.usage.last24h.requests) },
+              { label: "Error rate", value: `${analytics.usage.last24h.errorRate}%` },
+              { label: "Avg latency", value: `${formatNumber(analytics.usage.last24h.avgLatencyMs)} ms` },
+              { label: "p95 latency", value: `${formatNumber(analytics.usage.last24h.p95LatencyMs)} ms` },
+              { label: "Active API users", value: formatNumber(analytics.usage.last24h.uniqueUsers) },
+            ].map((item) => (
+              <Paper key={item.label} elevation={0} sx={{ p: 1.25, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
+                <Typography sx={{ fontSize: "0.66rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>{item.label}</Typography>
+                <Typography sx={{ mt: 0.2, fontSize: "1.02rem", fontWeight: 900 }}>{item.value}</Typography>
               </Paper>
-            );
-          })}
-        </Box>
-        <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
-        <Stack direction="row" useFlexGap flexWrap="wrap" spacing={{ xs: 1.5, sm: 3 }}>
-          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.super_admin}</strong> super admins</Typography>
-          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.admin}</strong> business owners</Typography>
-          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users.user}</strong> customers</Typography>
+            ))}
+          </Box>
+          {analytics.usage.routes?.length ? (
+            <Box sx={{ mt: 1.5, overflowX: "auto" }}>
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 850, mb: 0.75 }}>Top endpoints (24h) — check errors/latency for issues</Typography>
+              <Table size="small" sx={{ minWidth: 560 }}>
+                <TableHead>
+                  <TableRow>
+                    {["Route", "Requests", "Avg", "Errors"].map((h) => (
+                      <TableCell key={h} align={h === "Route" ? "left" : "right"} sx={{ fontWeight: 850, fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase" }}>{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {analytics.usage.routes.slice(0, 8).map((r, idx) => (
+                    <TableRow key={idx} hover>
+                      <TableCell sx={{ fontFamily: "ui-monospace, monospace", fontSize: "0.74rem", fontWeight: 700 }}><Box component="span" sx={{ mr: 0.75, color: "var(--muted-foreground)" }}>{r.method}</Box>{r.path}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 750 }}>{formatNumber(r.requests)}</TableCell>
+                      <TableCell align="right" sx={{ color: "var(--muted-foreground)" }}>{formatNumber(r.avgMs)} ms</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 850, color: r.errors > 0 ? "var(--destructive, #dc2626)" : "var(--muted-foreground)" }}>{formatNumber(r.errors)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          ) : (
+            <Typography sx={{ mt: 1.25, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>No API request data yet (requests are logged as the API is used).</Typography>
+          )}
+        </Paper>
+      ) : null}
+
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0, overflow: "hidden" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Project running — revenue & business details</Typography>
+            <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>
+              {bizTotals
+                ? `All businesses total: ${formatCurrency(bizTotals.revenue ?? 0)} revenue · ${(bizTotals.orders ?? 0).toLocaleString("en-IN")} orders · ${(bizTotals.businesses ?? 0).toLocaleString("en-IN")} businesses. Per-business revenue and details below.`
+                : "Loading revenue and business details…"}
+            </Typography>
+          </Box>
+          <Button component={Link} href="/super-admin/analytics" size="small" endIcon={<ArrowForwardRoundedIcon />} sx={{ fontWeight: 800, textTransform: "none", flexShrink: 0 }}>Business analytics</Button>
         </Stack>
+        {bizTotals ? (
+          <>
+            <Box sx={{ mt: 1.5, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))" }, gap: 1.25 }}>
+              {[
+                { label: "Total revenue", value: formatCurrency(bizTotals.revenue ?? 0) },
+                { label: "Total orders", value: (bizTotals.orders ?? 0).toLocaleString("en-IN") },
+                { label: "Active businesses", value: `${bizTotals.activeBusinesses ?? 0} / ${bizTotals.businesses ?? 0}` },
+                { label: "Menu / tables", value: `${(bizTotals.menuItems ?? 0).toLocaleString("en-IN")} / ${(bizTotals.tables ?? 0).toLocaleString("en-IN")}` },
+              ].map((item) => (
+                <Paper key={item.label} elevation={0} sx={{ p: 1.25, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
+                  <Typography sx={{ fontSize: "0.68rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>{item.label}</Typography>
+                  <Typography sx={{ mt: 0.2, fontSize: "1.05rem", fontWeight: 900 }}>{item.value}</Typography>
+                </Paper>
+              ))}
+            </Box>
+            <Box sx={{ mt: 1.5, overflowX: "auto" }}>
+              <Table size="small" sx={{ minWidth: 760 }}>
+                <TableHead>
+                  <TableRow>
+                    {["Business", "Status", "Orders", "Revenue", "Menu", "Tables", "Users"].map((h) => (
+                      <TableCell key={h} align={["Orders", "Revenue", "Menu", "Tables", "Users"].includes(h) ? "right" : "left"} sx={{ fontWeight: 850, fontSize: "0.72rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bizList.map((b) => (
+                    <TableRow key={b.id} hover>
+                      <TableCell sx={{ fontWeight: 850 }}>{b.name}</TableCell>
+                      <TableCell>
+                        <Chip size="small" label={b.isActive ? "Active" : "Inactive"} sx={{ height: 22, fontWeight: 800, fontSize: "0.68rem", color: b.isActive ? "var(--status-active-fg, #166534)" : "var(--status-inactive-fg, #991b1b)", backgroundColor: b.isActive ? "var(--status-active-bg, #dcfce7)" : "var(--status-inactive-bg, #fee2e2)" }} />
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 750 }}>{(b.orders ?? 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 900 }}>{formatCurrency(b.revenue ?? 0)}</TableCell>
+                      <TableCell align="right">{(b.menuItems ?? 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell align="right">{(b.tables ?? 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell align="right">{(b.users ?? 0).toLocaleString("en-IN")}</TableCell>
+                    </TableRow>
+                  ))}
+                  {bizList.length === 0 ? <TableRow><TableCell colSpan={7} sx={{ py: 3, textAlign: "center", color: "var(--muted-foreground)" }}>No businesses found.</TableCell></TableRow> : null}
+                </TableBody>
+              </Table>
+            </Box>
+          </>
+        ) : (
+          <Typography sx={{ mt: 1.5, color: "var(--muted-foreground)", fontSize: "0.84rem" }}>Business revenue/details are unavailable (analytics endpoint).</Typography>
+        )}
       </Paper>
+
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, minWidth: 0 }}>
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", minWidth: 0 }}>
+            <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>System health</Typography>
+            <Stack spacing={1} sx={{ mt: 1.25 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Database</Typography><Chip size="small" label={health?.database?.ok ? "Connected" : "Issue"} sx={{ height: 22, fontWeight: 800, color: health?.database?.ok ? "#166534" : "#991b1b", backgroundColor: health?.database?.ok ? "#dcfce7" : "#fee2e2" }} /></Stack>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>DB: {health?.database?.name || "—"} · Cache: {health?.cache?.driver || "—"}</Typography>
+              <Divider />
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Queue/jobs</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Pending {health?.queue?.pending_jobs ?? 0} · Failed {health?.queue?.failed_jobs ?? 0}{health?.queue?.instrumented ? "" : " (not fully instrumented)"}</Typography>
+              <Divider />
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>API errors (15m)</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{health?.requests?.instrumented ? `${health.requests.error_rate ?? 0}% · ${health.requests.errors ?? 0}/${health.requests.requests ?? 0} requests` : "API request logging not instrumented"}</Typography>
+              <Divider />
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Maintenance</Typography>
+              <Chip size="small" label={health?.maintenance?.enabled ? "Enabled" : "Off"} sx={{ alignSelf: "flex-start", height: 22, fontWeight: 800, color: health?.maintenance?.enabled ? "#92400e" : "#166534", backgroundColor: health?.maintenance?.enabled ? "#fef3c7" : "#dcfce7" }} />
+              <Divider />
+              <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Backups</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last success: {health?.backups?.last_success_at ? new Date(health.backups.last_success_at).toLocaleString() : "None recorded"}{health?.backups?.automated_verification === false ? " · automated verification not instrumented" : ""}</Typography>
+            </Stack>
+          </Paper>
+<Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+          <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>Manage the platform</Typography>
+          <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.82rem" }}>Go directly to the area you need.</Typography>
+          <Box sx={{ mt: 1.75, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))", xl: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
+            {destinations.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Paper key={item.title} component={Link} href={item.href} elevation={0} sx={{ p: 1.5, minWidth: 0, display: "flex", alignItems: "center", gap: 1.25, textDecoration: "none", color: "inherit", borderRadius: "15px", border: "1px solid var(--border)", backgroundColor: "var(--background)", transition: "border-color 160ms ease, transform 160ms ease", "&:hover": { borderColor: "var(--primary)", transform: "translateY(-2px)" } }}>
+                  <Box sx={{ width: 38, height: 38, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "12px", color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}><Icon fontSize="small" /></Box>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography sx={{ fontWeight: 850 }}>{item.title}</Typography>
+                    <Typography sx={{ mt: 0.2, color: "var(--muted-foreground)", fontSize: "0.75rem", lineHeight: 1.4 }}>{item.detail}</Typography>
+                  </Box>
+                  <ArrowForwardRoundedIcon sx={{ color: "var(--muted-foreground)", fontSize: 18, flexShrink: 0 }} />
+                </Paper>
+              );
+            })}
+          </Box>
+          <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
+          <Stack direction="row" useFlexGap flexWrap="wrap" spacing={{ xs: 1.5, sm: 3 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users?.super_admin ?? 0}</strong> super admins</Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users?.admin ?? 0}</strong> business owners</Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}><strong>{overview.users?.user ?? 0}</strong> customers</Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Updated {overview.generatedAt ? new Date(overview.generatedAt).toLocaleString() : "—"}</Typography>
+          </Stack>
+        </Paper>
+      </Box>
     </Box>
   );
 }
@@ -465,6 +658,7 @@ function BusinessAdminDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [period, setPeriod] = React.useState<DashboardPeriod>("daily");
+  const [platformBlock, setPlatformBlock] = React.useState<{ code: string; message: string } | null>(null);
   const { showSnackbar } = useAppSnackbar();
 
   const fetchStats = React.useCallback(
@@ -472,9 +666,18 @@ function BusinessAdminDashboard() {
       try {
         const data = await getDashboardStats(requestedPeriod);
         setStats(data);
-      } catch (error) {
+        setPlatformBlock(null);
+      } catch (error: any) {
         console.error("Failed to fetch dashboard:", error);
-        showSnackbar(safeError(error, "Failed to load dashboard."), "error");
+        const code = error?.response?.data?.code;
+        if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
+          setPlatformBlock({
+            code,
+            message: error?.response?.data?.message || "Service is temporarily unavailable.",
+          });
+        } else {
+          showSnackbar(safeError(error, "Failed to load dashboard."), "error");
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -542,6 +745,31 @@ function BusinessAdminDashboard() {
           <Skeleton variant="rounded" height={340} sx={{ borderRadius: "22px" }} />
           <Skeleton variant="rounded" height={340} sx={{ borderRadius: "22px" }} />
         </Box>
+      </Box>
+    );
+  }
+
+  if (platformBlock) {
+    return (
+      <Box sx={{ display: "grid", gap: 2 }}>
+        <Alert
+          severity={platformBlock.code === "MAINTENANCE_MODE" ? "warning" : "error"}
+          variant="filled"
+          sx={{ borderRadius: "16px", alignItems: "flex-start", "& .MuiAlert-message": { width: "100%" } }}
+        >
+          <Typography sx={{ fontWeight: 900, fontSize: "1rem", lineHeight: 1.25 }}>
+            {platformBlock.code === "MAINTENANCE_MODE" ? "Platform maintenance" : "Business access restricted"}
+          </Typography>
+          <Typography sx={{ mt: 0.4, fontSize: "0.9rem", fontWeight: 650, opacity: 0.96 }}>
+            {platformBlock.message}
+          </Typography>
+          <Typography sx={{ mt: 0.6, fontSize: "0.76rem", fontWeight: 800, opacity: 0.88 }}>
+            {platformBlock.code.replace(/_/g, " ")}
+          </Typography>
+        </Alert>
+        <Button onClick={handleRefresh} sx={{ borderRadius: "12px", justifySelf: "start" }} variant="contained">
+          Try again
+        </Button>
       </Box>
     );
   }

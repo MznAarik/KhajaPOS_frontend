@@ -59,7 +59,7 @@ export default function ProfileComponent({
 
     const handleSettings = () => {
         handleClose();
-        router.push(pathname?.startsWith("/super-admin") ? "/super-admin/dashboard" : "/business-admin/settings");
+        router.push(pathname?.startsWith("/super-admin") ? "/super-admin/settings" : "/business-admin/settings");
     };
 
     const handleLogout = async () => {
@@ -189,16 +189,12 @@ export default function ProfileComponent({
                                     Edit Profile
                                 </MenuItem>,
                             ]),
-                        ...(showSettings
-                            ? [
-                                <MenuItem key="settings" onClick={handleSettings} sx={{ py: 1.2 }}>
-                                    <ListItemIcon>
-                                        <SettingsRoundedIcon fontSize="small" sx={{ color: "var(--foreground)" }} />
-                                    </ListItemIcon>
-                                    Settings
-                                </MenuItem>,
-                            ]
-                            : []),
+                        <MenuItem key="settings" onClick={handleSettings} sx={{ py: 1.2 }}>
+                            <ListItemIcon>
+                                <SettingsRoundedIcon fontSize="small" sx={{ color: "var(--foreground)" }} />
+                            </ListItemIcon>
+                            Settings
+                        </MenuItem>,
                         <MenuItem
                             key="logout"
                             onClick={handleLogout}
