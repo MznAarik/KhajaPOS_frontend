@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import {
-  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Fade, Grow,
   InputAdornment, LinearProgress, MenuItem, Paper, Skeleton, Stack, Tab, Tabs,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { AnimatePresence, motion } from "motion/react";
+import { shakeKeyframes, shakeTransition, spring, useOrigin, useReducedMotion } from "@/lib/motion";
+
+const MotionButton = motion.create(Button);
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -59,6 +63,10 @@ function QuotaBar({ label, value, limit }: { label: string; value: number; limit
 export default function SuperAdminUsageOperationsPage() {
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down("sm"));
+  const reducedMotion = useReducedMotion();
+  const { origin: dialogOrigin, capture: captureDialogOrigin } = useOrigin();
+  const [shakeMaintenance, setShakeMaintenance] = React.useState(0);
+  const [shakeBackup, setShakeBackup] = React.useState(0);
 
   const [tab, setTab] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -105,7 +113,7 @@ export default function SuperAdminUsageOperationsPage() {
       showSnackbar(maintenanceForm.enabled ? "Maintenance mode enabled." : "Maintenance mode disabled.", "success");
       setMaintenanceDialog(false);
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to update maintenance mode."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakeMaintenance((k) => k + 1); showSnackbar(safeError(e, "Failed to update maintenance mode."), "error"); } finally { setSaving(false); }
   };
 
   const saveBackup = async () => {
@@ -123,7 +131,7 @@ export default function SuperAdminUsageOperationsPage() {
       setBackupDialog(false);
       setBackupForm({ name: "", type: "database", status: "recorded", source: "manual_record", path: "", notes: "" });
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to record backup."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakeBackup((k) => k + 1); showSnackbar(safeError(e, "Failed to record backup."), "error"); } finally { setSaving(false); }
   };
 
   const health = operations?.health ?? {};
@@ -168,9 +176,9 @@ export default function SuperAdminUsageOperationsPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.75} flexWrap={{ xs: "wrap", sm: "nowrap" }} useFlexGap sx={{ minWidth: 0, maxWidth: "100%", width: { xs: "100%", sm: "auto" } }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Refresh</Button>
-            <Button variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={() => setMaintenanceDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</Button>
-            <Button variant="contained" startIcon={<BackupOutlinedIcon />} onClick={() => setBackupDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</Button>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Refresh</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setMaintenanceDialog(true); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<BackupOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setBackupDialog(true); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</MotionButton>
           </Stack>
         </Stack>
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))", xl: "repeat(8,minmax(0,1fr))" }, gap: 1 }}>
@@ -197,6 +205,14 @@ export default function SuperAdminUsageOperationsPage() {
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
         <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden", minWidth: 0 }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={tab}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.16 } }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
           {tab === 0 && (
             <Box sx={{ minWidth: 0 }}>
               {usage.summary?.storage_instrumented === false ? (
@@ -235,44 +251,57 @@ export default function SuperAdminUsageOperationsPage() {
 
               {/* Mobile cards */}
               <Box sx={{ display: { xs: "grid", lg: "none" }, gap: 1, p: 1.25, pt: 0 }}>
-                {filteredUsage.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>{usage.items.length === 0 ? "No businesses found." : "No businesses match the current filter."}</Typography> : filteredUsage.map((row) => {
-                  const s = row.storage;
-                  const logo = s?.breakdown?.logo;
-                  const menuImgs = s?.breakdown?.menu_items;
-                  return (
-                    <MobileCard key={row.business.id}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography sx={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2 }} noWrap>{row.business.name}</Typography>
-                          <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: 0.15 }}>
-                            {row.plan?.name ?? "No plan"}{row.subscription_status ? ` · ${row.subscription_status}` : ""}
-                          </Typography>
-                        </Box>
-                        {!row.business.is_active ? <Chip size="small" label="Suspended" sx={{ fontWeight: 800, color: "#92400e", bgcolor: "#fef3c7", flexShrink: 0 }} /> : null}
-                      </Stack>
-                      <Box sx={{ mt: 1, p: 1, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--card) 70%, transparent)", border: "1px solid var(--border)" }}>
-                        <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap spacing={0.5}>
-                          <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Images: {s?.total_images ?? row.metrics?.image_count ?? 0}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Known: {fmtBytes(s?.known_bytes ?? 0)}</Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Logo {logo?.images ?? 0} ({fmtBytes(logo?.known_bytes ?? 0)}) · Menu {menuImgs?.images ?? 0} ({fmtBytes(menuImgs?.known_bytes ?? 0)})</Typography>
-                        {(s?.unknown_images ?? 0) > 0 || (s?.missing_images ?? 0) > 0 ? <Typography sx={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700, mt: 0.15 }}>Unknown {s?.unknown_images ?? 0} · Missing {s?.missing_images ?? 0}</Typography> : null}
-                      </Box>
-                      <Stack spacing={0.85} sx={{ mt: 1 }}>
-                        <QuotaBar label="Orders / mo" value={row.metrics?.orders_per_month ?? 0} limit={row.limits?.orders_per_month} />
-                        <QuotaBar label="Menu items" value={row.metrics?.menu_items ?? 0} limit={row.limits?.menu_items} />
-                        <QuotaBar label="Tables" value={row.metrics?.tables ?? 0} limit={row.limits?.tables} />
-                        <QuotaBar label="Users" value={row.metrics?.users ?? 0} limit={row.limits?.users} />
-                      </Stack>
-                      {row.warnings?.length ? (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                          {row.warnings.map((w, i) => <SevChip key={i} severity={w.severity} label={`${w.severity}: ${w.metric}`} />)}
-                        </Stack>
-                      ) : null}
-                      {row.warnings?.length ? <Typography sx={{ mt: 0.5, fontSize: "0.74rem", color: "var(--muted-foreground)" }}>{row.warnings.map((w) => w.message).join(" ")}</Typography> : null}
-                    </MobileCard>
-                  );
-                })}
+                {filteredUsage.length === 0 ? <Typography sx={{ py: 4, textAlign: "center", color: "var(--muted-foreground)", fontWeight: 650 }}>{usage.items.length === 0 ? "No businesses found." : "No businesses match the current filter."}</Typography> : (
+                  <AnimatePresence initial={false}>
+                    {filteredUsage.map((row) => {
+                      const s = row.storage;
+                      const logo = s?.breakdown?.logo;
+                      const menuImgs = s?.breakdown?.menu_items;
+                      return (
+                        <motion.div
+                          key={row.business.id}
+                          layout={!reducedMotion}
+                          initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={reducedMotion ? undefined : { opacity: 0, y: -6, transition: { duration: 0.16 } }}
+                          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <MobileCard>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                              <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography sx={{ fontWeight: 900, fontSize: "0.94rem", lineHeight: 1.2 }} noWrap>{row.business.name}</Typography>
+                                <Typography sx={{ fontSize: "0.76rem", color: "var(--muted-foreground)", mt: 0.15 }}>
+                                  {row.plan?.name ?? "No plan"}{row.subscription_status ? ` · ${row.subscription_status}` : ""}
+                                </Typography>
+                              </Box>
+                              {!row.business.is_active ? <Chip size="small" label="Suspended" sx={{ fontWeight: 800, color: "#92400e", bgcolor: "#fef3c7", flexShrink: 0 }} /> : null}
+                            </Stack>
+                            <Box sx={{ mt: 1, p: 1, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--card) 70%, transparent)", border: "1px solid var(--border)" }}>
+                              <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap spacing={0.5}>
+                                <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Images: {s?.total_images ?? row.metrics?.image_count ?? 0}</Typography>
+                                <Typography sx={{ fontSize: "0.78rem", fontWeight: 850 }}>Known: {fmtBytes(s?.known_bytes ?? 0)}</Typography>
+                              </Stack>
+                              <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Logo {logo?.images ?? 0} ({fmtBytes(logo?.known_bytes ?? 0)}) · Menu {menuImgs?.images ?? 0} ({fmtBytes(menuImgs?.known_bytes ?? 0)})</Typography>
+                              {(s?.unknown_images ?? 0) > 0 || (s?.missing_images ?? 0) > 0 ? <Typography sx={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700, mt: 0.15 }}>Unknown {s?.unknown_images ?? 0} · Missing {s?.missing_images ?? 0}</Typography> : null}
+                            </Box>
+                            <Stack spacing={0.85} sx={{ mt: 1 }}>
+                              <QuotaBar label="Orders / mo" value={row.metrics?.orders_per_month ?? 0} limit={row.limits?.orders_per_month} />
+                              <QuotaBar label="Menu items" value={row.metrics?.menu_items ?? 0} limit={row.limits?.menu_items} />
+                              <QuotaBar label="Tables" value={row.metrics?.tables ?? 0} limit={row.limits?.tables} />
+                              <QuotaBar label="Users" value={row.metrics?.users ?? 0} limit={row.limits?.users} />
+                            </Stack>
+                            {row.warnings?.length ? (
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                {row.warnings.map((w, i) => <SevChip key={i} severity={w.severity} label={`${w.severity}: ${w.metric}`} />)}
+                              </Stack>
+                            ) : null}
+                            {row.warnings?.length ? <Typography sx={{ mt: 0.5, fontSize: "0.74rem", color: "var(--muted-foreground)" }}>{row.warnings.map((w) => w.message).join(" ")}</Typography> : null}
+                          </MobileCard>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                )}
               </Box>
 
               {/* Desktop table */}
@@ -386,38 +415,62 @@ export default function SuperAdminUsageOperationsPage() {
               </Box>
             </Box>
           )}
+            </motion.div>
+          </AnimatePresence>
         </Paper>
       )}
 
-      <Dialog open={maintenanceDialog} onClose={saving ? undefined : () => setMaintenanceDialog(false)} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={maintenanceDialog}
+        onClose={saving ? undefined : () => setMaintenanceDialog(false)}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Platform maintenance mode</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}>
-          <Alert severity={maintenanceForm.enabled ? "warning" : "info"} sx={{ mb: 2, borderRadius: "12px" }}>When enabled, public/business flows should be blocked with a clear maintenance notice. Super admin access can remain allowed.</Alert>
-          <Stack spacing={1.5}>
-            <TextField select label="Maintenance mode" value={maintenanceForm.enabled ? "on" : "off"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, enabled: e.target.value === "on" }))} fullWidth><MenuItem value="off">Off</MenuItem><MenuItem value="on">On</MenuItem></TextField>
-            <TextField label="User-facing message" value={maintenanceForm.message} onChange={(e) => setMaintenanceForm((f) => ({ ...f, message: e.target.value }))} fullWidth multiline minRows={3} />
-            <TextField select label="Allow super admin during maintenance" value={maintenanceForm.allow_super_admin ? "yes" : "no"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, allow_super_admin: e.target.value === "yes" }))} fullWidth><MenuItem value="yes">Yes</MenuItem><MenuItem value="no">No</MenuItem></TextField>
-          </Stack>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakeMaintenance} animate={reducedMotion || shakeMaintenance === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Alert severity={maintenanceForm.enabled ? "warning" : "info"} sx={{ mb: 2, borderRadius: "12px" }}>When enabled, public/business flows should be blocked with a clear maintenance notice. Super admin access can remain allowed.</Alert>
+            <Stack spacing={1.5}>
+              <TextField select label="Maintenance mode" value={maintenanceForm.enabled ? "on" : "off"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, enabled: e.target.value === "on" }))} fullWidth><MenuItem value="off">Off</MenuItem><MenuItem value="on">On</MenuItem></TextField>
+              <TextField label="User-facing message" value={maintenanceForm.message} onChange={(e) => setMaintenanceForm((f) => ({ ...f, message: e.target.value }))} fullWidth multiline minRows={3} />
+              <TextField select label="Allow super admin during maintenance" value={maintenanceForm.allow_super_admin ? "yes" : "no"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, allow_super_admin: e.target.value === "yes" }))} fullWidth><MenuItem value="yes">Yes</MenuItem><MenuItem value="no">No</MenuItem></TextField>
+            </Stack>
+          </motion.div>
         </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><Button onClick={() => setMaintenanceDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</Button><Button variant="contained" onClick={saveMaintenance} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Save"}</Button></DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setMaintenanceDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</MotionButton><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={saveMaintenance} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Save"}</MotionButton></DialogActions>
       </Dialog>
 
-      <Dialog open={backupDialog} onClose={saving ? undefined : () => setBackupDialog(false)} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={backupDialog}
+        onClose={saving ? undefined : () => setBackupDialog(false)}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Record backup event</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}>
-          <Alert severity="info" sx={{ mb: 2, borderRadius: "12px" }}>Records backup metadata/status for monitoring. Automated execution/verification is disclosed as not fully instrumented unless integrated.</Alert>
-          <Stack spacing={1.5}>
-            <TextField label="Name" value={backupForm.name} onChange={(e) => setBackupForm((f) => ({ ...f, name: e.target.value }))} fullWidth placeholder="e.g. Nightly DB backup" />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <TextField label="Type" value={backupForm.type} onChange={(e) => setBackupForm((f) => ({ ...f, type: e.target.value }))} fullWidth />
-              <TextField select label="Status" value={backupForm.status} onChange={(e) => setBackupForm((f) => ({ ...f, status: e.target.value }))} fullWidth>{["recorded", "running", "success", "failed", "verified"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakeBackup} animate={reducedMotion || shakeBackup === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Alert severity="info" sx={{ mb: 2, borderRadius: "12px" }}>Records backup metadata/status for monitoring. Automated execution/verification is disclosed as not fully instrumented unless integrated.</Alert>
+            <Stack spacing={1.5}>
+              <TextField label="Name" value={backupForm.name} onChange={(e) => setBackupForm((f) => ({ ...f, name: e.target.value }))} fullWidth placeholder="e.g. Nightly DB backup" />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField label="Type" value={backupForm.type} onChange={(e) => setBackupForm((f) => ({ ...f, type: e.target.value }))} fullWidth />
+                <TextField select label="Status" value={backupForm.status} onChange={(e) => setBackupForm((f) => ({ ...f, status: e.target.value }))} fullWidth>{["recorded", "running", "success", "failed", "verified"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+              </Stack>
+              <TextField label="Source" value={backupForm.source} onChange={(e) => setBackupForm((f) => ({ ...f, source: e.target.value }))} fullWidth />
+              <TextField label="Path (optional)" value={backupForm.path} onChange={(e) => setBackupForm((f) => ({ ...f, path: e.target.value }))} fullWidth />
+              <TextField label="Notes" value={backupForm.notes} onChange={(e) => setBackupForm((f) => ({ ...f, notes: e.target.value }))} fullWidth multiline minRows={2} />
             </Stack>
-            <TextField label="Source" value={backupForm.source} onChange={(e) => setBackupForm((f) => ({ ...f, source: e.target.value }))} fullWidth />
-            <TextField label="Path (optional)" value={backupForm.path} onChange={(e) => setBackupForm((f) => ({ ...f, path: e.target.value }))} fullWidth />
-            <TextField label="Notes" value={backupForm.notes} onChange={(e) => setBackupForm((f) => ({ ...f, notes: e.target.value }))} fullWidth multiline minRows={2} />
-          </Stack>
+          </motion.div>
         </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><Button onClick={() => setBackupDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</Button><Button variant="contained" onClick={saveBackup} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Record"}</Button></DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setBackupDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</MotionButton><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={saveBackup} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Record"}</MotionButton></DialogActions>
       </Dialog>
     </Box>
   );

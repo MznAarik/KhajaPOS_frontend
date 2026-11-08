@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Box, Button, Chip, IconButton, MenuItem, Paper, Skeleton, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
+import { motion } from "motion/react";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
@@ -12,6 +13,9 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { spring, useReducedMotion } from "@/lib/motion";
+
+const MotionButton = motion.create(Button);
 
 const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
 
@@ -22,6 +26,7 @@ function SevChip({ severity }: { severity: string }) {
 }
 
 export default function SuperAdminNotificationsPage() {
+  const reducedMotion = useReducedMotion();
   const [loading, setLoading] = React.useState(true);
   const [items, setItems] = React.useState<SuperAdminNotificationItem[]>([]);
   const [counts, setCounts] = React.useState<any>({});
@@ -76,8 +81,8 @@ export default function SuperAdminNotificationsPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: { xs: "100%", sm: "auto" } }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 auto", sm: "0 0 auto" } }}>Refresh</Button>
-            <Button variant="contained" startIcon={<DoneAllRoundedIcon />} onClick={markAllRead} disabled={saving} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 auto", sm: "0 0 auto" } }}>Mark all read</Button>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 auto", sm: "0 0 auto" } }}>Refresh</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<DoneAllRoundedIcon />} onClick={markAllRead} disabled={saving} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 auto", sm: "0 0 auto" } }}>Mark all read</MotionButton>
           </Stack>
         </Stack>
         <Stack direction="row" spacing={1.25} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
@@ -103,7 +108,15 @@ export default function SuperAdminNotificationsPage() {
               <TableHead><TableRow>{["Severity", "Title / Message", "Business", "Type", "Created", "Status", "Action"].map((h) => <TableCell key={h} sx={{ fontWeight: 850 }}>{h}</TableCell>)}</TableRow></TableHead>
               <TableBody>
                 {items.map((n) => (
-                  <TableRow key={n.id} hover sx={!n.is_read ? { backgroundColor: "rgba(59,130,246,0.04)" } : undefined}>
+                  <TableRow
+                    key={n.id}
+                    component={motion.tr}
+                    initial={reducedMotion ? false : { opacity: 0.72 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.22 }}
+                    hover
+                    sx={!n.is_read ? { backgroundColor: "rgba(59,130,246,0.04)" } : undefined}
+                  >
                     <TableCell><SevChip severity={n.severity} /></TableCell>
                     <TableCell sx={{ minWidth: 320 }}>
                       <Typography sx={{ fontWeight: n.is_read ? 750 : 900, fontSize: "0.88rem" }}>{n.title}</Typography>
@@ -113,7 +126,7 @@ export default function SuperAdminNotificationsPage() {
                     <TableCell sx={{ fontSize: "0.78rem", textTransform: "capitalize" }}>{(n.type || "").replace(/_/g, " ")}</TableCell>
                     <TableCell sx={{ fontSize: "0.78rem", whiteSpace: "nowrap" }}>{fmtDate(n.created_at)}</TableCell>
                     <TableCell>{n.is_read ? <Chip size="small" label="Read" sx={{ height: 22, fontWeight: 800 }} /> : <Chip size="small" label="Unread" color="primary" sx={{ height: 22, fontWeight: 800 }} />}</TableCell>
-                    <TableCell>{!n.is_read ? <Button size="small" onClick={() => void markOneRead(n.id)} sx={{ textTransform: "none", fontWeight: 800 }}>Mark read</Button> : "—"}</TableCell>
+                    <TableCell>{!n.is_read ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} size="small" onClick={() => void markOneRead(n.id)} sx={{ textTransform: "none", fontWeight: 800 }}>Mark read</MotionButton> : "—"}</TableCell>
                   </TableRow>
                 ))}
                 {items.length === 0 ? <TableRow><TableCell colSpan={7} sx={{ py: 6, textAlign: "center", color: "var(--muted-foreground)" }}>No notifications for the selected filters.</TableCell></TableRow> : null}

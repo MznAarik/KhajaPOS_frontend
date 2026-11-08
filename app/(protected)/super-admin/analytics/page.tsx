@@ -40,6 +40,7 @@ import { api } from "@/lib/api";
 import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { useReducedMotion, vtName, withViewTransition } from "@/lib/motion";
 
 /* -------------------------------------------------------------------------- */
 /* Formatting helpers                                                          */
@@ -615,6 +616,7 @@ const toggleSx = {
 } as const;
 
 export default function AdminAnalyticsPage() {
+  const reducedMotion = useReducedMotion();
   const [data, setData] = React.useState<PlatformAnalytics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -845,7 +847,7 @@ export default function AdminAnalyticsPage() {
                     height: 7,
                     borderRadius: "50%",
                     backgroundColor: "currentColor",
-                    animation: "analytics-pulse 1.8s ease-in-out infinite",
+                    animation: reducedMotion ? "none" : "analytics-pulse 1.8s ease-in-out infinite",
                   }}
                 />
                 LIVE · 30s
@@ -878,7 +880,10 @@ export default function AdminAnalyticsPage() {
                 labelId="analytics-business-filter"
                 value={selectedBusinessId}
                 label="Business"
-                onChange={(e) => setSelectedBusinessId(e.target.value)}
+                onChange={(e) => {
+                  const next = String(e.target.value);
+                  void withViewTransition(() => setSelectedBusinessId(next));
+                }}
                 sx={{ borderRadius: "12px" }}
               >
                 <MenuItem value="all">All businesses</MenuItem>
@@ -906,14 +911,14 @@ export default function AdminAnalyticsPage() {
               >
                 <RefreshIcon
                   sx={{
-                    animation: refreshing ? "analytics-spin 900ms linear infinite" : "none",
+                    animation: refreshing && !reducedMotion ? "analytics-spin 900ms linear infinite" : "none",
                   }}
                 />
               </IconButton>
               <Button
                 variant="outlined"
                 startIcon={
-                  <RefreshIcon sx={{ animation: refreshing ? "analytics-spin 900ms linear infinite" : "none" }} />
+                  <RefreshIcon sx={{ animation: refreshing && !reducedMotion ? "analytics-spin 900ms linear infinite" : "none" }} />
                 }
                 onClick={() => void fetchAnalytics("manual")}
                 disabled={refreshing}
@@ -935,7 +940,7 @@ export default function AdminAnalyticsPage() {
                 {titleCase(filteredBusiness.businessType)} · {filteredBusiness.isActive ? "Active" : "Inactive"} · Focused view
               </Typography>
             </Box>
-            <Button size="small" onClick={() => setSelectedBusinessId("all")} sx={{ borderRadius: "10px", fontWeight: 800 }}>
+            <Button size="small" onClick={() => void withViewTransition(() => setSelectedBusinessId("all"))} sx={{ borderRadius: "10px", fontWeight: 800 }}>
               View all businesses
             </Button>
           </Stack>
@@ -1217,20 +1222,31 @@ export default function AdminAnalyticsPage() {
                 const totalRevenue = totals.revenue > 0 ? Math.round((business.revenue / totals.revenue) * 100) : 0;
                 const totalOrders = totals.orders > 0 ? Math.round((business.orders / totals.orders) * 100) : 0;
 
+                const canFocus = selectedBusinessId === "all";
                 return (
                   <Paper
                     key={business.id}
                     elevation={0}
+                    role={canFocus ? "button" : undefined}
+                    tabIndex={canFocus ? 0 : undefined}
+                    onClick={canFocus ? () => void withViewTransition(() => setSelectedBusinessId(String(business.id))) : undefined}
+                    onKeyDown={canFocus ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void withViewTransition(() => setSelectedBusinessId(String(business.id))); } } : undefined}
+                    style={{ viewTransitionName: vtName("analytics-business-card", business.id) }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid var(--border)",
                       background: "linear-gradient(180deg, color-mix(in srgb, var(--card) 98%, transparent) 0%, var(--background) 100%)",
                       overflow: "hidden",
-                      transition: "all 200ms ease",
-                      "&:hover": {
+                      transition: reducedMotion ? "none" : "border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease",
+                      cursor: canFocus ? "pointer" : "default",
+                      "&:hover": canFocus ? {
                         borderColor: "color-mix(in srgb, var(--primary) 40%, var(--border))",
                         boxShadow: "0 20px 40px -24px color-mix(in srgb, var(--primary) 40%, transparent)",
-                      },
+                      } : undefined,
+                      "&:focus-visible": canFocus ? {
+                        outline: "2px solid var(--primary)",
+                        outlineOffset: "2px",
+                      } : undefined,
                     }}
                   >
                     <Box
@@ -1394,10 +1410,12 @@ export default function AdminAnalyticsPage() {
                           <Box
                             sx={{
                               height: "100%",
-                              width: `${Math.max(share, 6)}%`,
+                              width: "100%",
                               borderRadius: "999px",
                               background: "linear-gradient(90deg, var(--chart-1) 0%, var(--chart-3) 100%)",
-                              transition: "width 600ms ease",
+                              transform: `scaleX(${Math.max(share, 6) / 100})`,
+                              transformOrigin: "left center",
+                              transition: reducedMotion ? "none" : "transform 450ms ease",
                             }}
                           />
                         </Box>
@@ -1677,7 +1695,7 @@ export default function AdminAnalyticsPage() {
         )}
       </SectionCard>
 
-      {/* Local keyframes --------------------------------------------------- */}
+      {/* Local keyframes (transform/opacity only; guarded for reduced motion) -------- */}
       <Box
         component="style"
         dangerouslySetInnerHTML={{
@@ -1689,6 +1707,9 @@ export default function AdminAnalyticsPage() {
             @keyframes analytics-spin {
               from { transform: rotate(0deg); }
               to { transform: rotate(360deg); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .analytics-live-dot, .analytics-spin-icon { animation: none !important; }
             }
           `,
         }}

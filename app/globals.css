@@ -257,6 +257,21 @@
 }
 
 @layer base {
+  @supports (view-transition-name: none) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* Progressive cross-document route transitions where supported; SPA nav uses withViewTransition(). */
+      @view-transition {
+        navigation: auto;
+      }
+
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation-duration: 360ms;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+    }
+  }
+
   html {
     color-scheme: light dark;
   }
@@ -372,6 +387,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    html:focus-within {
+      scroll-behavior: auto;
+    }
+
     html,
     body,
     main,
@@ -382,6 +401,15 @@
     .MuiMenu-paper,
     .MuiPopover-paper {
       scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
     }
   }
 

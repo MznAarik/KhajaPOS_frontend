@@ -3,10 +3,14 @@
 import * as React from "react";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-  FormControl, InputLabel, MenuItem, Paper, Select, Skeleton, Stack, Tab, Tabs,
+  FormControl, Grow, Fade, InputLabel, MenuItem, Paper, Select, Skeleton, Stack, Tab, Tabs,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { AnimatePresence, motion } from "motion/react";
+import { shakeKeyframes, shakeTransition, spring, useOrigin, useReducedMotion } from "@/lib/motion";
+
+const MotionButton = motion.create(Button);
 import RefreshIcon from "@mui/icons-material/Refresh";
 import AddRounded from "@mui/icons-material/AddRounded";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
@@ -81,6 +85,11 @@ function MobileCard({ children, highlight }: { children: React.ReactNode; highli
 export default function SuperAdminSubscriptionsPage() {
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down("sm"));
+  const reducedMotion = useReducedMotion();
+  const { origin: dialogOrigin, capture: captureDialogOrigin } = useOrigin();
+  const [shakePlan, setShakePlan] = React.useState(0);
+  const [shakeAssign, setShakeAssign] = React.useState(0);
+  const [shakePay, setShakePay] = React.useState(0);
 
   const [tab, setTab] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -117,37 +126,41 @@ export default function SuperAdminSubscriptionsPage() {
   React.useEffect(() => { void load(); }, [load]);
 
   const savePlan = async () => {
+    if (!planDialog.name.trim()) {
+      setShakePlan((k) => k + 1);
+      return showSnackbar("Plan name is required.", "error");
+    }
     setSaving(true);
     try {
       let limits: any = {};
-      try { limits = planDialog.limitsText ? JSON.parse(planDialog.limitsText) : {}; } catch { throw new Error("Limits must be valid JSON."); }
+      try { limits = planDialog.limitsText ? JSON.parse(planDialog.limitsText) : {}; } catch { setShakePlan((k) => k + 1); throw new Error("Limits must be valid JSON."); }
       await saveSuperAdminPlan({ name: planDialog.name, price: Number(planDialog.price || 0), currency: planDialog.currency, billing_cycle: planDialog.billing_cycle, trial_days: Number(planDialog.trial_days || 0), description: planDialog.description, is_active: planDialog.is_active, is_default: planDialog.is_default, limits }, planDialog.id);
       setPlanDialog((d) => ({ ...d, open: false }));
       showSnackbar(planDialog.id ? "Plan updated." : "Plan created.", "success");
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to save plan."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakePlan((k) => k + 1); showSnackbar(safeError(e, "Failed to save plan."), "error"); } finally { setSaving(false); }
   };
 
   const saveAssignment = async () => {
-    if (!assignDialog.business_id || !assignDialog.plan_id) return showSnackbar("Select a business and plan.", "error");
+    if (!assignDialog.business_id || !assignDialog.plan_id) { setShakeAssign((k) => k + 1); return showSnackbar("Select a business and plan.", "error"); }
     setSaving(true);
     try {
       await assignSuperAdminSubscription(Number(assignDialog.business_id), { plan_id: Number(assignDialog.plan_id), status: assignDialog.status, auto_renew: assignDialog.auto_renew, notes: assignDialog.notes || undefined });
       setAssignDialog((d) => ({ ...d, open: false }));
       showSnackbar("Subscription assigned.", "success");
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to assign subscription."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakeAssign((k) => k + 1); showSnackbar(safeError(e, "Failed to assign subscription."), "error"); } finally { setSaving(false); }
   };
 
   const savePayment = async () => {
-    if (!payDialog.business_id || !payDialog.amount) return showSnackbar("Business and amount are required.", "error");
+    if (!payDialog.business_id || !payDialog.amount) { setShakePay((k) => k + 1); return showSnackbar("Business and amount are required.", "error"); }
     setSaving(true);
     try {
       await recordSuperAdminPayment({ business_id: Number(payDialog.business_id), amount: Number(payDialog.amount), currency: payDialog.currency, status: payDialog.status, payment_method: payDialog.payment_method || undefined, reference: payDialog.reference || undefined, due_at: payDialog.due_at || undefined, notes: payDialog.notes || undefined });
       setPayDialog((d) => ({ ...d, open: false, amount: "", reference: "", notes: "" }));
       showSnackbar("Payment recorded.", "success");
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to record payment."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakePay((k) => k + 1); showSnackbar(safeError(e, "Failed to record payment."), "error"); } finally { setSaving(false); }
   };
 
   const overdue = payments.filter((p) => (p.status === "pending" || p.status === "overdue") && p.due_at && new Date(p.due_at) < new Date());
@@ -196,10 +209,10 @@ export default function SuperAdminSubscriptionsPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "stretch", sm: "flex-end" } }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" }, minWidth: 0 }}>Refresh</Button>
-            {tab === 0 ? <Button variant="contained" startIcon={<AddRounded />} onClick={() => setPlanDialog({ open: true, name: "", price: "0", currency: "NPR", billing_cycle: "monthly", trial_days: "0", description: "", is_active: true, is_default: false, limitsText: '{"orders_per_month":1000,"menu_items":200,"tables":30,"users":5}' })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>New plan</Button> : null}
-            {tab === 1 ? <Button variant="contained" startIcon={<AddRounded />} onClick={() => setAssignDialog({ open: true, business_id: "", plan_id: plans[0]?.id ? String(plans[0].id) : "", status: "active", auto_renew: true, notes: "" })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Assign plan</Button> : null}
-            {tab === 2 ? <Button variant="contained" startIcon={<PaymentsOutlinedIcon />} onClick={() => setPayDialog({ open: true, business_id: "", amount: "", currency: "NPR", status: "paid", payment_method: "", reference: "", due_at: "", notes: "" })} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Record payment</Button> : null}
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" }, minWidth: 0 }}>Refresh</MotionButton>
+            {tab === 0 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, name: "", price: "0", currency: "NPR", billing_cycle: "monthly", trial_days: "0", description: "", is_active: true, is_default: false, limitsText: '{"orders_per_month":1000,"menu_items":200,"tables":30,"users":5}' }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>New plan</MotionButton> : null}
+            {tab === 1 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<AddRounded />} onClick={(e) => { captureDialogOrigin(e); setAssignDialog({ open: true, business_id: "", plan_id: plans[0]?.id ? String(plans[0].id) : "", status: "active", auto_renew: true, notes: "" }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Assign plan</MotionButton> : null}
+            {tab === 2 ? <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<PaymentsOutlinedIcon />} onClick={(e) => { captureDialogOrigin(e); setPayDialog({ open: true, business_id: "", amount: "", currency: "NPR", status: "paid", payment_method: "", reference: "", due_at: "", notes: "" }); }} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, flex: { xs: "1 1 0", sm: "0 0 auto" } }}>Record payment</MotionButton> : null}
           </Stack>
         </Stack>
 
@@ -246,6 +259,14 @@ export default function SuperAdminSubscriptionsPage() {
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
         <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={tab}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.16 } }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
           {/* Plans */}
           {tab === 0 && (
             <>
@@ -275,7 +296,7 @@ export default function SuperAdminSubscriptionsPage() {
                         ))}
                       </Stack>
                     ) : null}
-                    <Button size="small" variant="outlined" onClick={() => setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) })} sx={{ mt: 1.25, borderRadius: "10px", textTransform: "none", fontWeight: 800, alignSelf: "flex-start" }}>
+                    <Button size="small" variant="outlined" onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) }); }} sx={{ mt: 1.25, borderRadius: "10px", textTransform: "none", fontWeight: 800, alignSelf: "flex-start" }}>
                       Edit plan
                     </Button>
                   </MobileCard>
@@ -294,7 +315,7 @@ export default function SuperAdminSubscriptionsPage() {
                         <TableCell sx={{ fontSize: "0.76rem", maxWidth: 320 }}>{p.limits ? Object.entries(p.limits).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ") : "—"}</TableCell>
                         <TableCell>{p.subscriptions_count ?? 0}</TableCell>
                         <TableCell><StatusChip status={p.is_active ? "active" : "inactive"} onClick={() => void togglePlanActive(p)} disabled={togglingPlanId === p.id} /></TableCell>
-                        <TableCell><Button size="small" onClick={() => setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) })} sx={{ textTransform: "none", fontWeight: 800 }}>Edit</Button></TableCell>
+                        <TableCell><Button size="small" onClick={(e) => { captureDialogOrigin(e); setPlanDialog({ open: true, id: p.id, name: p.name, price: String(p.price ?? 0), currency: p.currency || "NPR", billing_cycle: p.billing_cycle || "monthly", trial_days: String(p.trial_days ?? 0), description: p.description || "", is_active: !!p.is_active, is_default: !!p.is_default, limitsText: JSON.stringify(p.limits ?? {}, null, 0) }); }} sx={{ textTransform: "none", fontWeight: 800 }}>Edit</Button></TableCell>
                       </TableRow>
                     ))}
                     {plans.length === 0 ? <TableRow><TableCell colSpan={8} sx={{ py: 5, textAlign: "center", color: "var(--muted-foreground)" }}>No plans found.</TableCell></TableRow> : null}
@@ -410,13 +431,26 @@ export default function SuperAdminSubscriptionsPage() {
               </Box>
             </Box>
           )}
+            </motion.div>
+          </AnimatePresence>
         </Paper>
       )}
 
       {/* Plan dialog */}
-      <Dialog open={planDialog.open} onClose={saving ? undefined : () => setPlanDialog((d) => ({ ...d, open: false }))} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={planDialog.open}
+        onClose={saving ? undefined : () => setPlanDialog((d) => ({ ...d, open: false }))}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>{planDialog.id ? "Edit plan" : "New plan"}</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}><Stack spacing={1.5}>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakePlan} animate={reducedMotion || shakePlan === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Stack spacing={1.5}>
           <TextField label="Name" value={planDialog.name} onChange={(e) => setPlanDialog((d) => ({ ...d, name: e.target.value }))} fullWidth autoFocus={!fullScreenDialog} />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <TextField label="Price" type="number" value={planDialog.price} onChange={(e) => setPlanDialog((d) => ({ ...d, price: e.target.value }))} fullWidth />
@@ -434,48 +468,76 @@ export default function SuperAdminSubscriptionsPage() {
             <Chip label={planDialog.is_active ? "Active" : "Inactive"} onClick={() => setPlanDialog((d) => ({ ...d, is_active: !d.is_active }))} color={planDialog.is_active ? "success" : "default"} sx={{ fontWeight: 800 }} />
             <Chip label={planDialog.is_default ? "Default plan" : "Not default"} onClick={() => setPlanDialog((d) => ({ ...d, is_default: !d.is_default }))} color={planDialog.is_default ? "primary" : "default"} sx={{ fontWeight: 800 }} />
           </Stack>
-        </Stack></DialogContent>
+            </Stack>
+          </motion.div>
+        </DialogContent>
         <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setPlanDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</Button>
-          <Button variant="contained" onClick={savePlan} disabled={saving || !planDialog.name.trim()} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Save plan"}</Button>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setPlanDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</MotionButton>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={savePlan} disabled={saving || !planDialog.name.trim()} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Save plan"}</MotionButton>
         </DialogActions>
       </Dialog>
 
       {/* Assign dialog */}
-      <Dialog open={assignDialog.open} onClose={saving ? undefined : () => setAssignDialog((d) => ({ ...d, open: false }))} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={assignDialog.open}
+        onClose={saving ? undefined : () => setAssignDialog((d) => ({ ...d, open: false }))}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Assign subscription</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}><Stack spacing={1.5}>
-          <FormControl fullWidth><InputLabel>Business</InputLabel><Select label="Business" value={assignDialog.business_id} onChange={(e) => setAssignDialog((d) => ({ ...d, business_id: e.target.value }))}>{businesses.map((b) => <MenuItem key={b.id} value={String(b.id)}>{b.name}{!b.isActive ? " (suspended)" : ""}</MenuItem>)}</Select></FormControl>
-          <FormControl fullWidth><InputLabel>Plan</InputLabel><Select label="Plan" value={assignDialog.plan_id} onChange={(e) => setAssignDialog((d) => ({ ...d, plan_id: e.target.value }))}>{plans.map((p) => <MenuItem key={p.id} value={String(p.id)}>{p.name} · {fmtMoney(p.price, p.currency)}/{p.billing_cycle}</MenuItem>)}</Select></FormControl>
-          <FormControl fullWidth><InputLabel>Status</InputLabel><Select label="Status" value={assignDialog.status} onChange={(e) => setAssignDialog((d) => ({ ...d, status: e.target.value }))}>{["trial","active","past_due","cancelled","expired","suspended"].map((s) => <MenuItem key={s} value={s}>{s.replace(/_/g, " ")}</MenuItem>)}</Select></FormControl>
-          <TextField label="Notes (optional)" value={assignDialog.notes} onChange={(e) => setAssignDialog((d) => ({ ...d, notes: e.target.value }))} fullWidth multiline minRows={2} />
-        </Stack></DialogContent>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakeAssign} animate={reducedMotion || shakeAssign === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Stack spacing={1.5}>
+              <FormControl fullWidth><InputLabel>Business</InputLabel><Select label="Business" value={assignDialog.business_id} onChange={(e) => setAssignDialog((d) => ({ ...d, business_id: e.target.value }))}>{businesses.map((b) => <MenuItem key={b.id} value={String(b.id)}>{b.name}{!b.isActive ? " (suspended)" : ""}</MenuItem>)}</Select></FormControl>
+              <FormControl fullWidth><InputLabel>Plan</InputLabel><Select label="Plan" value={assignDialog.plan_id} onChange={(e) => setAssignDialog((d) => ({ ...d, plan_id: e.target.value }))}>{plans.map((p) => <MenuItem key={p.id} value={String(p.id)}>{p.name} · {fmtMoney(p.price, p.currency)}/{p.billing_cycle}</MenuItem>)}</Select></FormControl>
+              <FormControl fullWidth><InputLabel>Status</InputLabel><Select label="Status" value={assignDialog.status} onChange={(e) => setAssignDialog((d) => ({ ...d, status: e.target.value }))}>{["trial","active","past_due","cancelled","expired","suspended"].map((s) => <MenuItem key={s} value={s}>{s.replace(/_/g, " ")}</MenuItem>)}</Select></FormControl>
+              <TextField label="Notes (optional)" value={assignDialog.notes} onChange={(e) => setAssignDialog((d) => ({ ...d, notes: e.target.value }))} fullWidth multiline minRows={2} />
+            </Stack>
+          </motion.div>
+        </DialogContent>
         <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setAssignDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</Button>
-          <Button variant="contained" onClick={saveAssignment} disabled={saving} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Assign"}</Button>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setAssignDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</MotionButton>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={saveAssignment} disabled={saving} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Assign"}</MotionButton>
         </DialogActions>
       </Dialog>
 
       {/* Payment dialog */}
-      <Dialog open={payDialog.open} onClose={saving ? undefined : () => setPayDialog((d) => ({ ...d, open: false }))} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={payDialog.open}
+        onClose={saving ? undefined : () => setPayDialog((d) => ({ ...d, open: false }))}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360, style: dialogOrigin } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Record payment</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}><Stack spacing={1.5}>
-          <FormControl fullWidth><InputLabel>Business</InputLabel><Select label="Business" value={payDialog.business_id} onChange={(e) => setPayDialog((d) => ({ ...d, business_id: e.target.value }))}>{businesses.map((b) => <MenuItem key={b.id} value={String(b.id)}>{b.name}</MenuItem>)}</Select></FormControl>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-            <TextField label="Amount" type="number" value={payDialog.amount} onChange={(e) => setPayDialog((d) => ({ ...d, amount: e.target.value }))} fullWidth />
-            <TextField label="Currency" value={payDialog.currency} onChange={(e) => setPayDialog((d) => ({ ...d, currency: e.target.value }))} fullWidth />
-          </Stack>
-          <FormControl fullWidth><InputLabel>Status</InputLabel><Select label="Status" value={payDialog.status} onChange={(e) => setPayDialog((d) => ({ ...d, status: e.target.value }))}>{["pending","paid","failed","overdue","refunded","cancelled"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-            <TextField label="Payment method (optional)" value={payDialog.payment_method} onChange={(e) => setPayDialog((d) => ({ ...d, payment_method: e.target.value }))} fullWidth />
-            <TextField label="Reference (optional)" value={payDialog.reference} onChange={(e) => setPayDialog((d) => ({ ...d, reference: e.target.value }))} fullWidth />
-          </Stack>
-          <TextField label="Due date" type="date" value={payDialog.due_at} onChange={(e) => setPayDialog((d) => ({ ...d, due_at: e.target.value }))} fullWidth InputLabelProps={{ shrink: true }} helperText="Set a due date to track overdue payments and reminders." />
-          <TextField label="Notes (optional)" value={payDialog.notes} onChange={(e) => setPayDialog((d) => ({ ...d, notes: e.target.value }))} fullWidth multiline minRows={2} />
-        </Stack></DialogContent>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakePay} animate={reducedMotion || shakePay === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Stack spacing={1.5}>
+              <FormControl fullWidth><InputLabel>Business</InputLabel><Select label="Business" value={payDialog.business_id} onChange={(e) => setPayDialog((d) => ({ ...d, business_id: e.target.value }))}>{businesses.map((b) => <MenuItem key={b.id} value={String(b.id)}>{b.name}</MenuItem>)}</Select></FormControl>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField label="Amount" type="number" value={payDialog.amount} onChange={(e) => setPayDialog((d) => ({ ...d, amount: e.target.value }))} fullWidth />
+                <TextField label="Currency" value={payDialog.currency} onChange={(e) => setPayDialog((d) => ({ ...d, currency: e.target.value }))} fullWidth />
+              </Stack>
+              <FormControl fullWidth><InputLabel>Status</InputLabel><Select label="Status" value={payDialog.status} onChange={(e) => setPayDialog((d) => ({ ...d, status: e.target.value }))}>{["pending","paid","failed","overdue","refunded","cancelled"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField label="Payment method (optional)" value={payDialog.payment_method} onChange={(e) => setPayDialog((d) => ({ ...d, payment_method: e.target.value }))} fullWidth />
+                <TextField label="Reference (optional)" value={payDialog.reference} onChange={(e) => setPayDialog((d) => ({ ...d, reference: e.target.value }))} fullWidth />
+              </Stack>
+              <TextField label="Due date" type="date" value={payDialog.due_at} onChange={(e) => setPayDialog((d) => ({ ...d, due_at: e.target.value }))} fullWidth InputLabelProps={{ shrink: true }} helperText="Set a due date to track overdue payments and reminders." />
+              <TextField label="Notes (optional)" value={payDialog.notes} onChange={(e) => setPayDialog((d) => ({ ...d, notes: e.target.value }))} fullWidth multiline minRows={2} />
+            </Stack>
+          </motion.div>
+        </DialogContent>
         <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setPayDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</Button>
-          <Button variant="contained" onClick={savePayment} disabled={saving} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Record payment"}</Button>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setPayDialog((d) => ({ ...d, open: false }))} disabled={saving} sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}>Cancel</MotionButton>
+          <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={savePayment} disabled={saving} sx={{ fontWeight: 800, borderRadius: "10px", textTransform: "none" }}>{saving ? "Saving..." : "Record payment"}</MotionButton>
         </DialogActions>
       </Dialog>
     </Box>

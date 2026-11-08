@@ -10,6 +10,8 @@ import {
     Avatar,
     Box,
     CircularProgress,
+    Fade,
+    Grow,
     IconButton,
     ListItemIcon,
     Menu,
@@ -17,8 +19,12 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
+import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { clearAuthSession } from "@/lib/api";
+import { spring, useReducedMotion } from "@/lib/motion";
+
+const MotionIconButton = motion.create(IconButton);
 
 const getInitials = () => "KP";
 
@@ -31,6 +37,7 @@ export default function ProfileComponent({
 }) {
     const router = useRouter();
     const pathname = usePathname();
+    const reducedMotion = useReducedMotion();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
@@ -99,12 +106,14 @@ export default function ProfileComponent({
     return (
         <>
             <Tooltip title={isAuthenticated ? "Account" : "Login"}>
-                <IconButton
+                <MotionIconButton
                     type="button"
                     onClick={handleOpen}
                     size="small"
                     aria-haspopup="menu"
                     aria-expanded={Boolean(anchorEl) ? "true" : undefined}
+                    whileTap={reducedMotion ? undefined : { scale: 0.95 }}
+                    transition={spring.press}
                     sx={{
                         p: 0.4,
                         minWidth: 42,
@@ -145,7 +154,7 @@ export default function ProfileComponent({
                             <PersonOutlineRoundedIcon fontSize="small" />
                         </Avatar>
                     )}
-                </IconButton>
+                </MotionIconButton>
             </Tooltip>
 
             <Menu
@@ -154,6 +163,8 @@ export default function ProfileComponent({
                 onClose={handleClose}
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                 transformOrigin={{ vertical: "top", horizontal: "right" }}
+                slots={{ transition: reducedMotion ? Fade : Grow }}
+                slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 260 } }}
                 PaperProps={{
                     sx: {
                         mt: 1,

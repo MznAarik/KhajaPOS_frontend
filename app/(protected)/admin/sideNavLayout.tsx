@@ -10,6 +10,8 @@ import {
     CircularProgress,
     Divider,
     Drawer,
+    Fade,
+    Grow,
     IconButton,
     List,
     ListItemText,
@@ -25,7 +27,11 @@ import {
     BottomNavigation,
     BottomNavigationAction,
 } from "@mui/material";
+import { AnimatePresence, motion } from "motion/react";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
+import { spring, useReducedMotion, withViewTransition } from "@/lib/motion";
+
+const MotionIconButton = motion.create(IconButton);
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { ShoppingCartIcon, type ShoppingCartIconHandle } from "@/components/ui/shopping-cart-icon";
 import { LayoutListIcon, type LayoutListIconHandle } from "@/components/ui/layout-list-icon";
@@ -96,6 +102,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const { isSuperAdmin } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const reducedMotion = useReducedMotion();
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
     const [brand, setBrand] = React.useState<{ name: string; logo: string | null } | null>(null);
     const dashboardIconRef = React.useRef<HouseIconHandle | null>(null);
@@ -174,23 +181,27 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         };
     }, [isSuperAdmin]);
 
-    const navItems: NavItem[] = isSuperAdmin
-        ? [
-            { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
-            { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
-            { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
-            { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
-            { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
-            { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
-        ]
-        : [
-            { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-            { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
-            { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-            { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
-            { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-            { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
-        ];
+    const navItems: NavItem[] = React.useMemo(
+        () =>
+            isSuperAdmin
+                ? [
+                    { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
+                    { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
+                    { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
+                    { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
+                    { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
+                    { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
+                ]
+                : [
+                    { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+                    { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                    { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                    { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                    { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                    { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
+                ],
+        [isSuperAdmin]
+    );
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Home",
@@ -215,6 +226,43 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const lastSegment = pathname.split("/").filter(Boolean).slice(-1)[0] ?? "dashboard";
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
     const isActive = (href: string) => pathname.startsWith(href);
+    const activeHref = React.useMemo(() => {
+        const matches = navItems.filter((item) => pathname.startsWith(item.href));
+        return (matches.sort((a, b) => b.href.length - a.href.length)[0]?.href) ?? null;
+    }, [navItems, pathname]);
+    const navListRef = React.useRef<HTMLUListElement | null>(null);
+    const navItemRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+    const [navIndicator, setNavIndicator] = React.useState({ y: 0, h: 0, w: 0, visible: false });
+
+    React.useLayoutEffect(() => {
+        const update = () => {
+            if (!activeHref || !navListRef.current) {
+                setNavIndicator((s) => (s.visible ? { ...s, visible: false } : s));
+                return;
+            }
+            const el = navItemRefs.current[activeHref];
+            if (!el) {
+                setNavIndicator((s) => (s.visible ? { ...s, visible: false } : s));
+                return;
+            }
+            const list = navListRef.current;
+            const listRect = list.getBoundingClientRect();
+            const rect = el.getBoundingClientRect();
+            const next = {
+                y: rect.top - listRect.top,
+                h: rect.height,
+                w: rect.width,
+                visible: rect.height > 0,
+            };
+            setNavIndicator((s) =>
+                s.visible === next.visible && s.y === next.y && s.h === next.h && s.w === next.w ? s : next
+            );
+        };
+        update();
+        window.addEventListener("resize", update);
+        return () => window.removeEventListener("resize", update);
+    }, [activeHref, navItems]);
+
     const startItemAnimation = (item: NavItem) => {
         setHoveredItem(item.text);
         item.ref?.current?.startAnimation();
@@ -340,17 +388,41 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 boxSizing: "border-box",
             }}
         >
-            <List sx={{ display: "grid", gap: 1, width: "100%" }}>
+            <List ref={navListRef} sx={{ display: "grid", gap: 1, width: "100%", position: "relative" }}>
+                {navIndicator.visible ? (
+                    <Box
+                        component={motion.div}
+                        aria-hidden
+                        initial={false}
+                        animate={reducedMotion ? { y: navIndicator.y, height: navIndicator.h, opacity: 1 } : { y: navIndicator.y, height: navIndicator.h, opacity: 1 }}
+                        transition={reducedMotion ? { duration: 0 } : spring.indicator}
+                        sx={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            borderRadius: "16px",
+                            border: "2px solid var(--sidebar-border)",
+                            backgroundColor: "color-mix(in srgb, var(--sidebar-primary) 18%, transparent)",
+                            boxShadow: "0 14px 28px rgba(56, 75, 78, 0.25)",
+                            zIndex: 0,
+                            pointerEvents: "none",
+                        }}
+                    />
+                ) : null}
                 {navItems.map((item) => {
-                    const active = isActive(item.href);
+                    const active = item.href === activeHref || isActive(item.href);
                     return (
                         <ListItemButton
                             key={item.text}
+                            ref={(el) => {
+                                navItemRefs.current[item.href] = el;
+                            }}
                             disableRipple={false}
                             disableTouchRipple={false}
                             TouchRippleProps={{ center: false }}
                             onClick={() => {
-                                router.push(item.href);
+                                void withViewTransition(() => router.push(item.href));
                             }}
                             onPointerEnter={() => startItemAnimation(item)}
                             onPointerLeave={() => stopItemAnimation(item)}
@@ -365,23 +437,20 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 cursor: "pointer",
                                 position: "relative",
                                 overflow: "hidden",
+                                zIndex: 1,
 
-                                backgroundColor: active
-                                    ? "color-mix(in srgb, var(--sidebar-primary) 18%, transparent)"
-                                    : hoveredItem === item.text
-                                        ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
-                                        : "transparent",
+                                backgroundColor: !active && hoveredItem === item.text
+                                    ? "color-mix(in srgb, var(--sidebar-accent) 62%, transparent)"
+                                    : "transparent",
 
-                                boxShadow: active
-                                    ? "0 14px 28px rgba(56, 75, 78, 0.25)"
-                                    : hoveredItem === item.text
-                                        ? "0 14px 28px rgba(56, 75, 78, 0.14)"
-                                        : "none",
+                                boxShadow: !active && hoveredItem === item.text
+                                    ? "0 14px 28px rgba(56, 75, 78, 0.14)"
+                                    : "none",
 
                                 "& .MuiListItemText-primary": {
                                     color: active ? "var(--sidebar-primary)" : "inherit",
                                     fontWeight: active ? 700 : 400,
-                                    transition: "all 200ms ease",
+                                    transition: "color 200ms ease, font-weight 200ms ease",
                                 },
 
                                 "& .nav-icon svg": {
@@ -593,9 +662,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         alignItems="center"
                         sx={{ position: "relative", zIndex: (theme) => theme.zIndex.drawer + 3, pointerEvents: "auto" }}
                     >
-                        <IconButton
+                        <MotionIconButton
                             aria-label="Notifications"
                             onClick={openNotif}
+                            whileTap={reducedMotion ? undefined : { scale: 0.95 }}
+                            transition={spring.press}
                             sx={{
                                 width: 40,
                                 height: 40,
@@ -608,14 +679,18 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                             <Badge badgeContent={notifCounts.unread ?? 0} color="error" max={99}>
                                 <NotificationsNoneRoundedIcon />
                             </Badge>
-                        </IconButton>
+                        </MotionIconButton>
                         <Popover
                             open={Boolean(notifAnchor)}
                             anchorEl={notifAnchor}
                             onClose={closeNotif}
                             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                             transformOrigin={{ vertical: "top", horizontal: "right" }}
+                            slots={{
+                                transition: reducedMotion ? Fade : Grow,
+                            }}
                             slotProps={{
+                                transition: reducedMotion ? { timeout: 1 } : { timeout: 360 },
                                 paper: {
                                     sx: {
                                         mt: 1,
@@ -660,63 +735,71 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                     </Typography>
                                 ) : (
                                     <Stack spacing={0.75}>
-                                        {notifItems.map((n) => {
-                                            const sev = (n.severity || "info").toLowerCase();
-                                            const tone = sev === "critical"
-                                                ? { fg: "#991b1b", bg: "#fee2e2", border: "#fecaca" }
-                                                : sev === "warning"
-                                                    ? { fg: "#92400e", bg: "#fef3c7", border: "#fde68a" }
-                                                    : { fg: "#1d4ed8", bg: "#dbeafe", border: "#bfdbfe" };
-                                            const primaryText = n.message || n.title || "Notification";
-                                            const secondaryText = n.message && n.title && n.title !== n.message ? n.title : null;
-                                            return (
-                                                <Box
-                                                    key={n.id}
-                                                    sx={{
-                                                        p: 1.1,
-                                                        borderRadius: "12px",
-                                                        border: `1px solid ${n.is_read ? "var(--border)" : tone.border}`,
-                                                        backgroundColor: n.is_read ? "var(--background)" : `color-mix(in srgb, ${tone.bg} 45%, var(--card))`,
-                                                    }}
-                                                >
-                                                    <Stack direction="row" spacing={0.75} alignItems="flex-start" justifyContent="space-between">
-                                                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                                                            <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.35 }}>
-                                                                <Chip
-                                                                    size="small"
-                                                                    label={(n.severity || "info").toUpperCase()}
-                                                                    sx={{ height: 20, fontSize: "0.62rem", fontWeight: 900, letterSpacing: "0.02em", color: tone.fg, bgcolor: tone.bg, border: `1px solid ${tone.border}`, flexShrink: 0 }}
-                                                                />
-                                                                <Typography
-                                                                    component="span"
-                                                                    sx={{
-                                                                        fontWeight: n.is_read ? 750 : 900,
-                                                                        fontSize: "0.84rem",
-                                                                        lineHeight: 1.3,
-                                                                        color: "var(--foreground)",
-                                                                        wordBreak: "break-word",
-                                                                    }}
-                                                                >
-                                                                    {primaryText}
+                                        <AnimatePresence initial={false}>
+                                            {notifItems.map((n) => {
+                                                const sev = (n.severity || "info").toLowerCase();
+                                                const tone = sev === "critical"
+                                                    ? { fg: "#991b1b", bg: "#fee2e2", border: "#fecaca" }
+                                                    : sev === "warning"
+                                                        ? { fg: "#92400e", bg: "#fef3c7", border: "#fde68a" }
+                                                        : { fg: "#1d4ed8", bg: "#dbeafe", border: "#bfdbfe" };
+                                                const primaryText = n.message || n.title || "Notification";
+                                                const secondaryText = n.message && n.title && n.title !== n.message ? n.title : null;
+                                                return (
+                                                    <Box
+                                                        key={n.id}
+                                                        component={motion.div}
+                                                        layout={!reducedMotion}
+                                                        initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.18 } }}
+                                                        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                                                        sx={{
+                                                            p: 1.1,
+                                                            borderRadius: "12px",
+                                                            border: `1px solid ${n.is_read ? "var(--border)" : tone.border}`,
+                                                            backgroundColor: n.is_read ? "var(--background)" : `color-mix(in srgb, ${tone.bg} 45%, var(--card))`,
+                                                        }}
+                                                    >
+                                                        <Stack direction="row" spacing={0.75} alignItems="flex-start" justifyContent="space-between">
+                                                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                                                <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.35 }}>
+                                                                    <Chip
+                                                                        size="small"
+                                                                        label={(n.severity || "info").toUpperCase()}
+                                                                        sx={{ height: 20, fontSize: "0.62rem", fontWeight: 900, letterSpacing: "0.02em", color: tone.fg, bgcolor: tone.bg, border: `1px solid ${tone.border}`, flexShrink: 0 }}
+                                                                    />
+                                                                    <Typography
+                                                                        component="span"
+                                                                        sx={{
+                                                                            fontWeight: n.is_read ? 750 : 900,
+                                                                            fontSize: "0.84rem",
+                                                                            lineHeight: 1.3,
+                                                                            color: "var(--foreground)",
+                                                                            wordBreak: "break-word",
+                                                                        }}
+                                                                    >
+                                                                        {primaryText}
+                                                                    </Typography>
+                                                                </Stack>
+                                                                {secondaryText ? (
+                                                                    <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", fontWeight: 700, lineHeight: 1.3, mb: 0.15 }}>
+                                                                        {secondaryText}
+                                                                    </Typography>
+                                                                ) : null}
+                                                                <Typography sx={{ fontSize: "0.68rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
+                                                                    {n.created_at ? new Date(n.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                                                                    {n.type ? ` · ${(n.type || "").replace(/_/g, " ")}` : ""}
                                                                 </Typography>
-                                                            </Stack>
-                                                            {secondaryText ? (
-                                                                <Typography sx={{ fontSize: "0.74rem", color: "var(--muted-foreground)", fontWeight: 700, lineHeight: 1.3, mb: 0.15 }}>
-                                                                    {secondaryText}
-                                                                </Typography>
+                                                            </Box>
+                                                            {!n.is_read ? (
+                                                                <Button size="small" onClick={() => void markNotifRead([n.id])} sx={{ minWidth: 0, px: 0.75, fontSize: "0.7rem", fontWeight: 800, textTransform: "none", flexShrink: 0, mt: -0.25 }}>Read</Button>
                                                             ) : null}
-                                                            <Typography sx={{ fontSize: "0.68rem", color: "var(--muted-foreground)", fontWeight: 650 }}>
-                                                                {n.created_at ? new Date(n.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
-                                                                {n.type ? ` · ${(n.type || "").replace(/_/g, " ")}` : ""}
-                                                            </Typography>
-                                                        </Box>
-                                                        {!n.is_read ? (
-                                                            <Button size="small" onClick={() => void markNotifRead([n.id])} sx={{ minWidth: 0, px: 0.75, fontSize: "0.7rem", fontWeight: 800, textTransform: "none", flexShrink: 0, mt: -0.25 }}>Read</Button>
-                                                        ) : null}
-                                                    </Stack>
-                                                </Box>
-                                            );
-                                        })}
+                                                        </Stack>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </AnimatePresence>
                                     </Stack>
                                 )}
                             </Box>
@@ -907,64 +990,107 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     boxShadow: "0 18px 42px rgba(31, 42, 43, 0.2)",
                 }}
             >
-                <BottomNavigation
-                    showLabels
-                    value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
-                    onChange={(_, value) => router.push(value)}
-                    sx={{
-                        height: 66,
-                        backgroundColor: "transparent",
-                        "& .MuiBottomNavigationAction-root": {
-                            minWidth: 0,
-                            flex: "1 1 0",
-                            maxWidth: "none",
-                            px: 0.25,
-                            py: 0.65,
-                            color: "var(--muted-foreground)",
-                        },
-                        "& .MuiBottomNavigationAction-label": {
-                            fontSize: "0.68rem",
-                            fontWeight: 700,
-                            lineHeight: 1.1,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: "100%",
-                        },
-                        "& .Mui-selected": {
-                            color: "var(--primary)",
-                        },
-                    }}
-                >
-                    {navItems.map((item) => {
-                        const shortLabel: Record<string, string> = {
-                            "Dashboard": "Home",
-                            "Home": "Home",
-                            "Businesses": "Biz",
-                            "Analytics": "Stats",
-                            "Subscriptions & Payments": "Plans",
-                            "Usage & Operations": "Usage",
-                            "Users": "Users",
-                            "Category": "Category",
-                            "Menu": "Menu",
-                            "Tables": "Tables",
-                            "Orders": "Orders",
-                            "Reviews": "Reviews",
-                        };
-                        return (
-                            <BottomNavigationAction
-                                key={item.href}
-                                label={shortLabel[item.text] ?? item.text}
-                                value={item.href}
-                                icon={
-                                    <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
-                                        <item.icon size={18} />
-                                    </Box>
+                <Box sx={{ position: "relative", height: 66 }}>
+                    {(() => {
+                        const mobileActiveIndex = activeHref ? navItems.findIndex((item) => item.href === activeHref) : -1;
+                        const count = Math.max(1, navItems.length);
+                        const pct = 100 / count;
+                        return mobileActiveIndex >= 0 && navItems.length > 0 ? (
+                            <Box
+                                component={motion.div}
+                                aria-hidden
+                                initial={false}
+                                animate={
+                                    reducedMotion
+                                        ? { x: `${mobileActiveIndex * 100}%` }
+                                        : { x: `${mobileActiveIndex * 100}%` }
                                 }
-                            />
-                        );
-                    })}
-                </BottomNavigation>
+                                transition={reducedMotion ? { duration: 0 } : spring.indicator}
+                                sx={{
+                                    position: "absolute",
+                                    top: 5,
+                                    bottom: 5,
+                                    left: 0,
+                                    width: `${pct}%`,
+                                    px: 0.35,
+                                    zIndex: 0,
+                                    pointerEvents: "none",
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        width: "100%",
+                                        height: "100%",
+                                        borderRadius: "14px",
+                                        backgroundColor: "color-mix(in srgb, var(--primary) 14%, transparent)",
+                                        border: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)",
+                                    }}
+                                />
+                            </Box>
+                        ) : null;
+                    })()}
+                    <BottomNavigation
+                        showLabels
+                        value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
+                        onChange={(_, value) => void withViewTransition(() => router.push(String(value)))}
+                        sx={{
+                            position: "relative",
+                            zIndex: 1,
+                            height: 66,
+                            backgroundColor: "transparent",
+                            "& .MuiBottomNavigationAction-root": {
+                                minWidth: 0,
+                                flex: "1 1 0",
+                                maxWidth: "none",
+                                px: 0.25,
+                                py: 0.65,
+                                color: "var(--muted-foreground)",
+                                transition: "color 180ms ease",
+                            },
+                            "& .MuiBottomNavigationAction-label": {
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                lineHeight: 1.1,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: "100%",
+                            },
+                            "& .Mui-selected, & .Mui-selected svg": {
+                                color: "var(--primary)",
+                            },
+                        }}
+                    >
+                        {navItems.map((item) => {
+                            const shortLabel: Record<string, string> = {
+                                "Dashboard": "Home",
+                                "Home": "Home",
+                                "Businesses": "Biz",
+                                "Analytics": "Stats",
+                                "Subscriptions & Payments": "Plans",
+                                "Usage & Operations": "Usage",
+                                "Users": "Users",
+                                "Category": "Category",
+                                "Menu": "Menu",
+                                "Tables": "Tables",
+                                "Orders": "Orders",
+                                "Reviews": "Reviews",
+                            };
+                            return (
+                                <BottomNavigationAction
+                                    key={item.href}
+                                    label={shortLabel[item.text] ?? item.text}
+                                    value={item.href}
+                                    icon={
+                                        <Box sx={{ height: 22, display: "grid", placeItems: "center" }}>
+                                            <item.icon size={18} />
+                                        </Box>
+                                    }
+                                />
+                            );
+                        })}
+                    </BottomNavigation>
+                </Box>
             </Paper>
         </Box>
     );
