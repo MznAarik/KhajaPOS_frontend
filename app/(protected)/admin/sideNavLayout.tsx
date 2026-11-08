@@ -10,6 +10,8 @@ import {
     CircularProgress,
     Divider,
     Drawer,
+    Fade,
+    Grow,
     IconButton,
     List,
     ListItemText,
@@ -25,7 +27,11 @@ import {
     BottomNavigation,
     BottomNavigationAction,
 } from "@mui/material";
+import { motion } from "motion/react";
 import { DashboardIcon, type DashboardIconHandle } from "@/components/ui/dashboard-icon";
+import { spring, useReducedMotion } from "@/lib/motion";
+
+const MotionIconButton = motion.create(IconButton);
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { ShoppingCartIcon, type ShoppingCartIconHandle } from "@/components/ui/shopping-cart-icon";
 import { LayoutListIcon, type LayoutListIconHandle } from "@/components/ui/layout-list-icon";
@@ -96,6 +102,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const { isSuperAdmin } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const reducedMotion = useReducedMotion();
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
     const [brand, setBrand] = React.useState<{ name: string; logo: string | null } | null>(null);
     const dashboardIconRef = React.useRef<HouseIconHandle | null>(null);
@@ -593,9 +600,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                         alignItems="center"
                         sx={{ position: "relative", zIndex: (theme) => theme.zIndex.drawer + 3, pointerEvents: "auto" }}
                     >
-                        <IconButton
+                        <MotionIconButton
                             aria-label="Notifications"
                             onClick={openNotif}
+                            whileTap={reducedMotion ? undefined : { scale: 0.95 }}
+                            transition={spring.press}
                             sx={{
                                 width: 40,
                                 height: 40,
@@ -608,14 +617,18 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                             <Badge badgeContent={notifCounts.unread ?? 0} color="error" max={99}>
                                 <NotificationsNoneRoundedIcon />
                             </Badge>
-                        </IconButton>
+                        </MotionIconButton>
                         <Popover
                             open={Boolean(notifAnchor)}
                             anchorEl={notifAnchor}
                             onClose={closeNotif}
                             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                             transformOrigin={{ vertical: "top", horizontal: "right" }}
+                            slots={{
+                                transition: reducedMotion ? Fade : Grow,
+                            }}
                             slotProps={{
+                                transition: reducedMotion ? { timeout: 1 } : { timeout: 360 },
                                 paper: {
                                     sx: {
                                         mt: 1,

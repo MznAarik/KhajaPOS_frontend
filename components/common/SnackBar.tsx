@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useMemo, useRef, useStat
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
+import Fade from '@mui/material/Fade';
 import Slide from '@mui/material/Slide';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha } from '@mui/material/styles';
@@ -13,6 +14,7 @@ import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useThemeToggle } from "./ThemeRegistry";
+import { useReducedMotion } from "@/lib/motion";
 
 export type Severity = 'success' | 'error' | 'warning' | 'info';
 
@@ -31,6 +33,7 @@ export const SnackbarProviderCustom = ({
 }) => {
     const { mode } = useThemeToggle();
     const isMobile = useMediaQuery("(max-width:600px)");
+    const reducedMotion = useReducedMotion();
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [severity, setSeverity] = useState<Severity>('info');
@@ -190,9 +193,14 @@ export const SnackbarProviderCustom = ({
                     vertical: isMobile ? 'bottom' : 'top',
                     horizontal: isMobile ? 'center' : 'right',
                 }}
-                TransitionComponent={(props) => (
-                    <Slide {...props} direction={isMobile ? "up" : "down"} timeout={{ enter: 260, exit: 180 }} />
-                )}
+                slots={{
+                    transition: reducedMotion ? Fade : Slide,
+                }}
+                slotProps={{
+                    transition: reducedMotion
+                        ? { timeout: 1 }
+                        : { direction: isMobile ? "up" : "down", timeout: { enter: 260, exit: 180 } },
+                }}
                 sx={{
                     pointerEvents: "none",
                     top: { sm: 18 },
