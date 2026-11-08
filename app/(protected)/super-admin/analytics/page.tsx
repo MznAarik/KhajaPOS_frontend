@@ -847,7 +847,7 @@ export default function AdminAnalyticsPage() {
                     height: 7,
                     borderRadius: "50%",
                     backgroundColor: "currentColor",
-                    animation: "analytics-pulse 1.8s ease-in-out infinite",
+                    animation: reducedMotion ? "none" : "analytics-pulse 1.8s ease-in-out infinite",
                   }}
                 />
                 LIVE · 30s

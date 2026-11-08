@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { shakeKeyframes, shakeTransition, spring, useOrigin, useReducedMotion } from "@/lib/motion";
 
 const MotionButton = motion.create(Button);
@@ -259,6 +259,14 @@ export default function SuperAdminSubscriptionsPage() {
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
         <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={tab}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.16 } }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
           {/* Plans */}
           {tab === 0 && (
             <>
@@ -423,6 +431,8 @@ export default function SuperAdminSubscriptionsPage() {
               </Box>
             </Box>
           )}
+            </motion.div>
+          </AnimatePresence>
         </Paper>
       )}
 

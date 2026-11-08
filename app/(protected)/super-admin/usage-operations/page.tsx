@@ -205,6 +205,14 @@ export default function SuperAdminUsageOperationsPage() {
 
       {loading ? <Skeleton variant="rounded" height={260} sx={{ borderRadius: "22px" }} /> : (
         <Paper elevation={0} sx={{ borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden", minWidth: 0 }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={tab}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: -4, transition: { duration: 0.16 } }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
           {tab === 0 && (
             <Box sx={{ minWidth: 0 }}>
               {usage.summary?.storage_instrumented === false ? (
@@ -407,6 +415,8 @@ export default function SuperAdminUsageOperationsPage() {
               </Box>
             </Box>
           )}
+            </motion.div>
+          </AnimatePresence>
         </Paper>
       )}
 
