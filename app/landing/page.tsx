@@ -418,9 +418,23 @@ export default function LandingPage() {
           </Stack>
         </Paper>
 
-        <Typography sx={{ mt: 2.5, pb: 1, textAlign: "center", color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-          KhajaPOS — QR table ordering and POS operations.
-        </Typography>
+        <Box
+          component="footer"
+          sx={{
+            mt: 2.5,
+            pt: 2,
+            pb: 1,
+            borderTop: "1px solid color-mix(in srgb, var(--border) 72%, transparent)",
+            textAlign: "center",
+          }}
+        >
+          <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.82rem", lineHeight: 1.6 }}>
+            KhajaPOS — QR table ordering and POS operations.
+          </Typography>
+          <Typography sx={{ mt: 0.35, color: "var(--muted-foreground)", fontSize: "0.78rem", lineHeight: 1.6 }}>
+            © {new Date().getFullYear()} KhajaPOS &amp; mzaarik. All rights reserved.
+          </Typography>
+        </Box>
       </Container>
     </Box>
   );
