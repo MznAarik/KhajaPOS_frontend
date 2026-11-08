@@ -919,8 +919,10 @@ export default function TableOrderPage() {
         pb: {
           xs: cartItems.length
             ? mobileCartOpen
-              ? "calc(300px + env(safe-area-inset-bottom))"
-              : "calc(190px + env(safe-area-inset-bottom))"
+              ? "calc(292px + env(safe-area-inset-bottom))"
+              : bestSellersOpen
+                ? "calc(156px + env(safe-area-inset-bottom))"
+                : "calc(186px + env(safe-area-inset-bottom))"
             : 1,
           lg: 3,
         },
@@ -2194,8 +2196,8 @@ export default function TableOrderPage() {
             }}
           >
             {bestSellersOpen && !mobileCartOpen ? null : (
-              <Box sx={{ px: 1, pt: 1 }}>
-                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75, px: 0.5 }}>
+              <Box sx={{ px: 1.25, pt: 1, pb: 0.25 }}>
+                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, px: 0.25 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
                     Serving
                   </Typography>
@@ -2208,15 +2210,15 @@ export default function TableOrderPage() {
             )}
 
             {bestSellersOpen && !mobileCartOpen ? (
-              <Stack spacing={0.25} sx={{ px: 1.5, pt: 0.5, pb: 0.5, maxHeight: 76, overflowY: "auto" }} aria-label="Cart contents">
+              <Stack spacing={0.35} sx={{ px: 1.25, pt: 1, pb: 0.5, maxHeight: 84, overflowY: "auto" }} aria-label="Cart contents">
                 {cartItems.map((item) => (
-                  <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
-                    <Typography sx={{ minWidth: 0, flex: 1, fontSize: "0.76rem", fontWeight: 750, overflowWrap: "anywhere" }}>
+                  <Stack key={item.id} direction="row" alignItems="center" spacing={0.5} sx={{ minHeight: 32 }}>
+                    <Typography sx={{ minWidth: 0, flex: 1, fontSize: "0.76rem", fontWeight: 750, overflowWrap: "anywhere", lineHeight: 1.2 }}>
                       {item.name}
                     </Typography>
-                    <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)" }}><RemoveRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
-                    <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontSize: "0.76rem", fontWeight: 850 }}>{item.quantity}</Typography>
-                    <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)" }}><AddRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
+                    <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)", flexShrink: 0 }}><RemoveRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
+                    <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontSize: "0.76rem", fontWeight: 850, flexShrink: 0 }}>{item.quantity}</Typography>
+                    <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 30, height: 30, border: "1px solid var(--border)", flexShrink: 0 }}><AddRoundedIcon sx={{ fontSize: 16 }} /></IconButton>
                     <Typography sx={{ width: 62, flexShrink: 0, textAlign: "right", fontSize: "0.72rem", fontWeight: 800 }}>
                       Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
                     </Typography>
@@ -2226,27 +2228,28 @@ export default function TableOrderPage() {
             ) : null}
 
             {mobileCartOpen ? (
-              <Stack spacing={1} sx={{ px: 1.5, pt: 1, pb: 0.75 }}>
-                <Stack spacing={0.5} sx={{ maxHeight: 100, overflowY: "auto", pr: 0.5 }}>
+              <Stack spacing={0.85} sx={{ px: 1.25, pt: 1, pb: 0.75 }}>
+                <Stack spacing={0.5} sx={{ maxHeight: 112, overflowY: "auto", pr: 0.25 }}>
                   {cartItems.map((item) => (
                     <Stack
                       key={item.id}
                       direction="row"
                       alignItems="center"
-                      spacing={0.75}
+                      spacing={0.6}
                       sx={{
-                        p: 1,
+                        p: 0.9,
                         borderRadius: "14px",
                         backgroundColor: "var(--background)",
+                        minWidth: 0,
                       }}
                     >
-                      <Typography sx={{ fontWeight: 750, minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
+                      <Typography sx={{ fontWeight: 750, minWidth: 0, flex: 1, overflowWrap: "anywhere", lineHeight: 1.2, fontSize: "0.84rem" }}>
                         {item.name}
                       </Typography>
-                      <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><RemoveRoundedIcon fontSize="small" /></IconButton>
-                      <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontWeight: 850 }}>{item.quantity}</Typography>
-                      <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 34, height: 34, border: "1px solid var(--border)" }}><AddRoundedIcon fontSize="small" /></IconButton>
-                      <Typography sx={{ fontWeight: 800, flexShrink: 0, fontSize: "0.78rem" }}>
+                      <IconButton aria-label={`Remove one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)} size="small" sx={{ width: 32, height: 32, border: "1px solid var(--border)", flexShrink: 0 }}><RemoveRoundedIcon sx={{ fontSize: 18 }} /></IconButton>
+                      <Typography aria-live="polite" sx={{ minWidth: 18, textAlign: "center", fontWeight: 850, flexShrink: 0 }}>{item.quantity}</Typography>
+                      <IconButton aria-label={`Add one ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= MAX_ORDER_QUANTITY} size="small" sx={{ width: 32, height: 32, border: "1px solid var(--border)", flexShrink: 0 }}><AddRoundedIcon sx={{ fontSize: 18 }} /></IconButton>
+                      <Typography sx={{ fontWeight: 800, flexShrink: 0, fontSize: "0.76rem", minWidth: 54, textAlign: "right" }}>
                         Rs. {(Number.parseFloat(item.price) * item.quantity).toFixed(2)}
                       </Typography>
                     </Stack>
@@ -2276,7 +2279,9 @@ export default function TableOrderPage() {
               spacing={1}
               alignItems="center"
               sx={{
-                p: 1,
+                px: 1.25,
+                pt: mobileCartOpen || (bestSellersOpen && !mobileCartOpen) ? 0.75 : 0.5,
+                pb: 1,
                 borderTop: mobileCartOpen ? "1px solid var(--border)" : "none",
               }}
             >
@@ -2349,7 +2354,7 @@ export default function TableOrderPage() {
             <IconButton onClick={() => setBestSellersOpen(false)} aria-label="Close best sellers" sx={{ width: 42, height: 42, border: "1px solid var(--border)", borderRadius: "12px" }}><CloseRoundedIcon /></IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.25, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "250px" : "190px" : 2, sm: 2.5 }, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", alignContent: "start", gap: { xs: 0.75, sm: 1.25 } }}>
+        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.25, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "292px" : "156px" : 2, sm: 2.5 }, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", alignContent: "start", gap: { xs: 0.75, sm: 1.25 } }}>
           <Typography sx={{ gridColumn: "1 / -1", mb: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
           {menu?.topProducts.map((product, index) => {
             const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
