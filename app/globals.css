@@ -259,6 +259,11 @@
 @layer base {
   @supports (view-transition-name: none) {
     @media (prefers-reduced-motion: no-preference) {
+      /* Progressive cross-document route transitions where supported; SPA nav uses withViewTransition(). */
+      @view-transition {
+        navigation: auto;
+      }
+
       ::view-transition-old(root),
       ::view-transition-new(root) {
         animation-duration: 360ms;

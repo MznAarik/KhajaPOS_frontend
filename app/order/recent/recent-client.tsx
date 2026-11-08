@@ -22,6 +22,7 @@ import {
   type KitchenOrder,
   type OrderStatus,
 } from "@/lib/api";
+import { useReducedMotion } from "@/lib/motion";
 
 type RecentOrderSummary = {
   sessionToken: string;
@@ -82,6 +83,7 @@ const timeAgo = (iso: string) => {
 export default function RecentOrderClient({ tableCode: initialTableCode }: { tableCode: string }) {
   const router = useRouter();
   const { showSnackbar } = useAppSnackbar();
+  const reducedMotion = useReducedMotion();
   const [tableCode, setTableCode] = React.useState(initialTableCode);
 
   const [orders, setOrders] = React.useState<RecentOrderSummary[]>([]);
@@ -222,7 +224,7 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
                     height: 8,
                     borderRadius: "50%",
                     backgroundColor: "var(--accent)",
-                    animation: "khajapos-recent-pulse 2s infinite",
+                    animation: reducedMotion ? "none" : "khajapos-recent-pulse 2s infinite",
                     "@keyframes khajapos-recent-pulse": {
                       "0%": { boxShadow: "0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)" },
                       "70%": { boxShadow: "0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent)" },

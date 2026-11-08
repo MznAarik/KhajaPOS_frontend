@@ -53,6 +53,7 @@ import {
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { submitReview } from "@/lib/reviews";
+import { useReducedMotion } from "@/lib/motion";
 
 type CartState = Record<number, number>;
 
@@ -277,6 +278,7 @@ export default function TableOrderPage() {
   const params = useParams<{ tableCode: string }>();
   const router = useRouter();
   const { showSnackbar } = useAppSnackbar();
+  const reducedMotion = useReducedMotion();
   const tableCode = params.tableCode;
 
   const [menu, setMenu] = React.useState<PublicTableMenu | null>(null);
@@ -1010,8 +1012,8 @@ export default function TableOrderPage() {
                   height: 8,
                   borderRadius: "50%",
                   backgroundColor: "var(--accent)",
-                  boxShadow: "0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent)",
-                  animation: "khajapos-live-pulse 2s infinite",
+                  boxShadow: reducedMotion ? "none" : "0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent)",
+                  animation: reducedMotion ? "none" : "khajapos-live-pulse 2s infinite",
                   "@keyframes khajapos-live-pulse": {
                     "0%": { boxShadow: "0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)" },
                     "70%": { boxShadow: "0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent)" },
@@ -1857,7 +1859,7 @@ export default function TableOrderPage() {
                                         fontWeight: 900,
                                         fontSize: "0.92rem",
                                         color: "var(--primary)",
-                                        ...qtyBumpSx,
+                                        ...(reducedMotion ? {} : qtyBumpSx),
                                       }}
                                     >
                                       {quantity}
@@ -2007,7 +2009,7 @@ export default function TableOrderPage() {
                       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ border: "1px solid var(--border)", borderRadius: "14px", px: 0.75, py: 0.4, backgroundColor: "var(--background)", minHeight: 48, width: { xs: "100%", sm: 150 } }}>
                         <Typography sx={{ pl: 0.75, fontSize: "0.84rem", fontWeight: 800 }}>Quantity</Typography>
                         <Button size="small" onClick={() => setInlineBestSellerQty((current) => Math.max(1, current - 1))} disabled={inlineBestSellerQty <= 1} sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}>-</Button>
-                        <Typography sx={{ minWidth: 26, textAlign: "center", fontWeight: 900, ...qtyBumpSx }}>{inlineBestSellerQty}</Typography>
+                        <Typography sx={{ minWidth: 26, textAlign: "center", fontWeight: 900, ...(reducedMotion ? {} : qtyBumpSx) }}>{inlineBestSellerQty}</Typography>
                         <Button size="small" onClick={() => setInlineBestSellerQty((current) => Math.min(MAX_ORDER_QUANTITY, current + 1))} disabled={(cart[inlineBestSellerItem.id] ?? 0) + inlineBestSellerQty >= MAX_ORDER_QUANTITY} sx={{ minWidth: 40, height: 40, borderRadius: "11px", fontSize: "1.15rem", fontWeight: 900, color: "var(--primary)" }}>+</Button>
                       </Stack>
                     </Stack>
@@ -2544,7 +2546,7 @@ export default function TableOrderPage() {
                   >
                     &minus;
                   </Button>
-                  <Typography key={detailQty} sx={{ minWidth: 26, textAlign: "center", fontWeight: 900, ...qtyBumpSx }}>
+                  <Typography key={detailQty} sx={{ minWidth: 26, textAlign: "center", fontWeight: 900, ...(reducedMotion ? {} : qtyBumpSx) }}>
                     {detailQty}
                   </Typography>
                   <Button

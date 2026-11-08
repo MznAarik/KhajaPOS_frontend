@@ -26,3 +26,9 @@ export function supportsViewTransitions(): boolean {
   if (typeof document === "undefined") return false;
   return typeof (document as Document & { startViewTransition?: unknown }).startViewTransition === "function";
 }
+
+/** Safe, unique-enough view-transition-name for a given entity (no collisions via prefix+id). */
+export function vtName(prefix: string, id: string | number): string {
+  const safe = String(id).replace(/[^a-zA-Z0-9_-]/g, "-");
+  return `${prefix}-${safe}`;
+}
