@@ -1957,38 +1957,129 @@ export default function TableOrderPage() {
                 <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
 
                 {inlineBestSellerView === "list" && !inlineBestSellerItem ? (
-                  <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: { xs: 0.75, sm: 1.25 }, alignItems: "stretch" }}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1, sm: 1.25, md: 1.5 }, alignItems: "stretch" }}>
                     {menu?.topProducts.map((product, index) => {
                       const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
                       const itemName = item?.name ?? product.name;
                       const quantity = item ? cart[item.id] ?? 0 : 0;
                       const image = resolveMenuImageUrl(item?.imageUrl ?? product.imageUrl);
+                      const topRank = index < 3;
                       return (
                         <Paper
                           key={product.menuItemId}
                           onClick={() => { if (item) { setInlineBestSellerItem(item); setInlineBestSellerQty(1); } }}
-                          sx={{ p: { xs: 0.9, sm: 1.25 }, minWidth: 0, borderRadius: { xs: "14px", sm: "18px" }, border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: quantity ? "color-mix(in srgb, var(--primary) 8%, var(--muted))" : "var(--muted)", cursor: item ? "pointer" : "default", transition: "all 150ms ease", "&:hover": { boxShadow: "0 8px 20px color-mix(in srgb, var(--foreground) 8%, transparent)" } }}
+                          sx={{
+                            p: { xs: 1, sm: 1.25, md: 1.35 },
+                            minWidth: 0,
+                            borderRadius: { xs: "16px", md: "20px" },
+                            border: quantity
+                              ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))"
+                              : "1px solid color-mix(in srgb, var(--border) 88%, transparent)",
+                            background: quantity
+                              ? "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--card)), var(--muted))"
+                              : "linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, var(--muted)), var(--muted))",
+                            boxShadow: quantity
+                              ? "0 14px 30px color-mix(in srgb, var(--primary) 14%, transparent)"
+                              : "0 8px 24px color-mix(in srgb, var(--foreground) 5%, transparent)",
+                            cursor: item ? "pointer" : "default",
+                            transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+                            "&:hover": {
+                              transform: item ? "translateY(-3px)" : "none",
+                              boxShadow: item
+                                ? quantity
+                                  ? "0 18px 36px color-mix(in srgb, var(--primary) 18%, transparent)"
+                                  : "0 16px 34px color-mix(in srgb, var(--foreground) 10%, transparent)"
+                                : undefined,
+                              borderColor: item ? "color-mix(in srgb, var(--primary) 34%, var(--border))" : undefined,
+                            },
+                          }}
                         >
-                          <Stack spacing={0.85} sx={{ minWidth: 0, height: "100%" }}>
-                            <Box sx={{ position: "relative", width: "100%", height: { xs: 118, sm: 205, lg: 250 }, flexShrink: 0, overflow: "hidden", borderRadius: { xs: "11px", sm: "14px" }, background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--muted)), var(--card))", display: "grid", placeItems: "center" }}>
-                              <Typography sx={{ position: "absolute", color: "var(--muted-foreground)", fontSize: { xs: "0.7rem", sm: "0.85rem" }, fontWeight: 750 }}>Food photo</Typography>
-                              {image ? <Box component="img" src={image} alt={itemName} onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }} sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover" }} /> : null}
-                              <Typography sx={{ position: "absolute", top: 4, left: 4, px: 0.65, py: 0.2, borderRadius: "999px", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.68rem", fontWeight: 950 }}>#{index + 1}</Typography>
-                              {quantity > 0 ? <Box sx={{ position: "absolute", top: 4, right: 4, minWidth: 21, height: 21, borderRadius: "50%", px: 0.5, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.7rem", fontWeight: 900 }}>{quantity}</Box> : null}
+                          <Stack spacing={{ xs: 0.85, md: 1 }} sx={{ minWidth: 0, height: "100%" }}>
+                            <Box
+                              sx={{
+                                position: "relative",
+                                width: "100%",
+                                aspectRatio: { xs: "16 / 10", sm: "1 / 1", md: "4 / 3" },
+                                height: { xs: "auto", sm: 190, md: "auto" },
+                                minHeight: { xs: 148, sm: 190 },
+                                flexShrink: 0,
+                                overflow: "hidden",
+                                borderRadius: { xs: "14px", md: "15px" },
+                                background:
+                                  "radial-gradient(120% 90% at 20% 10%, color-mix(in srgb, var(--primary) 18%, var(--card)), color-mix(in srgb, var(--muted) 92%, var(--card)))",
+                                display: "grid",
+                                placeItems: "center",
+                                "&:hover img.best-seller-img": { transform: item ? "scale(1.05)" : "none" },
+                              }}
+                            >
+                              <Typography sx={{ position: "absolute", color: "var(--muted-foreground)", fontSize: { xs: "0.68rem", sm: "0.8rem" }, fontWeight: 750 }}>
+                                Food photo
+                              </Typography>
+                              {image ? (
+                                <Box
+                                  component="img"
+                                  className="best-seller-img"
+                                  src={image}
+                                  alt={itemName}
+                                  onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }}
+                                  sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", transition: "transform 260ms ease" }}
+                                />
+                              ) : null}
+                              <Box sx={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "linear-gradient(180deg, rgba(0,0,0,0.02) 35%, rgba(0,0,0,0.28) 100%)" }} />
+                              <Typography
+                                sx={{
+                                  position: "absolute",
+                                  top: 8,
+                                  left: 8,
+                                  zIndex: 2,
+                                  px: 0.85,
+                                  py: 0.28,
+                                  borderRadius: "999px",
+                                  color: topRank ? "#1f2937" : "var(--primary-foreground)",
+                                  background: topRank ? "linear-gradient(135deg, #fcd34d, #f59e0b)" : "color-mix(in srgb, var(--primary) 88%, black)",
+                                  boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
+                                  fontSize: "0.68rem",
+                                  fontWeight: 950,
+                                }}
+                              >
+                                #{index + 1}
+                              </Typography>
+                              <Typography sx={{ position: "absolute", left: 8, bottom: 8, zIndex: 2, px: 0.75, py: 0.22, borderRadius: "999px", fontSize: "0.66rem", fontWeight: 850, color: "#fff", backgroundColor: "rgba(17,24,39,0.48)", backdropFilter: "blur(6px)" }}>
+                                {product.quantity} ordered
+                              </Typography>
+                              {quantity > 0 ? (
+                                <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2, minWidth: 24, height: 24, borderRadius: "999px", px: 0.55, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.72rem", fontWeight: 900, boxShadow: "0 8px 16px rgba(0,0,0,0.2)" }}>
+                                  {quantity}
+                                </Box>
+                              ) : null}
                             </Box>
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography sx={{ fontWeight: 850, fontSize: { xs: "0.8rem", sm: "0.96rem" }, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.2, minHeight: { xs: "1.92em", sm: "2.3em" } }}>{itemName}</Typography>
-                              <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.65rem", sm: "0.75rem" }, mt: 0.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.quantity} ordered · {product.category}</Typography>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={0.5} sx={{ mt: 0.65 }}>
-                                {item ? <Typography sx={{ minWidth: 0, fontWeight: 900, fontSize: { xs: "0.72rem", sm: "0.85rem" }, whiteSpace: "nowrap" }}>Rs. {formatPrice(item.price)}</Typography> : <Box />}
-                                {item ? <Button size="small" variant="contained" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, quantity + 1); }} disabled={quantity >= MAX_ORDER_QUANTITY} sx={{ minWidth: { xs: 38, sm: 64 }, px: { xs: 0.75, sm: 1 }, minHeight: 32, borderRadius: "9px", fontWeight: 900, fontSize: { xs: "0.68rem", sm: "0.78rem" }, textTransform: "none" }}>{quantity ? "+1" : "Add"}</Button> : null}
+                            <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+                              <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.86rem", sm: "0.98rem", md: "1.02rem" }, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.18, minHeight: "2.36em" }}>
+                                {itemName}
+                              </Typography>
+                              <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.7rem", md: "0.76rem" }, mt: 0.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {product.category}
+                              </Typography>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={0.75} sx={{ mt: "auto", pt: 1 }}>
+                                {item ? <Typography sx={{ minWidth: 0, fontWeight: 950, fontSize: { xs: "0.8rem", md: "0.92rem" }, whiteSpace: "nowrap" }}>Rs. {formatPrice(item.price)}</Typography> : <Box />}
+                                {item ? (
+                                  <Button
+                                    size="small"
+                                    variant={quantity ? "outlined" : "contained"}
+                                    onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, quantity + 1); }}
+                                    disabled={quantity >= MAX_ORDER_QUANTITY}
+                                    sx={{ minWidth: { xs: 88, sm: 72 }, px: { xs: 1.25, md: 1.2 }, minHeight: { xs: 38, md: 36 }, borderRadius: "11px", fontWeight: 900, fontSize: "0.78rem", textTransform: "none", boxShadow: quantity ? "none" : "0 8px 18px color-mix(in srgb, var(--primary) 24%, transparent)" }}
+                                  >
+                                    {quantity ? "Add more" : "Add"}
+                                  </Button>
+                                ) : null}
                               </Stack>
                             </Box>
                           </Stack>
                         </Paper>
                       );
                     })}
-                    {!menu?.topProducts.length ? <Typography sx={{ py: 4, gridColumn: "1 / -1", color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
+                    {!menu?.topProducts.length ? <Typography sx={{ py: 6, gridColumn: "1 / -1", color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
                   </Box>
                 ) : inlineBestSellerItem ? (
                   <Stack spacing={2}>
@@ -2356,35 +2447,159 @@ export default function TableOrderPage() {
             <IconButton onClick={() => setBestSellersOpen(false)} aria-label="Close best sellers" sx={{ width: 42, height: 42, border: "1px solid var(--border)", borderRadius: "12px" }}><CloseRoundedIcon /></IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.25, sm: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "292px" : "156px" : 2, sm: 2.5 }, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", alignContent: "start", gap: { xs: 0.75, sm: 1.25 } }}>
-          <Typography sx={{ gridColumn: "1 / -1", mb: 0.5, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>Customer favorites, ranked by orders. Add them directly to your cart.</Typography>
+        <DialogContent sx={{ minHeight: 0, flex: "1 1 auto", overflowY: "auto", px: { xs: 1.25, sm: 2.5, md: 3 }, pt: "8px !important", pb: { xs: cartItems.length ? mobileCartOpen ? "292px" : "156px" : 2, sm: 2.5 }, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" }, alignContent: "start", gap: { xs: 1, sm: 1.25, md: 1.5 } }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ gridColumn: "1 / -1", mb: { xs: 0.25, md: 0.5 } }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.84rem", md: "0.92rem" }, lineHeight: 1.45 }}>
+              Guest favorites, ranked by orders. Tap a card vibe? Add straight to your cart.
+            </Typography>
+            {menu?.topProducts.length ? (
+              <Chip
+                label={`${menu.topProducts.length} top picks`}
+                size="small"
+                sx={{
+                  fontWeight: 850,
+                  color: "var(--primary)",
+                  backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--primary) 26%, transparent)",
+                }}
+              />
+            ) : null}
+          </Stack>
           {menu?.topProducts.map((product, index) => {
             const item = flatItems.find((candidate) => candidate.id === product.menuItemId);
             const itemName = item?.name ?? product.name;
             const quantity = item ? cart[item.id] ?? 0 : 0;
             const image = resolveMenuImageUrl(item?.imageUrl ?? product.imageUrl);
+            const topRank = index < 3;
             return (
-              <Paper key={product.menuItemId} elevation={0} sx={{ p: { xs: 0.9, sm: 1.5 }, minWidth: 0, borderRadius: { xs: "14px", sm: "18px" }, border: quantity ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))" : "1px solid var(--border)", backgroundColor: quantity ? "color-mix(in srgb, var(--primary) 8%, var(--muted))" : "var(--muted)" }}>
-                <Stack spacing={0.85} sx={{ minWidth: 0, height: "100%" }}>
-                  <Box sx={{ position: "relative", width: "100%", height: { xs: 118, sm: 205, lg: 250 }, flexShrink: 0, overflow: "hidden", borderRadius: { xs: "11px", sm: "14px" }, background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--muted)), var(--card))", display: "grid", placeItems: "center" }}>
-                    <Typography sx={{ position: "absolute", color: "var(--muted-foreground)", fontSize: { xs: "0.7rem", sm: "0.85rem" }, fontWeight: 750 }}>Food photo</Typography>
-                    {image ? <Box component="img" src={image} alt={itemName} onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }} sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover" }} /> : null}
-                    <Typography sx={{ position: "absolute", top: 4, left: 4, px: 0.65, py: 0.2, borderRadius: "999px", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.68rem", fontWeight: 950 }}>#{index + 1}</Typography>
-                    {quantity > 0 ? <Box sx={{ position: "absolute", top: 4, right: 4, minWidth: 21, height: 21, borderRadius: "50%", px: 0.5, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.7rem", fontWeight: 900 }}>{quantity}</Box> : null}
+              <Paper
+                key={product.menuItemId}
+                elevation={0}
+                sx={{
+                  p: { xs: 0.9, sm: 1.25, md: 1.35 },
+                  minWidth: 0,
+                  borderRadius: { xs: "16px", md: "20px" },
+                  border: quantity
+                    ? "1.5px solid color-mix(in srgb, var(--primary) 55%, var(--border))"
+                    : "1px solid color-mix(in srgb, var(--border) 88%, transparent)",
+                  background: quantity
+                    ? "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--card)), var(--muted))"
+                    : "linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, var(--muted)), var(--muted))",
+                  boxShadow: quantity
+                    ? "0 14px 30px color-mix(in srgb, var(--primary) 14%, transparent)"
+                    : "0 8px 24px color-mix(in srgb, var(--foreground) 5%, transparent)",
+                  transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+                  "&:hover": {
+                    transform: "translateY(-3px)",
+                    boxShadow: quantity
+                      ? "0 18px 36px color-mix(in srgb, var(--primary) 18%, transparent)"
+                      : "0 16px 34px color-mix(in srgb, var(--foreground) 10%, transparent)",
+                    borderColor: "color-mix(in srgb, var(--primary) 34%, var(--border))",
+                  },
+                }}
+              >
+                <Stack spacing={{ xs: 0.85, md: 1 }} sx={{ minWidth: 0, height: "100%" }}>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: { xs: "16 / 10", sm: "1 / 1", md: "4 / 3" },
+                      height: { xs: "auto", sm: 190, md: "auto" },
+                      minHeight: { xs: 148, sm: 190 },
+                      flexShrink: 0,
+                      overflow: "hidden",
+                      borderRadius: { xs: "14px", md: "15px" },
+                      background:
+                        "radial-gradient(120% 90% at 20% 10%, color-mix(in srgb, var(--primary) 18%, var(--card)), color-mix(in srgb, var(--muted) 92%, var(--card)))",
+                      display: "grid",
+                      placeItems: "center",
+                      "&:hover img.best-seller-img": { transform: "scale(1.05)" },
+                    }}
+                  >
+                    <Typography sx={{ position: "absolute", color: "var(--muted-foreground)", fontSize: { xs: "0.68rem", sm: "0.8rem" }, fontWeight: 750, letterSpacing: "0.02em" }}>
+                      Food photo
+                    </Typography>
+                    {image ? (
+                      <Box
+                        component="img"
+                        className="best-seller-img"
+                        src={image}
+                        alt={itemName}
+                        onError={(event: React.SyntheticEvent<HTMLImageElement>) => { event.currentTarget.style.display = "none"; }}
+                        sx={{ position: "relative", zIndex: 1, width: "100%", height: "100%", objectFit: "cover", transition: "transform 260ms ease" }}
+                      />
+                    ) : null}
+                    <Box sx={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "linear-gradient(180deg, rgba(0,0,0,0.02) 35%, rgba(0,0,0,0.28) 100%)" }} />
+                    <Stack direction="row" spacing={0.5} sx={{ position: "absolute", top: 8, left: 8, zIndex: 2 }}>
+                      <Typography
+                        sx={{
+                          px: 0.85,
+                          py: 0.28,
+                          borderRadius: "999px",
+                          color: topRank ? "#1f2937" : "var(--primary-foreground)",
+                          background: topRank
+                            ? "linear-gradient(135deg, #fcd34d, #f59e0b)"
+                            : "color-mix(in srgb, var(--primary) 88%, black)",
+                          boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
+                          fontSize: "0.68rem",
+                          fontWeight: 950,
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        #{index + 1}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ position: "absolute", left: 8, bottom: 8, zIndex: 2, maxWidth: "calc(100% - 16px)" }}>
+                      <Typography sx={{ px: 0.75, py: 0.22, borderRadius: "999px", fontSize: "0.66rem", fontWeight: 850, color: "#fff", backgroundColor: "rgba(17,24,39,0.48)", backdropFilter: "blur(6px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {product.quantity} ordered
+                      </Typography>
+                    </Stack>
+                    {quantity > 0 ? (
+                      <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2, minWidth: 24, height: 24, borderRadius: "999px", px: 0.55, display: "grid", placeItems: "center", color: "var(--primary-foreground)", backgroundColor: "var(--primary)", fontSize: "0.72rem", fontWeight: 900, boxShadow: "0 8px 16px rgba(0,0,0,0.2)" }}>
+                        {quantity}
+                      </Box>
+                    ) : null}
                   </Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography sx={{ fontWeight: 850, fontSize: { xs: "0.8rem", sm: "0.96rem" }, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.2, minHeight: { xs: "1.92em", sm: "2.3em" } }}>{itemName}</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.65rem", sm: "0.75rem" }, mt: 0.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.quantity} ordered · {product.category}</Typography>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={0.5} sx={{ mt: 0.65 }}>
-                      {item ? <Typography sx={{ minWidth: 0, fontWeight: 900, fontSize: { xs: "0.72rem", sm: "0.85rem" }, whiteSpace: "nowrap" }}>Rs. {formatPrice(item.price)}</Typography> : <Box />}
-                      {item ? <Button size="small" variant="contained" onClick={() => updateQuantity(item.id, quantity + 1)} disabled={quantity >= MAX_ORDER_QUANTITY} sx={{ minWidth: { xs: 38, sm: 64 }, px: { xs: 0.75, sm: 1 }, minHeight: 32, borderRadius: "9px", fontWeight: 900, fontSize: { xs: "0.68rem", sm: "0.78rem" }, textTransform: "none" }}>{quantity ? "+1" : "Add"}</Button> : null}
+                  <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: { xs: "0.84rem", sm: "0.98rem", md: "1.02rem" }, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.18, minHeight: { xs: "2.36em", md: "2.36em" } }}>
+                      {itemName}
+                    </Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: { xs: "0.68rem", md: "0.76rem" }, mt: 0.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {product.category}
+                    </Typography>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={0.75} sx={{ mt: "auto", pt: 1 }}>
+                      {item ? (
+                        <Typography sx={{ minWidth: 0, fontWeight: 950, fontSize: { xs: "0.78rem", md: "0.92rem" }, color: "var(--foreground)", whiteSpace: "nowrap" }}>
+                          Rs. {formatPrice(item.price)}
+                        </Typography>
+                      ) : <Box />}
+                      {item ? (
+                        <Button
+                          size="small"
+                          variant={quantity ? "outlined" : "contained"}
+                          onClick={() => updateQuantity(item.id, quantity + 1)}
+                          disabled={quantity >= MAX_ORDER_QUANTITY}
+                          sx={{
+                            minWidth: { xs: 88, sm: 72 },
+                            px: { xs: 1.25, md: 1.2 },
+                            minHeight: { xs: 38, md: 36 },
+                            borderRadius: "11px",
+                            fontWeight: 900,
+                            fontSize: { xs: "0.78rem", md: "0.78rem" },
+                            textTransform: "none",
+                            boxShadow: quantity ? "none" : "0 8px 18px color-mix(in srgb, var(--primary) 24%, transparent)",
+                          }}
+                        >
+                          {quantity ? "Add more" : "Add"}
+                        </Button>
+                      ) : null}
                     </Stack>
                   </Box>
                 </Stack>
               </Paper>
             );
           })}
-          {!menu?.topProducts.length ? <Typography sx={{ py: 4, gridColumn: "1 / -1", color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
+          {!menu?.topProducts.length ? <Typography sx={{ py: 6, gridColumn: "1 / -1", color: "var(--muted-foreground)", textAlign: "center" }}>Best sellers will appear here as orders come in.</Typography> : null}
         </DialogContent>
         <DialogActions sx={{ p: { xs: 1.5, sm: 2.5 }, pt: 0, pb: { xs: "calc(12px + env(safe-area-inset-bottom))", sm: 2.5 } }}>
           <Button fullWidth variant="contained" disabled={placing || cartItems.length === 0} onClick={async () => {
