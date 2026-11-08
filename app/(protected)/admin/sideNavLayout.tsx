@@ -181,23 +181,27 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         };
     }, [isSuperAdmin]);
 
-    const navItems: NavItem[] = isSuperAdmin
-        ? [
-            { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
-            { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
-            { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
-            { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
-            { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
-            { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
-        ]
-        : [
-            { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-            { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
-            { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-            { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
-            { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-            { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
-        ];
+    const navItems: NavItem[] = React.useMemo(
+        () =>
+            isSuperAdmin
+                ? [
+                    { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
+                    { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
+                    { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
+                    { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
+                    { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
+                    { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
+                ]
+                : [
+                    { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+                    { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                    { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                    { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                    { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                    { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
+                ],
+        [isSuperAdmin]
+    );
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Home",
@@ -244,12 +248,15 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             const list = navListRef.current;
             const listRect = list.getBoundingClientRect();
             const rect = el.getBoundingClientRect();
-            setNavIndicator({
+            const next = {
                 y: rect.top - listRect.top,
                 h: rect.height,
                 w: rect.width,
                 visible: rect.height > 0,
-            });
+            };
+            setNavIndicator((s) =>
+                s.visible === next.visible && s.y === next.y && s.h === next.h && s.w === next.w ? s : next
+            );
         };
         update();
         window.addEventListener("resize", update);
