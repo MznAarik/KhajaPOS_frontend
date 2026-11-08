@@ -916,6 +916,7 @@ export default function TableOrderPage() {
         backgroundImage: "none",
         color: "var(--foreground)",
         p: { xs: 1, md: 3 },
+        overflowX: "clip",
         pb: {
           xs: cartItems.length
             ? mobileCartOpen
@@ -2174,13 +2175,14 @@ export default function TableOrderPage() {
           sx={{
             display: { xs: "block", lg: "none" },
             position: "fixed",
-            left: 0,
-            right: 0,
+            left: "max(0px, env(safe-area-inset-left))",
+            right: "max(0px, env(safe-area-inset-right))",
             bottom: 0,
             zIndex: 2000,
-            px: { xs: 1, md: 1.25 },
+            px: 1,
             pb: "calc(env(safe-area-inset-bottom) + 10px)",
             pointerEvents: "none",
+            boxSizing: "border-box",
           }}
         >
           <Paper
