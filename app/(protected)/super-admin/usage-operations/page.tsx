@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import {
-  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Fade, Grow,
   InputAdornment, LinearProgress, MenuItem, Paper, Skeleton, Stack, Tab, Tabs,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { motion } from "motion/react";
+import { shakeKeyframes, shakeTransition, spring, useReducedMotion } from "@/lib/motion";
+
+const MotionButton = motion.create(Button);
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -59,6 +63,9 @@ function QuotaBar({ label, value, limit }: { label: string; value: number; limit
 export default function SuperAdminUsageOperationsPage() {
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down("sm"));
+  const reducedMotion = useReducedMotion();
+  const [shakeMaintenance, setShakeMaintenance] = React.useState(0);
+  const [shakeBackup, setShakeBackup] = React.useState(0);
 
   const [tab, setTab] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -105,7 +112,7 @@ export default function SuperAdminUsageOperationsPage() {
       showSnackbar(maintenanceForm.enabled ? "Maintenance mode enabled." : "Maintenance mode disabled.", "success");
       setMaintenanceDialog(false);
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to update maintenance mode."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakeMaintenance((k) => k + 1); showSnackbar(safeError(e, "Failed to update maintenance mode."), "error"); } finally { setSaving(false); }
   };
 
   const saveBackup = async () => {
@@ -123,7 +130,7 @@ export default function SuperAdminUsageOperationsPage() {
       setBackupDialog(false);
       setBackupForm({ name: "", type: "database", status: "recorded", source: "manual_record", path: "", notes: "" });
       await load(true);
-    } catch (e) { showSnackbar(safeError(e, "Failed to record backup."), "error"); } finally { setSaving(false); }
+    } catch (e) { setShakeBackup((k) => k + 1); showSnackbar(safeError(e, "Failed to record backup."), "error"); } finally { setSaving(false); }
   };
 
   const health = operations?.health ?? {};
@@ -168,9 +175,9 @@ export default function SuperAdminUsageOperationsPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.75} flexWrap={{ xs: "wrap", sm: "nowrap" }} useFlexGap sx={{ minWidth: 0, maxWidth: "100%", width: { xs: "100%", sm: "auto" } }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Refresh</Button>
-            <Button variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={() => setMaintenanceDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</Button>
-            <Button variant="contained" startIcon={<BackupOutlinedIcon />} onClick={() => setBackupDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</Button>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<RefreshIcon />} onClick={() => void load(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Refresh</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={() => setMaintenanceDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Maintenance</MotionButton>
+            <MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" startIcon={<BackupOutlinedIcon />} onClick={() => setBackupDialog(true)} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap", flex: { xs: "1 1 auto", sm: "0 0 auto" }, minHeight: 40 }}>Record backup</MotionButton>
           </Stack>
         </Stack>
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))", xl: "repeat(8,minmax(0,1fr))" }, gap: 1 }}>
@@ -389,35 +396,57 @@ export default function SuperAdminUsageOperationsPage() {
         </Paper>
       )}
 
-      <Dialog open={maintenanceDialog} onClose={saving ? undefined : () => setMaintenanceDialog(false)} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={maintenanceDialog}
+        onClose={saving ? undefined : () => setMaintenanceDialog(false)}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Platform maintenance mode</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}>
-          <Alert severity={maintenanceForm.enabled ? "warning" : "info"} sx={{ mb: 2, borderRadius: "12px" }}>When enabled, public/business flows should be blocked with a clear maintenance notice. Super admin access can remain allowed.</Alert>
-          <Stack spacing={1.5}>
-            <TextField select label="Maintenance mode" value={maintenanceForm.enabled ? "on" : "off"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, enabled: e.target.value === "on" }))} fullWidth><MenuItem value="off">Off</MenuItem><MenuItem value="on">On</MenuItem></TextField>
-            <TextField label="User-facing message" value={maintenanceForm.message} onChange={(e) => setMaintenanceForm((f) => ({ ...f, message: e.target.value }))} fullWidth multiline minRows={3} />
-            <TextField select label="Allow super admin during maintenance" value={maintenanceForm.allow_super_admin ? "yes" : "no"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, allow_super_admin: e.target.value === "yes" }))} fullWidth><MenuItem value="yes">Yes</MenuItem><MenuItem value="no">No</MenuItem></TextField>
-          </Stack>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakeMaintenance} animate={reducedMotion || shakeMaintenance === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Alert severity={maintenanceForm.enabled ? "warning" : "info"} sx={{ mb: 2, borderRadius: "12px" }}>When enabled, public/business flows should be blocked with a clear maintenance notice. Super admin access can remain allowed.</Alert>
+            <Stack spacing={1.5}>
+              <TextField select label="Maintenance mode" value={maintenanceForm.enabled ? "on" : "off"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, enabled: e.target.value === "on" }))} fullWidth><MenuItem value="off">Off</MenuItem><MenuItem value="on">On</MenuItem></TextField>
+              <TextField label="User-facing message" value={maintenanceForm.message} onChange={(e) => setMaintenanceForm((f) => ({ ...f, message: e.target.value }))} fullWidth multiline minRows={3} />
+              <TextField select label="Allow super admin during maintenance" value={maintenanceForm.allow_super_admin ? "yes" : "no"} onChange={(e) => setMaintenanceForm((f) => ({ ...f, allow_super_admin: e.target.value === "yes" }))} fullWidth><MenuItem value="yes">Yes</MenuItem><MenuItem value="no">No</MenuItem></TextField>
+            </Stack>
+          </motion.div>
         </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><Button onClick={() => setMaintenanceDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</Button><Button variant="contained" onClick={saveMaintenance} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Save"}</Button></DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setMaintenanceDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</MotionButton><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={saveMaintenance} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Save"}</MotionButton></DialogActions>
       </Dialog>
 
-      <Dialog open={backupDialog} onClose={saving ? undefined : () => setBackupDialog(false)} fullScreen={fullScreenDialog} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
+      <Dialog
+        open={backupDialog}
+        onClose={saving ? undefined : () => setBackupDialog(false)}
+        fullScreen={fullScreenDialog}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: reducedMotion || fullScreenDialog ? Fade : Grow }}
+        slotProps={{ transition: reducedMotion ? { timeout: 1 } : { timeout: 360 } }}
+        PaperProps={{ sx: dialogPaperSx }}
+      >
         <DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Record backup event</DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}>
-          <Alert severity="info" sx={{ mb: 2, borderRadius: "12px" }}>Records backup metadata/status for monitoring. Automated execution/verification is disclosed as not fully instrumented unless integrated.</Alert>
-          <Stack spacing={1.5}>
-            <TextField label="Name" value={backupForm.name} onChange={(e) => setBackupForm((f) => ({ ...f, name: e.target.value }))} fullWidth placeholder="e.g. Nightly DB backup" />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <TextField label="Type" value={backupForm.type} onChange={(e) => setBackupForm((f) => ({ ...f, type: e.target.value }))} fullWidth />
-              <TextField select label="Status" value={backupForm.status} onChange={(e) => setBackupForm((f) => ({ ...f, status: e.target.value }))} fullWidth>{["recorded", "running", "success", "failed", "verified"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+        <DialogContent dividers sx={{ pt: 2, overflowX: "hidden" }}>
+          <motion.div key={shakeBackup} animate={reducedMotion || shakeBackup === 0 ? { x: 0 } : shakeKeyframes} transition={shakeTransition}>
+            <Alert severity="info" sx={{ mb: 2, borderRadius: "12px" }}>Records backup metadata/status for monitoring. Automated execution/verification is disclosed as not fully instrumented unless integrated.</Alert>
+            <Stack spacing={1.5}>
+              <TextField label="Name" value={backupForm.name} onChange={(e) => setBackupForm((f) => ({ ...f, name: e.target.value }))} fullWidth placeholder="e.g. Nightly DB backup" />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField label="Type" value={backupForm.type} onChange={(e) => setBackupForm((f) => ({ ...f, type: e.target.value }))} fullWidth />
+                <TextField select label="Status" value={backupForm.status} onChange={(e) => setBackupForm((f) => ({ ...f, status: e.target.value }))} fullWidth>{["recorded", "running", "success", "failed", "verified"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+              </Stack>
+              <TextField label="Source" value={backupForm.source} onChange={(e) => setBackupForm((f) => ({ ...f, source: e.target.value }))} fullWidth />
+              <TextField label="Path (optional)" value={backupForm.path} onChange={(e) => setBackupForm((f) => ({ ...f, path: e.target.value }))} fullWidth />
+              <TextField label="Notes" value={backupForm.notes} onChange={(e) => setBackupForm((f) => ({ ...f, notes: e.target.value }))} fullWidth multiline minRows={2} />
             </Stack>
-            <TextField label="Source" value={backupForm.source} onChange={(e) => setBackupForm((f) => ({ ...f, source: e.target.value }))} fullWidth />
-            <TextField label="Path (optional)" value={backupForm.path} onChange={(e) => setBackupForm((f) => ({ ...f, path: e.target.value }))} fullWidth />
-            <TextField label="Notes" value={backupForm.notes} onChange={(e) => setBackupForm((f) => ({ ...f, notes: e.target.value }))} fullWidth multiline minRows={2} />
-          </Stack>
+          </motion.div>
         </DialogContent>
-        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><Button onClick={() => setBackupDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</Button><Button variant="contained" onClick={saveBackup} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Record"}</Button></DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} onClick={() => setBackupDialog(false)} disabled={saving} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}>Cancel</MotionButton><MotionButton whileTap={reducedMotion ? undefined : { scale: 0.98 }} transition={spring.press} variant="contained" onClick={saveBackup} disabled={saving} sx={{ fontWeight: 800, textTransform: "none", borderRadius: "10px" }}>{saving ? "Saving..." : "Record"}</MotionButton></DialogActions>
       </Dialog>
     </Box>
   );
