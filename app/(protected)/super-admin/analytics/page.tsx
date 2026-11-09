@@ -337,29 +337,46 @@ function TrendChart({
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
   const labelInterval = Math.max(1, Math.ceil(points.length / (compact ? 4 : 7)));
 
-  const handleMove = (event: React.MouseEvent<SVGSVGElement>) => {
-    if (points.length === 0 || stepX === 0) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const offsetX = event.clientX - rect.left;
+  const setIndexFromClientX = (clientX: number, target: SVGSVGElement) => {
+    if (points.length === 0) return;
+    const rect = target.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    if (stepX <= 0) {
+      setActiveIndex(0);
+      return;
+    }
     const index = Math.round((offsetX - padLeft) / stepX);
     setActiveIndex(Math.min(Math.max(index, 0), points.length - 1));
   };
 
-  const activePoint = activeIndex === null ? null : { coord: coords[activeIndex], datum: points[activeIndex] };
+  const handleMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    setIndexFromClientX(event.clientX, event.currentTarget);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    setIndexFromClientX(event.clientX, event.currentTarget);
+  };
+
+  const activePoint = activeIndex === null || !coords[activeIndex] || !points[activeIndex]
+    ? null
+    : { coord: coords[activeIndex], datum: points[activeIndex] };
 
   return (
-    <Box ref={measureRef} sx={{ position: "relative", width: "100%", height }}>
+    <Box ref={measureRef} sx={{ position: "relative", width: "100%", height, overflow: "visible" }}>
       {width > 0 ? (
         <svg
           width={width}
           height={height}
           role="img"
           aria-label="Platform growth trend"
-          style={{ display: "block", overflow: "visible" }}
+          style={{ display: "block", overflow: "visible", cursor: "crosshair", touchAction: "none" }}
           onMouseMove={handleMove}
           onMouseLeave={() => setActiveIndex(null)}
+          onPointerMove={handlePointerMove}
+          onPointerDown={handlePointerMove}
+          onPointerLeave={() => setActiveIndex(null)}
         >
+          <rect x={0} y={0} width={width} height={height} fill="transparent" pointerEvents="all" />
           <defs>
             <linearGradient id={`growth-area-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity={0.36} />
@@ -427,6 +444,7 @@ function TrendChart({
                 fill="var(--card)"
                 stroke={color}
                 strokeWidth={isActive ? 3 : 2}
+                pointerEvents="none"
               />
             );
           })}
