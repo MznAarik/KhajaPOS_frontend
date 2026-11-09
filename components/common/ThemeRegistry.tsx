@@ -136,38 +136,44 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
             const y = origin?.y ?? vh / 2;
             const radius = Math.hypot(Math.max(x, vw - x), Math.max(y, vh - y)) * 1.12;
 
-            const startVT = (document as Document & { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> } }).startViewTransition;
-            if (typeof startVT === "function") {
+            const doc = document as Document & {
+                startViewTransition?: (callback: () => void) => {
+                    ready: Promise<void>;
+                    finished: Promise<void>;
+                };
+            };
+            if (typeof doc.startViewTransition === "function") {
                 busyRef.current = true;
-                const root = document.documentElement;
-                root.style.setProperty("--theme-vt-x", `${x}px`);
-                root.style.setProperty("--theme-vt-y", `${y}px`);
-                root.style.setProperty("--theme-vt-r", `${radius}px`);
-                root.dataset.themeVt = "reveal";
-                root.classList.add("theme-switching");
-
                 try {
-                    const transition = startVT.call(document, () => {
+                    const transition = doc.startViewTransition(() => {
                         setMode(nextMode);
                         applyThemeMode(nextMode, storageKey);
                     });
+                    // Circular wipe from toggle origin (same smooth approach as aarpra).
+                    void transition.ready
+                        .then(() => {
+                            document.documentElement.animate(
+                                {
+                                    clipPath: [
+                                        `circle(0px at ${x}px ${y}px)`,
+                                        `circle(${radius}px at ${x}px ${y}px)`,
+                                    ],
+                                },
+                                {
+                                    duration: 560,
+                                    easing: "ease-out",
+                                    pseudoElement: "::view-transition-new(root)",
+                                },
+                            );
+                        })
+                        .catch(() => undefined);
                     void transition.finished
                         .catch(() => {})
                         .finally(() => {
-                            delete root.dataset.themeVt;
-                            root.style.removeProperty("--theme-vt-x");
-                            root.style.removeProperty("--theme-vt-y");
-                            root.style.removeProperty("--theme-vt-r");
-                            root.classList.remove("theme-switching");
                             busyRef.current = false;
                         });
                     return;
                 } catch {
-                    delete root.dataset.themeVt;
-                    root.style.removeProperty("--theme-vt-x");
-                    root.style.removeProperty("--theme-vt-y");
-                    root.style.removeProperty("--theme-vt-r");
-                    root.classList.remove("theme-switching");
                     busyRef.current = false;
                 }
             }

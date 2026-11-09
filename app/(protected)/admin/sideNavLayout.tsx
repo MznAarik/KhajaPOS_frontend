@@ -40,10 +40,12 @@ import Link from "next/link";
 import ProfileComponent from "@/components/common/ProfileComponent";
 import { CoffeeIcon, type CoffeeIconHandle } from "@/components/ui/coffee-icon";
 import { HouseIcon, type HouseIconHandle } from "@/components/ui/house-icon";
-import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
-import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import { StoreIcon, type StoreIconHandle } from "@/components/ui/store-icon";
+import { ChartSplineIcon, type ChartSplineIconHandle } from "@/components/ui/chart-spline-icon";
+import { UsersIcon, type UsersIconHandle } from "@/components/ui/users-icon";
+import { MessageSquareIcon, type MessageSquareIconHandle } from "@/components/ui/message-square-icon";
+import { CreditCardIcon, type CreditCardIconHandle } from "@/components/ui/credit-card-icon";
+import { ActivityIcon, type ActivityIconHandle } from "@/components/ui/activity-icon";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 
@@ -72,18 +74,6 @@ type NavItem = {
     ref?: React.RefObject<NavIconHandle | null>;
 };
 
-const withNavIcon = (Component: React.ComponentType<any>) =>
-    React.forwardRef<SVGSVGElement, { size?: number; className?: string }>(
-        function NavIcon({ size = 20, className }, ref) {
-            return <Component ref={ref} className={className} sx={{ fontSize: size }} />;
-        },
-    );
-
-const UsersNavIcon = withNavIcon(PeopleAltOutlinedIcon);
-const RestaurantsNavIcon = withNavIcon(StorefrontOutlinedIcon);
-const AnalyticsNavIcon = withNavIcon(InsightsOutlinedIcon);
-const ReviewsNavIcon = withNavIcon(RateReviewOutlinedIcon);
-
 export default function SideNavLayout({
     children,
     initialUser,
@@ -110,6 +100,13 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const productsIconRef = React.useRef<LayoutListIconHandle | null>(null);
     const tablesIconRef = React.useRef<CoffeeIconHandle | null>(null);
     const ordersIconRef = React.useRef<DashboardIconHandle | null>(null);
+    const saDashboardRef = React.useRef<HouseIconHandle | null>(null);
+    const saBusinessesRef = React.useRef<StoreIconHandle | null>(null);
+    const saAnalyticsRef = React.useRef<ChartSplineIconHandle | null>(null);
+    const saSubsRef = React.useRef<CreditCardIconHandle | null>(null);
+    const saUsageRef = React.useRef<ActivityIconHandle | null>(null);
+    const saUsersRef = React.useRef<UsersIconHandle | null>(null);
+    const reviewsIconRef = React.useRef<MessageSquareIconHandle | null>(null);
     const mainRef = React.useRef<HTMLDivElement | null>(null);
     const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
     const [notifLoading, setNotifLoading] = React.useState(false);
@@ -185,12 +182,12 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         () =>
             isSuperAdmin
                 ? [
-                    { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon },
-                    { text: "Businesses", href: "/super-admin/businesses", icon: RestaurantsNavIcon },
-                    { text: "Analytics", href: "/super-admin/analytics", icon: AnalyticsNavIcon },
-                    { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: ShoppingCartIcon },
-                    { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: LayoutListIcon },
-                    { text: "Users", href: "/super-admin/users", icon: UsersNavIcon },
+                    { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon, ref: saDashboardRef },
+                    { text: "Businesses", href: "/super-admin/businesses", icon: StoreIcon, ref: saBusinessesRef },
+                    { text: "Analytics", href: "/super-admin/analytics", icon: ChartSplineIcon, ref: saAnalyticsRef },
+                    { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: CreditCardIcon, ref: saSubsRef },
+                    { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: ActivityIcon, ref: saUsageRef },
+                    { text: "Users", href: "/super-admin/users", icon: UsersIcon, ref: saUsersRef },
                 ]
                 : [
                     { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
@@ -198,9 +195,9 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
                     { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
                     { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-                    { text: "Reviews", href: "/business-admin/reviews", icon: ReviewsNavIcon },
+                    { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
                 ],
-        [isSuperAdmin]
+        [isSuperAdmin],
     );
 
     const segmentLabels: Record<string, string> = {

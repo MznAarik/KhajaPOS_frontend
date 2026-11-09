@@ -257,37 +257,28 @@
 }
 
 @layer base {
-  @keyframes theme-vt-reveal {
-    from {
-      clip-path: circle(0px at var(--theme-vt-x, 50vw) var(--theme-vt-y, 50vh));
-    }
-    to {
-      clip-path: circle(var(--theme-vt-r, 150vmax) at var(--theme-vt-x, 50vw) var(--theme-vt-y, 50vh));
-    }
+  /*
+   * View Transitions: theme toggle uses a circular clip-path wipe (WAAPI in ThemeRegistry).
+   * Suppress default crossfade so only the wipe is visible.
+   */
+  @view-transition {
+    navigation: auto;
   }
 
-  @supports (view-transition-name: none) {
-    @media (prefers-reduced-motion: no-preference) {
-      /* Progressive cross-document route transitions where supported; SPA nav uses withViewTransition(). */
-      @view-transition {
-        navigation: auto;
-      }
+  ::view-transition {
+    pointer-events: none;
+  }
 
-      ::view-transition-old(root),
-      ::view-transition-new(root) {
-        animation-duration: 360ms;
-        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-      }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
 
-      html[data-theme-vt="reveal"]::view-transition-old(root),
-      html[data-theme-vt="reveal"]::view-transition-new(root) {
-        animation: none;
-        mix-blend-mode: normal;
-      }
-
-      html[data-theme-vt="reveal"]::view-transition-new(root) {
-        animation: theme-vt-reveal 850ms cubic-bezier(0.22, 0.85, 0.25, 1) both;
-      }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none !important;
     }
   }
 
