@@ -490,7 +490,7 @@ export default function AddEditMenuDialog({
                 <DialogContent
                     sx={{
                         px: { xs: 2, sm: 3 },
-                        pt: { xs: 2, sm: 2.5 },
+                        pt: { xs: 2.75, sm: 3.25 },
                         pb: 2,
                         borderTop: "1px solid var(--border)",
                         overflowY: "auto",

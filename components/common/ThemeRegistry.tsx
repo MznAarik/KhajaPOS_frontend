@@ -144,36 +144,66 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
             };
             if (typeof doc.startViewTransition === "function") {
                 busyRef.current = true;
+                const root = document.documentElement;
+                // Suppress global MUI/CSS transitions during the wipe to avoid whole-screen jank.
+                root.classList.add("theme-switching");
                 try {
                     const transition = doc.startViewTransition(() => {
                         setMode(nextMode);
                         applyThemeMode(nextMode, storageKey);
                     });
-                    // Circular wipe from toggle origin (same smooth approach as aarpra).
+                    const isMobileLike =
+                        window.matchMedia("(pointer: coarse)").matches ||
+                        Math.min(window.innerWidth, window.innerHeight) < 768;
                     void transition.ready
                         .then(() => {
-                            document.documentElement.animate(
-                                {
-                                    clipPath: [
-                                        `circle(0px at ${x}px ${y}px)`,
-                                        `circle(${radius}px at ${x}px ${y}px)`,
-                                    ],
-                                },
-                                {
-                                    duration: 560,
-                                    easing: "ease-out",
-                                    pseudoElement: "::view-transition-new(root)",
-                                },
-                            );
+                            if (isMobileLike) {
+                                // Use a compositor-friendly fade on mobile for smoother performance.
+                                root.animate(
+                                    { opacity: [0, 1] },
+                                    {
+                                        duration: 220,
+                                        easing: "ease-out",
+                                        pseudoElement: "::view-transition-new(root)",
+                                        fill: "both",
+                                    },
+                                );
+                                root.animate(
+                                    { opacity: [1, 0] },
+                                    {
+                                        duration: 220,
+                                        easing: "ease-out",
+                                        pseudoElement: "::view-transition-old(root)",
+                                        fill: "both",
+                                    },
+                                );
+                            } else {
+                                // Circular wipe from toggle origin (same smooth approach as aarpra).
+                                root.animate(
+                                    {
+                                        clipPath: [
+                                            `circle(0px at ${x}px ${y}px)`,
+                                            `circle(${radius}px at ${x}px ${y}px)`,
+                                        ],
+                                    },
+                                    {
+                                        duration: 560,
+                                        easing: "ease-out",
+                                        pseudoElement: "::view-transition-new(root)",
+                                    },
+                                );
+                            }
                         })
                         .catch(() => undefined);
                     void transition.finished
                         .catch(() => {})
                         .finally(() => {
+                            root.classList.remove("theme-switching");
                             busyRef.current = false;
                         });
                     return;
                 } catch {
+                    root.classList.remove("theme-switching");
                     busyRef.current = false;
                 }
             }

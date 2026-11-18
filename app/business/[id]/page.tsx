@@ -71,7 +71,7 @@ export async function generateMetadata({
     ? `${business.name} uses KhajaPOS for QR table ordering and service operations. Located at ${business.address}.`
     : `${business.name} uses KhajaPOS for QR table ordering, menu browsing, and service operations.`;
   const url = `${siteUrl}/business/${business.id}`;
-  const image = resolveLogo(business.logo);
+  const image = resolveLogo(business.logo) ?? `${siteUrl}/images.png`;
 
   return {
     title,
@@ -83,13 +83,14 @@ export async function generateMetadata({
       title,
       description,
       siteName: "KhajaPOS",
-      ...(image ? { images: [{ url: image, alt: `${business.name} logo` }] } : {}),
+      locale: "en_US",
+      images: [{ url: image, alt: `${business.name} on KhajaPOS` }],
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      ...(image ? { images: [image] } : {}),
+      images: [image],
     },
     robots: { index: true, follow: true },
   };

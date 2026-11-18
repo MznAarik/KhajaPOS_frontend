@@ -19,11 +19,21 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       siteName: "KhajaPOS",
+      locale: "en_US",
+      images: [
+        {
+          url: "/images.png",
+          width: 512,
+          height: 512,
+          alt: "KhajaPOS — QR Table Ordering & POS Platform",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: ["/images.png"],
     },
     robots: { index: true, follow: true },
   };
