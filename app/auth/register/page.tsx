@@ -8,7 +8,9 @@ import {
     Button,
     Card,
     CardContent,
+    Checkbox,
     Divider,
+    FormControlLabel,
     IconButton,
     InputAdornment,
     MenuItem,
@@ -46,6 +48,7 @@ export default function RegisterPage() {
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
     const logoInputRef = useRef<HTMLInputElement | null>(null);
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -114,6 +117,14 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!acceptedTerms) {
+            showSnackbar(
+                "Please accept the Terms of Service and Privacy Policy to create an account.",
+                "warning"
+            );
+            return;
+        }
+
         try {
             setLoading(true);
 
@@ -130,6 +141,9 @@ export default function RegisterPage() {
             if (logoFile) {
                 submitData.append("business[logo]", logoFile);
             }
+            submitData.append("accepted_terms", "1");
+            submitData.append("accepted_privacy", "1");
+            submitData.append("accepted_terms_at", new Date().toISOString());
 
             const res = await axios.post("/api/svc/register", submitData);
 
@@ -577,9 +591,38 @@ export default function RegisterPage() {
                                         </Box>
                                     </Box>
 
+                                    <Box sx={{ mt: 0.5 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={acceptedTerms}
+                                                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                                                    sx={{
+                                                        color: "var(--muted-foreground)",
+                                                        "&.Mui-checked": { color: "var(--primary)" },
+                                                    }}
+                                                />
+                                            }
+                                            label={
+                                                <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+                                                    I agree to the{" "}
+                                                    <Link href="/terms" target="_blank" style={{ color: "var(--primary)", fontWeight: 700 }}>
+                                                        Terms of Service
+                                                    </Link>{" "}
+                                                    and{" "}
+                                                    <Link href="/privacy" target="_blank" style={{ color: "var(--primary)", fontWeight: 700 }}>
+                                                        Privacy Policy
+                                                    </Link>
+                                                    , and I consent to the collection, storage, and processing of my account, business, and operational data as described.
+                                                </Typography>
+                                            }
+                                            sx={{ alignItems: "flex-start", m: 0 }}
+                                        />
+                                    </Box>
+
                                     <Button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || !acceptedTerms}
                                         sx={{
                                             borderRadius: "16px",
                                             backgroundColor: "var(--primary)",

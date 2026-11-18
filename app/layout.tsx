@@ -31,17 +31,30 @@ export const metadata: Metadata = {
   ],
   applicationName: "KhajaPOS",
   authors: [{ name: "KhajaPOS" }],
+  alternates: {
+    canonical: "/landing",
+  },
   openGraph: {
     type: "website",
     siteName: "KhajaPOS",
     title: "KhajaPOS — Restaurant POS & Table Ordering System",
     description: SITE_DESCRIPTION,
-    url: SITE_URL,
+    url: `${SITE_URL}/landing`,
+    locale: "en_US",
+    images: [
+      {
+        url: "/images.png",
+        width: 512,
+        height: 512,
+        alt: "KhajaPOS — Restaurant POS & Table Ordering System",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "KhajaPOS — Restaurant POS & Table Ordering System",
     description: SITE_DESCRIPTION,
+    images: ["/images.png"],
   },
   robots: { index: true, follow: true },
 };

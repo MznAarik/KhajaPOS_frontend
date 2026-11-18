@@ -14,8 +14,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const base: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/landing`, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    { url: `${siteUrl}/auth/login`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${siteUrl}/auth/register`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${siteUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${siteUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   const json = await fetchPublicJson<PublicBusinessesResponse>("/api/public/businesses?limit=500", {
