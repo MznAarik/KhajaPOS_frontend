@@ -140,7 +140,8 @@ export default function MenuViewDialog({ open, item, onClose }: MenuViewDialogPr
             <DialogContent
                 sx={{
                     px: { xs: 2, sm: 3 },
-                    py: { xs: 2, sm: 2.5 },
+                    pt: { xs: 2.75, sm: 3.25 },
+                    pb: { xs: 2, sm: 2.5 },
                     flex: 1,
                     minHeight: 0,
                     borderTop: "1px solid var(--border)",

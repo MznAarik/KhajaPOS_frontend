@@ -53,6 +53,34 @@ const highlights = [
   },
 ];
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://khajapos.com";
+const landingJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      name: "KhajaPOS",
+      url: SITE_URL,
+      logo: `${SITE_URL}/images.png`,
+    },
+    {
+      "@type": "WebSite",
+      name: "KhajaPOS",
+      url: `${SITE_URL}/landing`,
+      description:
+        "KhajaPOS is a modern restaurant POS system with QR table ordering, menu management, real-time order tracking and sales analytics.",
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "KhajaPOS",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Restaurant POS and QR table ordering platform for menus, tables, live orders, and operations.",
+    },
+  ],
+};
+
 export default function LandingPage() {
   return (
     <Box
@@ -63,6 +91,10 @@ export default function LandingPage() {
         color: "var(--foreground)",
       }}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(landingJsonLd) }}
+      />
       <Box
         component="header"
         sx={{
