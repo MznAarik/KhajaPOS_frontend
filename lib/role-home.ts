@@ -7,8 +7,18 @@ import type { UserRole } from "@/lib/api";
 export const ROLE_HOME: Record<UserRole, string> = {
   super_admin: "/super-admin/dashboard",
   admin: "/business-admin/dashboard",
+  manager: "/business-admin/dashboard",
+  cashier: "/business-admin/dashboard",
+  kitchen_staff: "/business-admin/dashboard",
   user: "/user",
 };
+
+export const BUSINESS_WORKSPACE_ROLES: UserRole[] = [
+  "admin",
+  "manager",
+  "cashier",
+  "kitchen_staff",
+];
 
 export const SUPERADMIN_PATHS = ["/super-admin"];
 

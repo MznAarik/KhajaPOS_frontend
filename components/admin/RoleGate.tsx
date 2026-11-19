@@ -15,7 +15,7 @@ import {
 export default function RoleGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isSuperAdmin, isAdmin, loading } = useAuth();
+  const { user, isSuperAdmin, isAdmin, isBusinessWorkspace, loading } = useAuth();
   const redirected = React.useRef(false);
 
   React.useEffect(() => {
@@ -41,7 +41,7 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
         reviews: "/business-admin/reviews",
         settings: "/business-admin/settings",
       };
-      const routes = isSuperAdmin ? superAdminRoutes : isAdmin ? businessAdminRoutes : null;
+      const routes = isSuperAdmin ? superAdminRoutes : isBusinessWorkspace ? businessAdminRoutes : null;
       router.replace(routes?.[legacySection] ?? homeForRole(user?.role));
       return;
     }
@@ -52,17 +52,17 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAdmin && matchesPath(pathname, SUPERADMIN_PATHS)) {
+    if (isBusinessWorkspace && matchesPath(pathname, SUPERADMIN_PATHS)) {
       redirected.current = true;
-      router.replace(homeForRole("admin"));
+      router.replace(homeForRole(user?.role ?? "admin"));
       return;
     }
 
-    if (!isSuperAdmin && !isAdmin && user && (matchesPath(pathname, OWNER_PATHS) || matchesPath(pathname, SUPERADMIN_PATHS))) {
+    if (!isSuperAdmin && !isBusinessWorkspace && user && (matchesPath(pathname, OWNER_PATHS) || matchesPath(pathname, SUPERADMIN_PATHS))) {
       redirected.current = true;
       router.replace(homeForRole("user"));
     }
-  }, [pathname, router, isSuperAdmin, isAdmin, loading, user]);
+  }, [pathname, router, isSuperAdmin, isAdmin, isBusinessWorkspace, loading, user]);
 
   if (loading) {
     return (
@@ -75,13 +75,13 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if ((matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) || (matchesPath(pathname ?? "", OWNER_PATHS) && !isAdmin)) {
+  if ((matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) || (matchesPath(pathname ?? "", OWNER_PATHS) && !isBusinessWorkspace)) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
         <Stack alignItems="center" spacing={1.5} sx={{ textAlign: "center" }}>
           <LockPersonOutlinedIcon sx={{ fontSize: 44, color: "var(--muted-foreground)" }} />
           <Typography sx={{ fontWeight: 850, fontSize: "1.1rem" }}>
-            {matchesPath(pathname ?? "", SUPERADMIN_PATHS) ? "Super admin access required" : "Business admin access required"}
+            {matchesPath(pathname ?? "", SUPERADMIN_PATHS) ? "Super admin access required" : "Business workspace access required"}
           </Typography>
           <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
             Your account does not have permission to open this workspace.
@@ -91,7 +91,7 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if ((matchesPath(pathname ?? "", OWNER_PATHS) && !isAdmin) || (matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) || pathname?.startsWith("/admin")) {
+  if ((matchesPath(pathname ?? "", OWNER_PATHS) && !isBusinessWorkspace) || (matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) || pathname?.startsWith("/admin")) {
     return null;
   }
 

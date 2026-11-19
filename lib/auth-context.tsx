@@ -8,6 +8,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: UserRole;
+  business_id?: number | null;
   business?: {
     id: number;
     name: string;
@@ -20,6 +21,7 @@ export type AuthContextValue = {
   role: UserRole;
   isSuperAdmin: boolean;
   isAdmin: boolean;
+  isBusinessWorkspace: boolean;
   loading: boolean;
   setUser: React.Dispatch<React.SetStateAction<SessionUser | null>>;
 };
@@ -29,6 +31,7 @@ const FALLBACK: AuthContextValue = {
   role: "user",
   isSuperAdmin: false,
   isAdmin: false,
+  isBusinessWorkspace: false,
   loading: false,
   setUser: () => undefined,
 };
@@ -72,6 +75,11 @@ export function AuthProvider({ initialUser, children }: ProviderProps) {
       role: user?.role ?? "user",
       isSuperAdmin: user?.role === "super_admin",
       isAdmin: user?.role === "admin",
+      isBusinessWorkspace:
+        user?.role === "admin" ||
+        user?.role === "manager" ||
+        user?.role === "cashier" ||
+        user?.role === "kitchen_staff",
       loading,
       setUser,
     }),

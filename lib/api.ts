@@ -1109,9 +1109,24 @@ export const deleteMenu = async (menuId: number) => {
 /* Superadmin: users, owners, restaurants + role-based access                  */
 /* -------------------------------------------------------------------------- */
 
-export type UserRole = "user" | "admin" | "super_admin";
+export type UserRole =
+  | "user"
+  | "admin"
+  | "super_admin"
+  | "manager"
+  | "cashier"
+  | "kitchen_staff";
 
-export const USER_ROLES: UserRole[] = ["user", "admin", "super_admin"];
+export const USER_ROLES: UserRole[] = [
+  "user",
+  "admin",
+  "super_admin",
+  "manager",
+  "cashier",
+  "kitchen_staff",
+];
+
+export const BUSINESS_STAFF_ROLES: UserRole[] = ["manager", "cashier", "kitchen_staff"];
 
 export const USER_ROLE_META: Record<
   UserRole,
@@ -1121,13 +1136,31 @@ export const USER_ROLE_META: Record<
     label: "Super Admin",
     color: "#7c3aed",
     bg: "#f3e8ff",
-    hint: "Full access to users, owners and restaurants",
+    hint: "Full access to platform management",
   },
   admin: {
-    label: "Owner",
+    label: "Business Admin",
     color: "#2563eb",
     bg: "#dbeafe",
-    hint: "Owns one restaurant, full access to its admin panel",
+    hint: "Owns and manages a restaurant workspace",
+  },
+  manager: {
+    label: "Manager",
+    color: "#0f766e",
+    bg: "#ccfbf1",
+    hint: "Restaurant operations manager with delegated capabilities",
+  },
+  cashier: {
+    label: "Cashier",
+    color: "#b45309",
+    bg: "#fef3c7",
+    hint: "Handles orders, payments, and customer/reward validation",
+  },
+  kitchen_staff: {
+    label: "Kitchen Staff",
+    color: "#b91c1c",
+    bg: "#fee2e2",
+    hint: "Handles kitchen/order preparation workflow",
   },
   user: {
     label: "User",
