@@ -82,6 +82,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   const [lookupResult, setLookupResult] = React.useState<LookupResult | null>(null);
   const [lookupError, setLookupError] = React.useState("");
   const [redeeming, setRedeeming] = React.useState(false);
+  const [redeemOrderId, setRedeemOrderId] = React.useState("");
 
   const [memberships, setMemberships] = React.useState<any[]>([]);
   const [membershipsLoading, setMembershipsLoading] = React.useState(false);
@@ -140,6 +141,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     setLookupLoading(true);
     setLookupError("");
     setLookupResult(null);
+    setRedeemOrderId("");
     try {
       const result = await lookupLoyaltyReward(code);
       setLookupResult(result);
@@ -156,13 +158,24 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     if (!lookupResult.redeemable) return;
     setRedeeming(true);
     try {
-      const res = await redeemLoyaltyReward({ reward_code: lookupResult.reward.reward_code });
-      showSnackbar("Reward redeemed successfully.", "success");
+      const orderIdNum = redeemOrderId.trim() ? Number(redeemOrderId.trim()) : undefined;
+      const res = await redeemLoyaltyReward({
+        reward_code: lookupResult.reward.reward_code,
+        order_id: Number.isFinite(orderIdNum as number) ? (orderIdNum as number) : undefined,
+        metadata: Number.isFinite(orderIdNum as number) ? { source: "rewards_page_cash_settlement", payment_mode: "cash" } : undefined,
+      });
+      showSnackbar(
+        Number.isFinite(orderIdNum as number)
+          ? `Reward redeemed and applied to Order #${orderIdNum} (cash).`
+          : "Reward redeemed successfully.",
+        "success",
+      );
       setLookupResult({
         reward: res?.reward ?? { ...lookupResult.reward, status: "redeemed" },
         redeemable: false,
         effective_status: "redeemed",
       });
+      setRedeemOrderId("");
       if (canManage) {
         void loadRewards();
         void loadMemberships();
@@ -283,17 +296,27 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                       sx={{ fontWeight: 700, textTransform: "capitalize" }}
                     />
                     {lookupResult.redeemable ? <Chip size="small" label="Redeemable" color="success" variant="outlined" /> : null}
-                  </Stack>
-                  {canRedeem ? (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={() => void handleRedeem()}
-                      disabled={!lookupResult.redeemable || redeeming}
-                      sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800 }}
-                    >
-                      {redeeming ? "Redeeming…" : "Redeem reward"}
-                    </Button>
+                  </Stack>                  {canRedeem ? (
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                      <TextField
+                        label="Order ID (cash settlement, optional)"
+                        value={redeemOrderId}
+                        onChange={(e) => setRedeemOrderId(e.target.value.replace(/[^0-9]/g, ""))}
+                        size="small"
+                        placeholder="e.g. 123"
+                        disabled={!lookupResult.redeemable || redeeming}
+                        sx={{ width: { xs: "100%", sm: 230 } }}
+                      />
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => void handleRedeem()}
+                        disabled={!lookupResult.redeemable || redeeming}
+                        sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, whiteSpace: "nowrap" }}
+                      >
+                        {redeeming ? "Redeeming…" : redeemOrderId.trim() ? "Apply to order (cash)" : "Redeem reward"}
+                      </Button>
+                    </Stack>
                   ) : null}
                 </Stack>
 
