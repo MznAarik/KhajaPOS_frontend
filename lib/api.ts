@@ -1597,6 +1597,30 @@ export const getPlatformAnalytics = async (businessId?: number): Promise<Platfor
   return unwrapApiData<PlatformAnalytics>(res.data);
 };
 
+/* Super-admin loyalty oversight (read-only) */
+export type SuperAdminPagination = { current_page: number; last_page: number; per_page: number; total: number };
+export type SuperAdminLoyaltyProgramsResponse = { items: any[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyMembershipsResponse = { items: any[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyRewardsResponse = { items: any[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyAuditLogsResponse = { items: any[]; pagination: SuperAdminPagination };
+
+export const getSuperAdminLoyaltyPrograms = async (params?: { business_id?: number | string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/programs", { params });
+  return unwrapApiData<SuperAdminLoyaltyProgramsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyMemberships = async (params?: { business_id?: number | string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/memberships", { params });
+  return unwrapApiData<SuperAdminLoyaltyMembershipsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyRewards = async (params?: { business_id?: number | string; status?: string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/rewards", { params });
+  return unwrapApiData<SuperAdminLoyaltyRewardsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyAuditLogs = async (params?: { business_id?: number | string; action?: string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/audit-logs", { params });
+  return unwrapApiData<SuperAdminLoyaltyAuditLogsResponse>(res.data);
+};
+
 export type BusinessSettings = {
   id: number;
   name: string;

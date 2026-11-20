@@ -188,6 +188,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon, ref: saDashboardRef },
                 { text: "Businesses", href: "/super-admin/businesses", icon: StoreIcon, ref: saBusinessesRef },
                 { text: "Analytics", href: "/super-admin/analytics", icon: ChartSplineIcon, ref: saAnalyticsRef },
+                { text: "Loyalty Oversight", href: "/super-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef },
                 { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: CreditCardIcon, ref: saSubsRef },
                 { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: ActivityIcon, ref: saUsageRef },
                 { text: "Users", href: "/super-admin/users", icon: UsersIcon, ref: saUsersRef },
