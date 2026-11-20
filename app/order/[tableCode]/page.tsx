@@ -30,8 +30,16 @@ import {
   canCustomerCancelOrder,
   canCustomerConfirmOrder,
   cancelPublicOrder,
+  clearStoredCustomerToken,
   completePublicOrder,
   confirmPublicOrder,
+  customerLogin,
+  customerLogout,
+  customerRegister,
+  customerRequestOtp,
+  customerVerifyOtp,
+  getCustomerMe,
+  getStoredCustomerToken,
   touchPublicPresence,
   FOOD_FILTER_LABELS,
   FOOD_FILTER_ORDER,
@@ -43,6 +51,8 @@ import {
   matchesFoodFilter,
   placePublicOrder,
   resolveMenuImageUrl,
+  type CustomerAuthResponse,
+  type CustomerProfile,
   type FoodFilterKey,
   type KitchenOrder,
   type OrderStatus,
@@ -320,8 +330,48 @@ export default function TableOrderPage() {
   const [confirmingToken, setConfirmingToken] = React.useState<string | null>(null);
   const [cancellingToken, setCancellingToken] = React.useState<string | null>(null);
   const [completingToken, setCompletingToken] = React.useState<string | null>(null);
+  const [scrollToOrderToken, setScrollToOrderToken] = React.useState<string | null>(null);
   const [mySessionTokens, setMySessionTokens] = React.useState<string[]>([]);
+  const [customer, setCustomer] = React.useState<CustomerProfile | null>(null);
+  const [customerMemberships, setCustomerMemberships] = React.useState<any[]>([]);
+  const [customerSessionLoading, setCustomerSessionLoading] = React.useState(true);
+  const [customerAuthOpen, setCustomerAuthOpen] = React.useState(false);
+  const [customerAuthMode, setCustomerAuthMode] = React.useState<"signin" | "register" | "verify">("signin");
+  const [customerAuthSubmitting, setCustomerAuthSubmitting] = React.useState(false);
+  const [customerAuthError, setCustomerAuthError] = React.useState("");
+  const [customerAuthInfo, setCustomerAuthInfo] = React.useState("");
+  const [customerPhone, setCustomerPhone] = React.useState("");
+  const [customerName, setCustomerName] = React.useState("");
+  const [customerEmail, setCustomerEmail] = React.useState("");
+  const [customerPassword, setCustomerPassword] = React.useState("");
+  const [customerOtp, setCustomerOtp] = React.useState("");
+  const [customerOtpPhone, setCustomerOtpPhone] = React.useState("");
   const tableId = menu?.table.id ?? 0;
+
+  const refreshCustomerSession = React.useCallback(async () => {
+    const token = getStoredCustomerToken();
+    if (!token) {
+      setCustomer(null);
+      setCustomerMemberships([]);
+      setCustomerSessionLoading(false);
+      return;
+    }
+    try {
+      const data: any = await getCustomerMe();
+      setCustomer(data?.customer ?? null);
+      setCustomerMemberships(Array.isArray(data?.memberships) ? data.memberships : []);
+    } catch {
+      clearStoredCustomerToken();
+      setCustomer(null);
+      setCustomerMemberships([]);
+    } finally {
+      setCustomerSessionLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refreshCustomerSession();
+  }, [refreshCustomerSession]);
 
   React.useEffect(() => {
     const savedCart = window.localStorage.getItem(getCartStorageKey(tableCode));
@@ -652,8 +702,210 @@ export default function TableOrderPage() {
     });
   }, [recentOrders, recentOrderStatuses]);
 
+  const currentBusinessMembership = React.useMemo(() => {
+    const businessId = menu?.business?.id;
+    if (!businessId) return null;
+    return (
+      customerMemberships.find(
+        (m: any) => Number(m?.membership?.business_id ?? m?.program?.business_id) === Number(businessId)
+      ) ?? null
+    );
+  }, [customerMemberships, menu?.business?.id]);
+
   const cartActionLabel = pendingOrder ? "Add to Order" : "Place Order";
   const cartActionBusyLabel = pendingOrder ? "Adding..." : "Placing...";
+
+  React.useEffect(() => {
+    if (!scrollToOrderToken) return;
+
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+    let attempts = 0;
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = document.getElementById(`order-card-${scrollToOrderToken}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+        setScrollToOrderToken(null);
+        return;
+      }
+      if (attempts < 20) {
+        attempts += 1;
+        raf2 = window.requestAnimationFrame(tryScroll);
+      } else {
+        setScrollToOrderToken(null);
+      }
+    };
+
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(tryScroll);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [scrollToOrderToken, orderedOrders, recentOrderStatuses]);
+
+  const extractErrorMessage = (error: any, fallback: string) => {
+    const data = error?.response?.data;
+    if (data?.errors && typeof data.errors === "object") {
+      const first = Object.values(data.errors).flat().find((v) => typeof v === "string");
+      if (typeof first === "string" && first.trim()) return first;
+    }
+    if (typeof data?.message === "string" && data.message.trim()) return data.message;
+    if (typeof error?.message === "string" && error.message.trim()) return error.message;
+    return fallback;
+  };
+
+  const openCustomerAuth = (mode: "signin" | "register" | "verify") => {
+    setCustomerAuthMode(mode);
+    setCustomerAuthOpen(true);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+  };
+
+  const closeCustomerAuth = () => {
+    if (customerAuthSubmitting) return;
+    setCustomerAuthOpen(false);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+    setCustomerOtp("");
+    setCustomerPassword("");
+  };
+
+  const handleCustomerRegister = async () => {
+    const name = customerName.trim();
+    const phone = customerPhone.trim();
+    if (!name || !phone) {
+      setCustomerAuthError("Name and mobile number are required.");
+      return;
+    }
+    setCustomerAuthSubmitting(true);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+    try {
+      const res: any = await customerRegister({
+        name,
+        phone,
+        ...(customerEmail.trim() ? { email: customerEmail.trim() } : {}),
+        ...(customerPassword ? { password: customerPassword } : {}),
+      });
+      setCustomerOtpPhone(phone);
+      setCustomerOtp("");
+      setCustomerAuthMode("verify");
+      setCustomerAuthInfo(res?.message || "Verification code sent. Enter it below to complete sign-in.");
+    } catch (error: any) {
+      setCustomerAuthError(extractErrorMessage(error, "Could not register. Please try again."));
+    } finally {
+      setCustomerAuthSubmitting(false);
+    }
+  };
+
+  const handleCustomerRequestOtp = async (purpose: "login" | "registration" = "login") => {
+    const phone = (customerPhone || customerOtpPhone).trim();
+    if (!phone) {
+      setCustomerAuthError("Enter your mobile number first.");
+      return;
+    }
+    setCustomerAuthSubmitting(true);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+    try {
+      const res: any = await customerRequestOtp({ phone, purpose });
+      setCustomerOtpPhone(phone);
+      setCustomerOtp("");
+      setCustomerAuthMode("verify");
+      setCustomerAuthInfo(res?.message || "Verification code sent. Enter it below.");
+    } catch (error: any) {
+      setCustomerAuthError(extractErrorMessage(error, "Could not send verification code."));
+    } finally {
+      setCustomerAuthSubmitting(false);
+    }
+  };
+
+  const handleCustomerVerifyOtp = async () => {
+    const phone = (customerOtpPhone || customerPhone).trim();
+    const code = customerOtp.trim();
+    if (!phone || !code) {
+      setCustomerAuthError("Mobile number and verification code are required.");
+      return;
+    }
+    setCustomerAuthSubmitting(true);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+    try {
+      await customerVerifyOtp({
+        phone,
+        code,
+        ...(customerName.trim() ? { name: customerName.trim() } : {}),
+        ...(customerPassword ? { password: customerPassword } : {}),
+      });
+      setCustomerSessionLoading(true);
+      await refreshCustomerSession();
+      setCustomerAuthOpen(false);
+      setCustomerOtp("");
+      setCustomerPassword("");
+      setCustomerAuthError("");
+      setCustomerAuthInfo("");
+      showSnackbar("Signed in. Your rewards will be tracked for this restaurant.", "success");
+    } catch (error: any) {
+      setCustomerAuthError(extractErrorMessage(error, "Invalid or expired code. Please try again."));
+    } finally {
+      setCustomerAuthSubmitting(false);
+    }
+  };
+
+  const handleCustomerLogin = async () => {
+    const phone = customerPhone.trim();
+    const password = customerPassword;
+    if (!phone || !password) {
+      setCustomerAuthError("Mobile number and password are required.");
+      return;
+    }
+    setCustomerAuthSubmitting(true);
+    setCustomerAuthError("");
+    setCustomerAuthInfo("");
+    try {
+      await customerLogin({ phone, password });
+      setCustomerSessionLoading(true);
+      await refreshCustomerSession();
+      setCustomerAuthOpen(false);
+      setCustomerPassword("");
+      showSnackbar("Signed in. Your rewards will be tracked for this restaurant.", "success");
+    } catch (error: any) {
+      const data = error?.response?.data;
+      const needsVerification =
+        data?.errors?.verification_required ||
+        /not verified|verification code/i.test(String(data?.message ?? "")) ||
+        /verification_required/i.test(JSON.stringify(data?.errors ?? {}));
+      if (needsVerification) {
+        setCustomerOtpPhone(phone);
+        setCustomerOtp("");
+        setCustomerAuthMode("verify");
+        setCustomerAuthInfo(extractErrorMessage(error, "Verification required. Enter the code sent to your mobile number."));
+      } else {
+        setCustomerAuthError(extractErrorMessage(error, "Could not sign in. Please try again."));
+      }
+    } finally {
+      setCustomerAuthSubmitting(false);
+    }
+  };
+
+  const handleCustomerLogout = async () => {
+    try {
+      await customerLogout();
+    } catch {
+      clearStoredCustomerToken();
+    } finally {
+      setCustomer(null);
+      setCustomerMemberships([]);
+      showSnackbar("Signed out.", "success");
+    }
+  };
 
   const updateQuantity = (itemId: number, nextQuantity: number) => {
     setCart((current) => {
@@ -730,6 +982,11 @@ export default function TableOrderPage() {
       setRecentOrders(nextOrders);
       setRecentOrderStatuses((current) => ({ ...current, [order.sessionToken]: order }));
       setOrderRefreshKey((current) => current + 1);
+      setMobileCartOpen(false);
+      setScrollToOrderToken(order.sessionToken);
+      if (getStoredCustomerToken()) {
+        void refreshCustomerSession();
+      }
       showSnackbar(
         appendToToken
           ? "Items added to your order. Confirm whenever you are ready."
@@ -1108,6 +1365,382 @@ export default function TableOrderPage() {
         ) : null}
       </Stack>
 
+      <Paper
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          borderRadius: "18px",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--muted)",
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <Box>
+              <Typography sx={{ fontWeight: 800 }}>Rewards &amp; account</Typography>
+              <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                {customer
+                  ? "Your visits and rewards for this restaurant."
+                  : "Optional: sign in to earn and redeem rewards. Guest ordering works without an account."}
+              </Typography>
+            </Box>
+            {customer ? (
+              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                <Chip
+                  size="small"
+                  label={customer.phone_verified_at ? "Verified" : "Unverified"}
+                  color={customer.phone_verified_at ? "success" : "default"}
+                  variant={customer.phone_verified_at ? "filled" : "outlined"}
+                  sx={{ fontWeight: 700 }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setCustomerSessionLoading(true);
+                    void refreshCustomerSession();
+                  }}
+                  sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => void handleCustomerLogout()}
+                  sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}
+                >
+                  Sign out
+                </Button>
+              </Stack>
+            ) : null}
+          </Stack>
+
+          {customerSessionLoading ? (
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+              Checking your account…
+            </Typography>
+          ) : customer ? (
+            <Stack spacing={1.25}>
+              <Typography sx={{ fontWeight: 700 }}>
+                Hi, {customer.name || "Customer"} <Box component="span" sx={{ color: "var(--muted-foreground)", fontWeight: 600 }}>({customer.phone})</Box>
+              </Typography>
+
+              {(() => {
+                const summary: any = currentBusinessMembership;
+                const program = summary?.program;
+                const membership = summary?.membership;
+                const nextTier = summary?.next_tier;
+                const rewards: any[] = Array.isArray(summary?.available_rewards) ? summary.available_rewards : [];
+
+                if (!summary || !membership) {
+                  return (
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.92rem" }}>
+                      No rewards progress for this restaurant yet. Place and complete eligible orders while signed in to start earning rewards.
+                    </Typography>
+                  );
+                }
+
+                if (program && program.is_enabled === false) {
+                  return (
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.92rem" }}>
+                      Rewards are not active at this restaurant right now. Your account is saved for future visits.
+                    </Typography>
+                  );
+                }
+
+                const currentProgress = Number(membership.current_progress_count ?? 0);
+                const lifetime = Number(membership.lifetime_eligible_orders ?? 0);
+                const threshold = nextTier ? Number(nextTier.threshold_orders ?? 0) : 0;
+                const progressPct = threshold > 0 ? Math.max(0, Math.min(100, (currentProgress / threshold) * 100)) : 0;
+
+                return (
+                  <Stack spacing={1.25}>
+                    <Box
+                      sx={{
+                        p: 1.25,
+                        borderRadius: "14px",
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--background)",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 700, fontSize: "0.95rem" }}>Progress</Typography>
+                      <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.88rem", mt: 0.25 }}>
+                        Eligible visits counted: <Box component="span" sx={{ color: "var(--foreground)", fontWeight: 700 }}>{lifetime}</Box>
+                        {" · "}Current progress: <Box component="span" sx={{ color: "var(--foreground)", fontWeight: 700 }}>{currentProgress}</Box>
+                        {threshold > 0 ? ` / ${threshold}` : ""}
+                      </Typography>
+                      {nextTier && threshold > 0 ? (
+                        <Stack spacing={0.5} sx={{ mt: 1 }}>
+                          <Box sx={{ height: 8, borderRadius: 999, backgroundColor: "var(--border)", overflow: "hidden" }}>
+                            <Box
+                              sx={{
+                                height: "100%",
+                                width: `${progressPct}%`,
+                                borderRadius: 999,
+                                backgroundColor: "var(--primary)",
+                                transition: reducedMotion ? "none" : "width 300ms ease",
+                              }}
+                            />
+                          </Box>
+                          <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
+                            Next reward at {threshold} eligible orders
+                            {nextTier.reward_description ? `: ${nextTier.reward_description}` : ""}
+                            {currentProgress < threshold ? ` · ${threshold - currentProgress} more to go` : " · Ready!"}
+                          </Typography>
+                        </Stack>
+                      ) : (
+                        <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", mt: 0.75 }}>
+                          Keep ordering while signed in to earn rewards when milestones are configured.
+                        </Typography>
+                      )}
+                    </Box>
+
+                    <Box>
+                      <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 0.75 }}>
+                        Available rewards {rewards.filter((r) => r.status === "available").length ? `(${rewards.filter((r) => r.status === "available").length})` : ""}
+                      </Typography>
+                      {rewards.length ? (
+                        <Stack spacing={0.75}>
+                          {rewards.slice(0, 6).map((reward: any) => (
+                            <Box
+                              key={reward.id ?? reward.reward_code}
+                              sx={{
+                                p: 1,
+                                borderRadius: "12px",
+                                border: "1px solid var(--border)",
+                                backgroundColor: "var(--background)",
+                              }}
+                            >
+                              <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start">
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                                    {reward.reward_description || "Reward"}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)", fontFamily: "monospace" }}>
+                                    Code: {reward.reward_code}
+                                  </Typography>
+                                  {reward.expires_at ? (
+                                    <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                                      Expires: {new Date(reward.expires_at).toLocaleDateString()}
+                                    </Typography>
+                                  ) : null}
+                                </Box>
+                                <Chip
+                                  size="small"
+                                  label={String(reward.status || "available").replace(/_/g, " ")}
+                                  color={reward.status === "available" ? "success" : reward.status === "redeemed" ? "default" : "warning"}
+                                  variant={reward.status === "available" ? "filled" : "outlined"}
+                                  sx={{ textTransform: "capitalize", fontWeight: 700 }}
+                                />
+                              </Stack>
+                            </Box>
+                          ))}
+                          {rewards.length > 6 ? (
+                            <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                              Showing latest 6 rewards.
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      ) : (
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.88rem" }}>
+                          No rewards yet. Rewards will appear here when you reach a milestone.
+                        </Typography>
+                      )}
+                    </Box>
+                  </Stack>
+                );
+              })()}
+            </Stack>
+          ) : (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+              <Button
+                variant="contained"
+                onClick={() => openCustomerAuth("signin")}
+                sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800 }}
+              >
+                Sign in
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => openCustomerAuth("register")}
+                sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}
+              >
+                Create account
+              </Button>
+              <Typography sx={{ alignSelf: "center", color: "var(--muted-foreground)", fontSize: "0.85rem" }}>
+                Or continue as guest — no account needed to order.
+              </Typography>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+
+      <Dialog
+        open={customerAuthOpen}
+        onClose={closeCustomerAuth}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: "18px" } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, pb: 0.5 }}>
+          {customerAuthMode === "register"
+            ? "Create rewards account"
+            : customerAuthMode === "verify"
+              ? "Verify mobile number"
+              : "Sign in for rewards"}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+              {customerAuthMode === "verify"
+                ? "Enter the verification code sent to your mobile number. (In this development setup, codes may be available in the server log.)"
+                : "Use your mobile number so we can recognize you and track eligible orders for rewards at this restaurant."}
+            </Typography>
+
+            {customerAuthError ? <Alert severity="error">{customerAuthError}</Alert> : null}
+            {customerAuthInfo ? <Alert severity="info">{customerAuthInfo}</Alert> : null}
+
+            {customerAuthMode === "register" ? (
+              <>
+                <TextField
+                  label="Name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="name"
+                />
+                <TextField
+                  label="Mobile number"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="tel"
+                  placeholder="e.g. 98XXXXXXXX"
+                />
+                <TextField
+                  label="Email (optional)"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="email"
+                />
+                <TextField
+                  label="Password (optional)"
+                  type="password"
+                  value={customerPassword}
+                  onChange={(e) => setCustomerPassword(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="new-password"
+                  helperText="Set a password to sign in faster next time. You can also use OTP."
+                />
+              </>
+            ) : null}
+
+            {customerAuthMode === "signin" ? (
+              <>
+                <TextField
+                  label="Mobile number"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="tel"
+                />
+                <TextField
+                  label="Password"
+                  type="password"
+                  value={customerPassword}
+                  onChange={(e) => setCustomerPassword(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="current-password"
+                  helperText="If you didn't set a password, request a verification code instead."
+                />
+              </>
+            ) : null}
+
+            {customerAuthMode === "verify" ? (
+              <>
+                <TextField
+                  label="Mobile number"
+                  value={customerOtpPhone || customerPhone}
+                  onChange={(e) => {
+                    setCustomerOtpPhone(e.target.value);
+                    setCustomerPhone(e.target.value);
+                  }}
+                  fullWidth
+                  size="small"
+                  autoComplete="tel"
+                />
+                <TextField
+                  label="Verification code"
+                  value={customerOtp}
+                  onChange={(e) => setCustomerOtp(e.target.value)}
+                  fullWidth
+                  size="small"
+                  inputProps={{ inputMode: "numeric" }}
+                />
+              </>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 0.5, gap: 1, flexWrap: "wrap" }}>
+          {customerAuthMode === "signin" ? (
+            <>
+              <Button onClick={() => { setCustomerAuthError(""); setCustomerAuthInfo(""); setCustomerAuthMode("register"); }} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>
+                Create account
+              </Button>
+              <Button onClick={() => void handleCustomerRequestOtp("login")} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>
+                Send code
+              </Button>
+              <Box sx={{ flex: 1 }} />
+              <Button onClick={closeCustomerAuth} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>Cancel</Button>
+              <Button variant="contained" onClick={() => void handleCustomerLogin()} disabled={customerAuthSubmitting} sx={{ textTransform: "none", fontWeight: 700 }}>
+                {customerAuthSubmitting ? "Signing in…" : "Sign in"}
+              </Button>
+            </>
+          ) : null}
+
+          {customerAuthMode === "register" ? (
+            <>
+              <Button onClick={() => { setCustomerAuthError(""); setCustomerAuthInfo(""); setCustomerAuthMode("signin"); }} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>
+                Back to sign in
+              </Button>
+              <Box sx={{ flex: 1 }} />
+              <Button onClick={closeCustomerAuth} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>Cancel</Button>
+              <Button variant="contained" onClick={() => void handleCustomerRegister()} disabled={customerAuthSubmitting} sx={{ textTransform: "none", fontWeight: 700 }}>
+                {customerAuthSubmitting ? "Please wait…" : "Continue"}
+              </Button>
+            </>
+          ) : null}
+
+          {customerAuthMode === "verify" ? (
+            <>
+              <Button onClick={() => void handleCustomerRequestOtp("login")} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>
+                Resend code
+              </Button>
+              <Button onClick={() => { setCustomerAuthError(""); setCustomerAuthInfo(""); setCustomerAuthMode("signin"); }} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>
+                Back
+              </Button>
+              <Box sx={{ flex: 1 }} />
+              <Button onClick={closeCustomerAuth} disabled={customerAuthSubmitting} sx={{ textTransform: "none" }}>Cancel</Button>
+              <Button variant="contained" onClick={() => void handleCustomerVerifyOtp()} disabled={customerAuthSubmitting} sx={{ textTransform: "none", fontWeight: 700 }}>
+                {customerAuthSubmitting ? "Verifying…" : "Verify & sign in"}
+              </Button>
+            </>
+          ) : null}
+        </DialogActions>
+      </Dialog>
+
       {recentOrders.length ? (
         <Paper
           sx={{
@@ -1153,6 +1786,7 @@ export default function TableOrderPage() {
                 return (
                   <Paper
                     key={item.sessionToken}
+                    id={`order-card-${item.sessionToken}`}
                     sx={{
                       p: 2,
                       borderRadius: "16px",
