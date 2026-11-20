@@ -775,16 +775,21 @@ export const placePublicOrder = async (payload: {
   sessionToken?: string;
   orderType?: OrderType;
 }) => {
-  const res = await api.post<PlaceOrderResponse>("/public/orders", {
-    table_id: payload.tableId,
-    remarks: payload.remarks?.trim() ?? "",
-    items: payload.items.map((item) => ({
-      menu_item_id: item.menuItemId,
-      quantity: item.quantity,
-    })),
-    ...(payload.orderType ? { order_type: payload.orderType } : {}),
-    ...(payload.sessionToken ? { session_token: payload.sessionToken } : {}),
-  });
+  const customerToken = getStoredCustomerToken();
+  const res = await api.post<PlaceOrderResponse>(
+    "/public/orders",
+    {
+      table_id: payload.tableId,
+      remarks: payload.remarks?.trim() ?? "",
+      items: payload.items.map((item) => ({
+        menu_item_id: item.menuItemId,
+        quantity: item.quantity,
+      })),
+      ...(payload.orderType ? { order_type: payload.orderType } : {}),
+      ...(payload.sessionToken ? { session_token: payload.sessionToken } : {}),
+    },
+    customerToken ? { headers: { Authorization: `Bearer ${customerToken}` } } : undefined,
+  );
 
   return normalizeOrder(unwrapApiData<PlaceOrderResponse["data"]>(res.data));
 };
@@ -1633,6 +1638,108 @@ export const resendVerification = async (email: string): Promise<string> => {
   const res = await api.post("/resend-verification", { email });
   const payload = res.data as { message?: string };
   return payload.message ?? "Verification email sent.";
+};
+
+/* -------------------------------------------------------------------------- */
+/* Customer auth (QR loyalty / rewards)                                        */
+/* -------------------------------------------------------------------------- */
+
+export const CUSTOMER_TOKEN_STORAGE_KEY = "khajapos_customer_token";
+
+export type CustomerProfile = {
+  id: number;
+  name: string;
+  phone: string;
+  phone_verified_at: string | null;
+  email: string | null;
+  email_verified_at: string | null;
+  status: string;
+  last_login_at: string | null;
+  created_at?: string | null;
+};
+
+export type CustomerAuthResponse = {
+  customer?: CustomerProfile;
+  token?: string;
+  token_type?: string;
+  expires_at?: string | null;
+  verification_required?: boolean;
+  message?: string;
+  memberships?: any[];
+};
+
+export const getStoredCustomerToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const token = window.localStorage.getItem(CUSTOMER_TOKEN_STORAGE_KEY);
+  return token && token.trim() ? token.trim() : null;
+};
+
+export const setStoredCustomerToken = (token: string) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, token);
+};
+
+export const clearStoredCustomerToken = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CUSTOMER_TOKEN_STORAGE_KEY);
+};
+
+const customerAuthHeaders = () => {
+  const token = getStoredCustomerToken();
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+};
+
+export const customerRegister = async (payload: {
+  name: string;
+  phone: string;
+  email?: string;
+  password?: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/register", payload);
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerRequestOtp = async (payload: {
+  phone: string;
+  purpose?: "login" | "registration";
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/request-otp", payload);
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerVerifyOtp = async (payload: {
+  phone: string;
+  code: string;
+  name?: string;
+  password?: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/verify-otp", payload);
+  const data = unwrapApiData<CustomerAuthResponse>(res.data);
+  if (data?.token) setStoredCustomerToken(data.token);
+  return data;
+};
+
+export const customerLogin = async (payload: {
+  phone: string;
+  password: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/login", payload);
+  const data = unwrapApiData<CustomerAuthResponse>(res.data);
+  if (data?.token) setStoredCustomerToken(data.token);
+  return data;
+};
+
+export const getCustomerMe = async (): Promise<CustomerAuthResponse> => {
+  const res = await api.get("/customer/auth/me", { headers: customerAuthHeaders() });
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerLogout = async (): Promise<void> => {
+  try {
+    await api.post("/customer/auth/logout", null, { headers: customerAuthHeaders() });
+  } finally {
+    clearStoredCustomerToken();
+  }
 };
 
 /* -------------------------------------------------------------------------- */
