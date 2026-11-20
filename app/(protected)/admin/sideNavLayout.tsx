@@ -194,21 +194,46 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             ];
         }
 
+        const isOwnerOrManager = role === "admin" || role === "manager";
+        const isCashier = role === "cashier";
+        const isKitchen = role === "kitchen_staff";
+
         const items: NavItem[] = [
             { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-            { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
-            { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-            { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
-            { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-            { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
         ];
 
-        if (role === "admin" || role === "manager") {
-            items.push({ text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef });
-            items.push({ text: "Staff", href: "/business-admin/staff", icon: UsersIcon, ref: staffIconRef });
-        }
-        if (role === "cashier") {
-            items.push({ text: "Loyalty Rewards", href: "/business-admin/loyalty/rewards", icon: GiftIcon, ref: loyaltyRewardsIconRef });
+        if (isOwnerOrManager) {
+            items.push(
+                { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
+                { text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef },
+                { text: "Staff", href: "/business-admin/staff", icon: UsersIcon, ref: staffIconRef },
+            );
+        } else if (isCashier) {
+            // Operational + loyalty redemption (cash billing for now). Server enforces granular permissions.
+            items.push(
+                { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                { text: "Loyalty Rewards", href: "/business-admin/loyalty/rewards", icon: GiftIcon, ref: loyaltyRewardsIconRef },
+            );
+        } else if (isKitchen) {
+            // Kitchen workflow: orders + menu view. No loyalty exposure.
+            items.push(
+                { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+            );
+        } else {
+            // Fallback for unknown business roles: show core operational items
+            items.push(
+                { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+            );
         }
 
         return items;
