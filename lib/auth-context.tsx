@@ -9,6 +9,9 @@ export type SessionUser = {
   email: string;
   role: UserRole;
   business_id?: number | null;
+  resolved_business_id?: number | null;
+  business_role?: string | null;
+  effective_permissions?: string[];
   business?: {
     id: number;
     name: string;
@@ -22,6 +25,8 @@ export type AuthContextValue = {
   isSuperAdmin: boolean;
   isAdmin: boolean;
   isBusinessWorkspace: boolean;
+  effectivePermissions: string[];
+  hasPermission: (permission: string) => boolean;
   loading: boolean;
   setUser: React.Dispatch<React.SetStateAction<SessionUser | null>>;
 };
@@ -32,6 +37,8 @@ const FALLBACK: AuthContextValue = {
   isSuperAdmin: false,
   isAdmin: false,
   isBusinessWorkspace: false,
+  effectivePermissions: [],
+  hasPermission: () => false,
   loading: false,
   setUser: () => undefined,
 };
@@ -70,19 +77,27 @@ export function AuthProvider({ initialUser, children }: ProviderProps) {
   }, [initialUser, user]);
 
   const value = React.useMemo<AuthContextValue>(
-    () => ({
-      user,
-      role: user?.role ?? "user",
-      isSuperAdmin: user?.role === "super_admin",
-      isAdmin: user?.role === "admin",
-      isBusinessWorkspace:
-        user?.role === "admin" ||
-        user?.role === "manager" ||
-        user?.role === "cashier" ||
-        user?.role === "kitchen_staff",
-      loading,
-      setUser,
-    }),
+    () => {
+      const effectivePermissions = Array.isArray(user?.effective_permissions)
+        ? (user!.effective_permissions as string[])
+        : [];
+      const permissionSet = new Set(effectivePermissions);
+      return {
+        user,
+        role: user?.role ?? "user",
+        isSuperAdmin: user?.role === "super_admin",
+        isAdmin: user?.role === "admin",
+        isBusinessWorkspace:
+          user?.role === "admin" ||
+          user?.role === "manager" ||
+          user?.role === "cashier" ||
+          user?.role === "kitchen_staff",
+        effectivePermissions,
+        hasPermission: (permission: string) => permissionSet.has(permission),
+        loading,
+        setUser,
+      };
+    },
     [user, loading],
   );
 

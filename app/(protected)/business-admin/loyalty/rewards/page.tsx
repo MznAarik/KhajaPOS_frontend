@@ -72,10 +72,10 @@ const formatDateTime = (value?: string | null) => {
 };
 
 export default function BusinessAdminLoyaltyRewardsPage() {
-  const { role } = useAuth();
+  const { role, hasPermission } = useAuth();
   const { showSnackbar } = useAppSnackbar();
-  const canManage = role === "admin" || role === "manager";
-  const canRedeem = role === "admin" || role === "manager" || role === "cashier";
+  const canManage = hasPermission("loyalty.manage") || role === "admin" || role === "manager";
+  const canRedeem = hasPermission("loyalty.redeem") || role === "admin" || role === "manager" || role === "cashier";
 
   const [lookupCode, setLookupCode] = React.useState("");
   const [lookupLoading, setLookupLoading] = React.useState(false);

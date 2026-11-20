@@ -157,9 +157,9 @@ const getNextOrderAction = (
 };
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const role = user?.role ?? "";
-  const canRedeemReward = role === "admin" || role === "manager" || role === "cashier";
+  const canRedeemReward = hasPermission("loyalty.redeem") || role === "admin" || role === "manager" || role === "cashier";
 
   const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
   const [loading, setLoading] = React.useState(true);

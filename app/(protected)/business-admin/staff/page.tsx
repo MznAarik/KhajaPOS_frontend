@@ -72,10 +72,10 @@ const emptyCreateForm = (): StaffFormState => ({
 type OverrideMode = "default" | "grant" | "deny";
 
 export default function BusinessAdminStaffPage() {
-  const { role: myRole } = useAuth();
+  const { role: myRole, hasPermission } = useAuth();
   const { showSnackbar } = useAppSnackbar();
   const isOwnerAdmin = myRole === "admin";
-  const canManageStaff = myRole === "admin" || myRole === "manager";
+  const canManageStaff = isOwnerAdmin || hasPermission("staff.manage") || myRole === "manager";
 
   const [loading, setLoading] = React.useState(true);
   const [members, setMembers] = React.useState<StaffMember[]>([]);
