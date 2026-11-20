@@ -51,6 +51,9 @@ export const canRoleAccessPath = (
   if (pathname === "/business-admin/loyalty" || pathname.startsWith("/business-admin/loyalty/")) {
     return role === "admin" || role === "manager";
   }
+  if (pathname === "/business-admin/staff" || pathname.startsWith("/business-admin/staff/")) {
+    return role === "admin" || role === "manager";
+  }
   if (pathname === "/business-admin" || pathname.startsWith("/business-admin/")) {
     return role === "admin" || role === "manager" || role === "cashier" || role === "kitchen_staff";
   }

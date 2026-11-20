@@ -110,6 +110,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const reviewsIconRef = React.useRef<MessageSquareIconHandle | null>(null);
     const loyaltyIconRef = React.useRef<GiftIconHandle | null>(null);
     const loyaltyRewardsIconRef = React.useRef<GiftIconHandle | null>(null);
+    const staffIconRef = React.useRef<UsersIconHandle | null>(null);
     const mainRef = React.useRef<HTMLDivElement | null>(null);
     const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
     const [notifLoading, setNotifLoading] = React.useState(false);
@@ -204,6 +205,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
         if (role === "admin" || role === "manager") {
             items.push({ text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef });
+            items.push({ text: "Staff", href: "/business-admin/staff", icon: UsersIcon, ref: staffIconRef });
         }
         if (role === "cashier") {
             items.push({ text: "Loyalty Rewards", href: "/business-admin/loyalty/rewards", icon: GiftIcon, ref: loyaltyRewardsIconRef });
@@ -231,6 +233,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         reviews: "Reviews",
         loyalty: "Loyalty",
         rewards: "Loyalty Rewards",
+        staff: "Staff",
         settings: "Settings",
     };
 
@@ -1088,6 +1091,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 "Reviews": "Reviews",
                                 "Loyalty": "Loyalty",
                                 "Loyalty Rewards": "Rewards",
+                                "Staff": "Staff",
                             };
                             return (
                                 <BottomNavigationAction

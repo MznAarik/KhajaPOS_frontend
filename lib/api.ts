@@ -2065,3 +2065,71 @@ export const getLoyaltyMembership = async (customerId: number) => {
   const res = await api.get("/admin/loyalty/membership", { params: { customer_id: customerId } });
   return unwrapApiData<any>(res.data);
 };
+
+/* -------------------------------------------------------------------------- */
+/* Staff management (business admin)                                           */
+/* -------------------------------------------------------------------------- */
+
+export type StaffPermissionOverride = {
+  permission_key: string;
+  is_granted: boolean;
+  expires_at?: string | null;
+};
+
+export type StaffMember = {
+  id: number;
+  business_id: number;
+  user_id: number;
+  role: string;
+  status: string;
+  is_primary?: boolean;
+  joined_at?: string | null;
+  last_access_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    is_active?: boolean;
+    email_verified_at?: string | null;
+    created_at?: string | null;
+  } | null;
+  permission_overrides?: StaffPermissionOverride[];
+};
+
+export type StaffPermissionsCatalog = {
+  permissions: Array<{ key: string; name: string; group?: string | null; description?: string | null; sort_order?: number }>;
+  role_defaults: Record<string, string[]>;
+  staff_roles: string[];
+};
+
+export const getStaffMembers = async (): Promise<StaffMember[]> => {
+  const res = await api.get("/admin/staff");
+  return unwrapApiData<StaffMember[]>(res.data);
+};
+
+export const getStaffPermissionsCatalog = async (): Promise<StaffPermissionsCatalog> => {
+  const res = await api.get("/admin/staff/permissions");
+  return unwrapApiData<StaffPermissionsCatalog>(res.data);
+};
+
+export const createStaffMember = async (payload: { name: string; email: string; password: string; role: string; status?: string }): Promise<{ member: StaffMember }> => {
+  const res = await api.post("/admin/staff", payload);
+  return unwrapApiData(res.data);
+};
+
+export const updateStaffMember = async (memberId: number, payload: { name?: string; role?: string; status?: string; is_active?: boolean }): Promise<{ member: StaffMember }> => {
+  const res = await api.put(`/admin/staff/${memberId}`, payload);
+  return unwrapApiData(res.data);
+};
+
+export const updateStaffMemberPermissions = async (memberId: number, overrides: StaffPermissionOverride[]): Promise<{ member_id: number; user_id: number; permission_overrides: StaffPermissionOverride[] }> => {
+  const res = await api.put(`/admin/staff/${memberId}/permissions`, { overrides });
+  return unwrapApiData(res.data);
+};
+
+export const removeStaffMember = async (memberId: number): Promise<void> => {
+  await api.delete(`/admin/staff/${memberId}`);
+};
