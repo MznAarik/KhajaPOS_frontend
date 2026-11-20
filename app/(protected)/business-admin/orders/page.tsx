@@ -160,6 +160,7 @@ export default function OrdersPage() {
   const { user, hasPermission } = useAuth();
   const role = user?.role ?? "";
   const canRedeemReward = hasPermission("loyalty.redeem") || role === "admin" || role === "manager" || role === "cashier";
+  const canManageOrders = hasPermission("orders.manage");
 
   const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -263,7 +264,7 @@ export default function OrdersPage() {
 
   const handleStatusChange = async (orderId: number, nextStatus: OrderStatus) => {
     const order = orders.find((item) => item.id === orderId);
-    if (!order || isLocked(order.status)) return;
+    if (!order || isLocked(order.status) || !canManageOrders) return;
 
     setUpdatingId(orderId);
     try {
@@ -281,7 +282,7 @@ export default function OrdersPage() {
   };
 
   const openEditDialog = (order: KitchenOrder) => {
-    if (isLocked(order.status)) return;
+    if (isLocked(order.status) || !canManageOrders) return;
 
     setEditingOrder(order);
     setEditRemarks(order.remarks ?? "");
@@ -1096,7 +1097,7 @@ export default function OrdersPage() {
                       spacing={1}
                       sx={{ width: "100%" }}
                     >
-                      {nextAction ? (
+                      {canManageOrders && nextAction ? (
                         <Button
                           fullWidth
                           size="small"
@@ -1117,24 +1118,26 @@ export default function OrdersPage() {
                           {isUpdating ? "Updating..." : nextAction.label}
                         </Button>
                       ) : null}
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        disabled={isUpdating}
-                        onClick={() => handleStatusChange(order.id, "cancelled")}
-                        sx={{
-                          minHeight: { xs: 38, sm: 44 },
-                          px: { xs: 1, sm: 2 },
-                          borderRadius: { xs: "12px", sm: "14px" },
-                          fontSize: { xs: "0.76rem", sm: "0.875rem" },
-                          fontWeight: 850,
-                          textTransform: "none",
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                      {canManageOrders ? (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(order.id, "cancelled")}
+                          sx={{
+                            minHeight: { xs: 38, sm: 44 },
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            fontSize: { xs: "0.76rem", sm: "0.875rem" },
+                            fontWeight: 850,
+                            textTransform: "none",
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      ) : null}
                       {canRedeemReward && order.status !== "cancelled" ? (
                         <IconButton
                           aria-label={`apply reward to order ${order.id}`}
@@ -1154,22 +1157,24 @@ export default function OrdersPage() {
                           <RedeemRoundedIcon fontSize="small" />
                         </IconButton>
                       ) : null}
-                      <IconButton
-                        aria-label={`edit order ${order.id}`}
-                        disabled={isUpdating}
-                        onClick={() => openEditDialog(order)}
-                        sx={{
-                          width: { xs: 38, sm: 44 },
-                          height: { xs: 38, sm: 44 },
-                          flexShrink: 0,
-                          borderRadius: { xs: "12px", sm: "14px" },
-                          border: "1px solid var(--border)",
-                          color: "var(--primary)",
-                          backgroundColor: "var(--card)",
-                        }}
-                      >
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
+                      {canManageOrders ? (
+                        <IconButton
+                          aria-label={`edit order ${order.id}`}
+                          disabled={isUpdating}
+                          onClick={() => openEditDialog(order)}
+                          sx={{
+                            width: { xs: 38, sm: 44 },
+                            height: { xs: 38, sm: 44 },
+                            flexShrink: 0,
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            border: "1px solid var(--border)",
+                            color: "var(--primary)",
+                            backgroundColor: "var(--card)",
+                          }}
+                        >
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      ) : null}
                     </Stack>
                   )}
                   {locked ? (
