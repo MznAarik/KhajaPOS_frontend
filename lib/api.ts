@@ -2090,6 +2090,45 @@ export const getLoyaltyMembership = async (customerId: number) => {
   return unwrapApiData<any>(res.data);
 };
 
+export type LoyaltyBusinessSummary = {
+  program: {
+    id?: number;
+    is_enabled: boolean;
+    progress_policy?: string | null;
+    eligible_order_statuses?: string[] | null;
+    eligible_order_types?: string[] | null;
+  } | null;
+  members: {
+    total: number;
+    active: number;
+    with_progress: number;
+    with_available_rewards: number;
+    lifetime_eligible_orders: number;
+  };
+  rewards: {
+    issued: number;
+    available: number;
+    redeemed: number;
+    expired: number;
+    revoked: number;
+  };
+  recent_redemptions: Array<{
+    id: number;
+    status?: string | null;
+    discount_amount?: string | number | null;
+    processed_role?: string | null;
+    created_at?: string | null;
+    reward?: { id: number; reward_code?: string; reward_type?: string; reward_value?: string | number | null; reward_description?: string | null; status?: string | null } | null;
+    customer?: { id: number; name?: string | null; email?: string | null; phone?: string | null } | null;
+    order?: { id: number; table_no?: string | null; order_type?: string | null; total_amount?: string | number | null; order_status?: string | null } | null;
+  }>;
+};
+
+export const getLoyaltySummary = async (): Promise<LoyaltyBusinessSummary> => {
+  const res = await api.get("/admin/loyalty/summary");
+  return unwrapApiData<LoyaltyBusinessSummary>(res.data);
+};
+
 /* -------------------------------------------------------------------------- */
 /* Staff management (business admin)                                           */
 /* -------------------------------------------------------------------------- */

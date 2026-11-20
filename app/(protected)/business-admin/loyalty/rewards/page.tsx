@@ -37,9 +37,11 @@ import { useAppSnackbar } from "@/components/common/SnackBar";
 import {
   getLoyaltyMemberships,
   getLoyaltyRewards,
+  getLoyaltySummary,
   lookupLoyaltyReward,
   redeemLoyaltyReward,
   revokeLoyaltyReward,
+  type LoyaltyBusinessSummary,
 } from "@/lib/api";
 import { safeError } from "@/lib/safeError";
 
@@ -91,6 +93,8 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   const [rewards, setRewards] = React.useState<any[]>([]);
   const [rewardsLoading, setRewardsLoading] = React.useState(false);
   const [rewardStatusFilter, setRewardStatusFilter] = React.useState<string>("");
+  const [summary, setSummary] = React.useState<LoyaltyBusinessSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = React.useState(false);
 
   const [revokeDialog, setRevokeDialog] = React.useState<{ open: boolean; reward: any | null; reason: string; submitting: boolean }>({
     open: false,
@@ -125,10 +129,24 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     }
   }, [canManage, rewardStatusFilter, showSnackbar]);
 
+  const loadSummary = React.useCallback(async () => {
+    if (!canManage) return;
+    setSummaryLoading(true);
+    try {
+      const data = await getLoyaltySummary();
+      setSummary(data);
+    } catch (error) {
+      showSnackbar(safeError(error, "Failed to load loyalty summary"), "error");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [canManage, showSnackbar]);
+
   React.useEffect(() => {
     if (canManage) {
       void loadMemberships();
       void loadRewards();
+      void loadSummary();
     }
   }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -179,6 +197,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
       if (canManage) {
         void loadRewards();
         void loadMemberships();
+        void loadSummary();
       }
     } catch (error) {
       showSnackbar(safeError(error, "Failed to redeem reward"), "error");
@@ -210,6 +229,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
       closeRevoke();
       await loadRewards();
       await loadMemberships();
+      await loadSummary();
       if (lookupResult?.reward?.id === revokeDialog.reward.id) {
         setLookupResult((prev) => prev ? { ...prev, redeemable: false, effective_status: "revoked", reward: { ...prev.reward, status: "revoked" } } : prev);
       }
@@ -375,6 +395,89 @@ export default function BusinessAdminLoyaltyRewardsPage() {
             <Stack spacing={2}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
                 <Box>
+                  <Typography sx={{ fontWeight: 800 }}>Loyalty analytics</Typography>
+                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                    Tenant-scoped overview of members, rewards, and recent redemptions.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<RefreshRoundedIcon />}
+                  onClick={() => { void loadSummary(); void loadMemberships(); void loadRewards(); }}
+                  disabled={summaryLoading}
+                  sx={{ borderRadius: "10px", textTransform: "none" }}
+                >
+                  Refresh
+                </Button>
+              </Stack>
+
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                <Chip label={`Members: ${summary?.members.total ?? totalMembers}`} variant="outlined" />
+                <Chip label={`Active: ${summary?.members.active ?? 0}`} variant="outlined" />
+                <Chip label={`With progress: ${summary?.members.with_progress ?? 0}`} variant="outlined" />
+                <Chip label={`Members w/ rewards: ${summary?.members.with_available_rewards ?? 0}`} color={(summary?.members.with_available_rewards ?? 0) > 0 ? "success" : "default"} variant="outlined" />
+                <Chip label={`Lifetime eligible orders: ${summary?.members.lifetime_eligible_orders ?? totalLifetimeOrders}`} variant="outlined" />
+              </Stack>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                <Chip label={`Issued: ${summary?.rewards.issued ?? rewards.length}`} variant="outlined" />
+                <Chip label={`Available: ${summary?.rewards.available ?? totalAvailableRewards}`} color={(summary?.rewards.available ?? totalAvailableRewards) > 0 ? "success" : "default"} variant={(summary?.rewards.available ?? totalAvailableRewards) > 0 ? "filled" : "outlined"} />
+                <Chip label={`Redeemed: ${summary?.rewards.redeemed ?? 0}`} color="info" variant="outlined" />
+                <Chip label={`Expired: ${summary?.rewards.expired ?? 0}`} color="warning" variant="outlined" />
+                <Chip label={`Revoked: ${summary?.rewards.revoked ?? 0}`} color="error" variant="outlined" />
+              </Stack>
+              {summary?.program ? (
+                <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
+                  Program: {summary.program.is_enabled ? "Enabled" : "Disabled"} · Policy: {String(summary.program.progress_policy || "—")} · Eligible statuses: {(summary.program.eligible_order_statuses || []).join(", ") || "—"}
+                </Typography>
+              ) : null}
+
+              <Divider />
+              <Box>
+                <Typography sx={{ fontWeight: 800, mb: 1 }}>Recent redemptions</Typography>
+                {summaryLoading && !summary ? (
+                  <Box sx={{ display: "grid", placeItems: "center", py: 2 }}><CircularProgress size={22} /></Box>
+                ) : (summary?.recent_redemptions?.length ?? 0) === 0 ? (
+                  <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>No redemptions recorded yet.</Typography>
+                ) : (
+                  <Box sx={{ overflowX: "auto" }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 800 }}>When</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Customer</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Reward</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Order</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Discount</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>By</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {summary!.recent_redemptions.map((r) => (
+                          <TableRow key={r.id} hover>
+                            <TableCell sx={{ whiteSpace: "nowrap" }}>{formatDateTime(r.created_at || undefined)}</TableCell>
+                            <TableCell>{r.customer?.name || r.customer?.email || r.customer?.phone || "—"}</TableCell>
+                            <TableCell>
+                              <Typography sx={{ fontWeight: 700, fontFamily: "monospace", fontSize: "0.85rem" }}>{r.reward?.reward_code || "—"}</Typography>
+                              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{r.reward?.reward_description || (r.reward?.reward_type ? String(r.reward.reward_type).replace(/_/g, " ") : "—")}</Typography>
+                            </TableCell>
+                            <TableCell>{r.order?.id ? `#${r.order.id}${r.order.order_type ? ` · ${String(r.order.order_type).replace(/_/g, " ")}` : ""}` : "—"}</TableCell>
+                            <TableCell>{r.discount_amount != null && r.discount_amount !== "" ? `Rs. ${Number(r.discount_amount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : "—"}</TableCell>
+                            <TableCell sx={{ textTransform: "capitalize" }}>{String(r.processed_role || "—").replace(/_/g, " ")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Box>
+                )}
+              </Box>
+            </Stack>
+          </Paper>
+
+          <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
+                <Box>
                   <Typography sx={{ fontWeight: 800 }}>Customers & progress</Typography>
                   <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
                     Verified customers enrolled in this restaurant’s loyalty program and their current progress.
@@ -395,9 +498,9 @@ export default function BusinessAdminLoyaltyRewardsPage() {
               </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
-                <Chip label={`${totalMembers} members`} variant="outlined" />
-                <Chip label={`${totalAvailableRewards} available rewards`} color={totalAvailableRewards > 0 ? "success" : "default"} variant="outlined" />
-                <Chip label={`${totalLifetimeOrders} lifetime eligible orders`} variant="outlined" />
+                <Chip label={`${totalMembers} members (loaded)`} variant="outlined" />
+                <Chip label={`${totalAvailableRewards} available rewards (loaded)`} color={totalAvailableRewards > 0 ? "success" : "default"} variant="outlined" />
+                <Chip label={`${totalLifetimeOrders} lifetime eligible orders (loaded)`} variant="outlined" />
               </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
@@ -516,7 +619,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                         <TableCell sx={{ fontWeight: 800 }}>Customer</TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>Reward</TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                        <TableCell sx={{ fontWeight: 800 }}>Issued / Expires</TableCell>
+                        <TableCell sx={{ fontWeight: 800 }}>History</TableCell>
                         <TableCell sx={{ fontWeight: 800 }} align="right">Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -535,9 +638,23 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                           <TableCell>
                             <Chip size="small" label={String(r.status || "unknown")} color={statusColor(r.status)} sx={{ textTransform: "capitalize", fontWeight: 700 }} />
                           </TableCell>
-                          <TableCell>
-                            <Typography sx={{ fontSize: "0.85rem" }}>{formatDateTime(r.issued_at)}</Typography>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{r.expires_at ? `Expires ${formatDateTime(r.expires_at)}` : "No expiry"}</Typography>
+                          <TableCell sx={{ minWidth: 220 }}>
+                            <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(r.issued_at)}</Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                              {r.expires_at ? `Expires: ${formatDateTime(r.expires_at)}` : "No expiry"}
+                            </Typography>
+                            {r.status === "redeemed" ? (
+                              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                                Redeemed: {formatDateTime(r.redeemed_at)}
+                                {r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}
+                                {r.redemption?.discount_amount != null ? ` · Rs. ${Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
+                              </Typography>
+                            ) : null}
+                            {r.status === "revoked" && r.revocation_reason ? (
+                              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                                Reason: {r.revocation_reason}
+                              </Typography>
+                            ) : null}
                           </TableCell>
                           <TableCell align="right">
                             {r.status === "available" ? (
