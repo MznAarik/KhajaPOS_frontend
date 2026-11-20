@@ -1977,3 +1977,81 @@ export const recordSuperAdminBackup = async (payload: any) => {
   const res = await api.post("/superadmin/backups", payload);
   return unwrapApiData<any>(res.data);
 };
+
+/* -------------------------------------------------------------------------- */
+/* Loyalty (business admin/staff)                                              */
+/* -------------------------------------------------------------------------- */
+
+export type LoyaltyTier = {
+  id: number;
+  loyalty_program_id?: number;
+  business_id?: number;
+  name: string | null;
+  threshold_orders: number;
+  reward_type: "percentage_discount" | "fixed_discount" | "free_item" | "free_drink" | "custom" | string;
+  reward_value: string | number | null;
+  reward_description: string | null;
+  validity_days: number | null;
+  min_order_amount: string | number | null;
+  applicable_order_types: string[] | null;
+  is_active: boolean;
+  is_stackable?: boolean;
+  sort_order?: number;
+  metadata?: any;
+};
+
+export type LoyaltyProgram = {
+  id?: number;
+  business_id?: number;
+  is_enabled: boolean;
+  progress_policy: "reset" | "accumulate" | "rolling" | string;
+  eligible_order_types: string[] | null;
+  eligible_order_statuses: string[] | null;
+  allow_reward_stacking: boolean;
+  settings?: any;
+  tiers: LoyaltyTier[];
+};
+
+export const getLoyaltyProgram = async (): Promise<LoyaltyProgram> => {
+  const res = await api.get("/admin/loyalty/program");
+  return unwrapApiData<LoyaltyProgram>(res.data);
+};
+
+export const saveLoyaltyProgram = async (payload: Partial<LoyaltyProgram>): Promise<LoyaltyProgram> => {
+  const res = await api.put("/admin/loyalty/program", payload);
+  return unwrapApiData<LoyaltyProgram>(res.data);
+};
+
+export const createLoyaltyTier = async (payload: Partial<LoyaltyTier>): Promise<LoyaltyTier> => {
+  const res = await api.post("/admin/loyalty/tiers", payload);
+  return unwrapApiData<LoyaltyTier>(res.data);
+};
+
+export const updateLoyaltyTier = async (id: number, payload: Partial<LoyaltyTier>): Promise<LoyaltyTier> => {
+  const res = await api.put(`/admin/loyalty/tiers/${id}`, payload);
+  return unwrapApiData<LoyaltyTier>(res.data);
+};
+
+export const deleteLoyaltyTier = async (id: number): Promise<void> => {
+  await api.delete(`/admin/loyalty/tiers/${id}`);
+};
+
+export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number }): Promise<any[]> => {
+  const res = await api.get("/admin/loyalty/rewards", { params });
+  return unwrapApiData<any[]>(res.data);
+};
+
+export const redeemLoyaltyReward = async (payload: { reward_code: string; order_id?: number; discount_amount?: number; metadata?: any }) => {
+  const res = await api.post("/admin/loyalty/rewards/redeem", payload);
+  return unwrapApiData<any>(res.data);
+};
+
+export const revokeLoyaltyReward = async (id: number, reason: string) => {
+  const res = await api.post(`/admin/loyalty/rewards/${id}/revoke`, { reason });
+  return unwrapApiData<any>(res.data);
+};
+
+export const getLoyaltyMembership = async (customerId: number) => {
+  const res = await api.get("/admin/loyalty/membership", { params: { customer_id: customerId } });
+  return unwrapApiData<any>(res.data);
+};
