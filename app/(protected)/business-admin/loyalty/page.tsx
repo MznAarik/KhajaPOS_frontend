@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
+import Link from "next/link";
   Alert,
   Box,
   Button,
@@ -258,11 +258,21 @@ export default function BusinessAdminLoyaltyPage() {
 
   return (
     <Box sx={{ display: "grid", gap: 2.5 }}>
-      <Stack spacing={0.75}>
-        <Typography sx={{ fontWeight: 900, fontSize: "1.35rem" }}>Loyalty & Rewards</Typography>
-        <Typography sx={{ color: "var(--muted-foreground)" }}>
-          Configure how customers earn rewards at your restaurant. Eligible orders are counted server-side (idempotent) and only for verified, signed-in customers associated to orders.
-        </Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
+        <Stack spacing={0.75}>
+          <Typography sx={{ fontWeight: 900, fontSize: "1.35rem" }}>Loyalty & Rewards</Typography>
+          <Typography sx={{ color: "var(--muted-foreground)" }}>
+            Configure how customers earn rewards at your restaurant. Eligible orders are counted server-side (idempotent) and only for verified, signed-in customers associated to orders.
+          </Typography>
+        </Stack>
+        <Button
+          component={Link}
+          href="/business-admin/loyalty/rewards"
+          variant="outlined"
+          sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700, flexShrink: 0 }}
+        >
+          Customers & rewards
+        </Button>
       </Stack>
 
       <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>

@@ -2036,9 +2036,19 @@ export const deleteLoyaltyTier = async (id: number): Promise<void> => {
   await api.delete(`/admin/loyalty/tiers/${id}`);
 };
 
-export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number }): Promise<any[]> => {
+export const getLoyaltyMemberships = async (params?: { search?: string }): Promise<any[]> => {
+  const res = await api.get("/admin/loyalty/memberships", { params });
+  return unwrapApiData<any[]>(res.data);
+};
+
+export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number; reward_code?: string }): Promise<any[]> => {
   const res = await api.get("/admin/loyalty/rewards", { params });
   return unwrapApiData<any[]>(res.data);
+};
+
+export const lookupLoyaltyReward = async (code: string): Promise<{ reward: any; redeemable: boolean; effective_status: string }> => {
+  const res = await api.get("/admin/loyalty/rewards/lookup", { params: { code } });
+  return unwrapApiData(res.data);
 };
 
 export const redeemLoyaltyReward = async (payload: { reward_code: string; order_id?: number; discount_amount?: number; metadata?: any }) => {

@@ -109,6 +109,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const saUsersRef = React.useRef<UsersIconHandle | null>(null);
     const reviewsIconRef = React.useRef<MessageSquareIconHandle | null>(null);
     const loyaltyIconRef = React.useRef<GiftIconHandle | null>(null);
+    const loyaltyRewardsIconRef = React.useRef<GiftIconHandle | null>(null);
     const mainRef = React.useRef<HTMLDivElement | null>(null);
     const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
     const [notifLoading, setNotifLoading] = React.useState(false);
@@ -204,6 +205,9 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         if (role === "admin" || role === "manager") {
             items.push({ text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef });
         }
+        if (role === "cashier") {
+            items.push({ text: "Loyalty Rewards", href: "/business-admin/loyalty/rewards", icon: GiftIcon, ref: loyaltyRewardsIconRef });
+        }
 
         return items;
     }, [isSuperAdmin, role]);
@@ -226,6 +230,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         notifications: "Notifications",
         reviews: "Reviews",
         loyalty: "Loyalty",
+        rewards: "Loyalty Rewards",
         settings: "Settings",
     };
 
@@ -1082,6 +1087,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 "Orders": "Orders",
                                 "Reviews": "Reviews",
                                 "Loyalty": "Loyalty",
+                                "Loyalty Rewards": "Rewards",
                             };
                             return (
                                 <BottomNavigationAction
