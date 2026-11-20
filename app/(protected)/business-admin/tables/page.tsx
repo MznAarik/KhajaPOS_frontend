@@ -35,6 +35,7 @@ import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { useAuth } from "@/lib/auth-context";
 
 import {
   buildTableOrderUrl,
@@ -99,6 +100,8 @@ export default function TablesPage() {
     table: AdminTable;
   } | null>(null);
   const { showSnackbar } = useAppSnackbar();
+  const { hasPermission } = useAuth();
+  const canManageTables = hasPermission("tables.manage");
 
   const fetchTables = React.useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -148,6 +151,7 @@ export default function TablesPage() {
   }, [page, rowsPerPage, tables]);
 
   const openCreateDialog = () => {
+    if (!canManageTables) return;
     const numericNumbers = tables
       .map((table) => Number(table.tableNo))
       .filter((value) => Number.isInteger(value) && value > 0);
@@ -161,6 +165,7 @@ export default function TablesPage() {
   };
 
   const openEditDialog = (table: AdminTable) => {
+    if (!canManageTables) return;
     setDialogState({
       id: table.id,
       tableNo: table.tableNo,
@@ -353,11 +358,14 @@ export default function TablesPage() {
       <Button
         size="small"
         variant="outlined"
-        disabled={busy}
-        aria-haspopup="menu"
-        aria-label={`Table ${table.tableNo} status: ${status.label}. Open status actions`}
-        onClick={(event) => setStatusMenu({ anchor: event.currentTarget, table })}
-        endIcon={<KeyboardArrowDownRoundedIcon />}
+        disabled={busy || !canManageTables}
+        aria-haspopup={canManageTables ? "menu" : undefined}
+        aria-label={`Table ${table.tableNo} status: ${status.label}${canManageTables ? ". Open status actions" : ""}`}
+        onClick={(event) => {
+          if (!canManageTables) return;
+          setStatusMenu({ anchor: event.currentTarget, table });
+        }}
+        endIcon={canManageTables ? <KeyboardArrowDownRoundedIcon /> : undefined}
         sx={{
           borderRadius: "999px",
           textTransform: "none",
@@ -368,8 +376,9 @@ export default function TablesPage() {
           color: status.color,
           backgroundColor: status.backgroundColor,
           borderColor: status.borderColor,
-          "&:hover": { backgroundColor: status.backgroundColor, borderColor: status.borderColor, filter: "brightness(0.96)" },
+          "&:hover": canManageTables ? { backgroundColor: status.backgroundColor, borderColor: status.borderColor, filter: "brightness(0.96)" } : undefined,
           "& .MuiButton-endIcon": { ml: 0.35 },
+          "&.Mui-disabled": { color: status.color, borderColor: status.borderColor, opacity: 1 },
         }}
       >
         {busy ? "Saving..." : status.label}
@@ -405,24 +414,26 @@ export default function TablesPage() {
               {"Manage tables and their ordering QR codes"}
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={openCreateDialog}
-            sx={{
-              borderRadius: "14px",
-              backgroundColor: "var(--primary)",
-              color: "var(--primary-foreground)",
-              boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
-              width: { xs: "100%", sm: "auto" },
-              minWidth: { xs: 0, sm: "auto" },
-              flexShrink: 0,
-              px: { xs: 2, sm: 2.5 },
-              minHeight: 48,
-            }}
-          >
-            Add Table
-          </Button>
+          {canManageTables ? (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={openCreateDialog}
+              sx={{
+                borderRadius: "14px",
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+                boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+                width: { xs: "100%", sm: "auto" },
+                minWidth: { xs: 0, sm: "auto" },
+                flexShrink: 0,
+                px: { xs: 2, sm: 2.5 },
+                minHeight: 48,
+              }}
+            >
+              Add Table
+            </Button>
+          ) : null}
         </Stack>
       </Paper>
 
@@ -540,12 +551,16 @@ export default function TablesPage() {
                       View QR
                     </Button>
                     <Button size="small" variant="outlined" onClick={() => copyTableUrl(table)} sx={{ borderRadius: "12px", fontWeight: 800, textTransform: "none", minHeight: 40 }}>Copy link</Button>
-                    <IconButton aria-label={`Edit table ${table.tableNo}`} onClick={() => openEditDialog(table)} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--primary)" }}>
-                      <EditOutlinedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton aria-label={`Delete table ${table.tableNo}`} onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--status-inactive-fg)" }}>
-                      <DeleteOutlineOutlinedIcon fontSize="small" />
-                    </IconButton>
+                    {canManageTables ? (
+                      <>
+                        <IconButton aria-label={`Edit table ${table.tableNo}`} onClick={() => openEditDialog(table)} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--primary)" }}>
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton aria-label={`Delete table ${table.tableNo}`} onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ width: 40, height: 40, border: "1px solid var(--border)", borderRadius: "10px", color: "var(--status-inactive-fg)" }}>
+                          <DeleteOutlineOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </>
+                    ) : null}
                   </Stack>
                 </Stack>
               </Paper>
@@ -678,12 +693,16 @@ export default function TablesPage() {
                       <IconButton size="small" aria-label={`Copy order link for table ${table.tableNo}`} onClick={() => copyTableUrl(table)} sx={{ border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
                         <ContentCopyOutlinedIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" aria-label={`Edit table ${table.tableNo}`} onClick={() => openEditDialog(table)} sx={{ color: "var(--primary)", border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" aria-label={`Delete table ${table.tableNo}`} onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ color: "var(--status-inactive-fg)", border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
-                        <DeleteOutlineOutlinedIcon fontSize="small" />
-                      </IconButton>
+                      {canManageTables ? (
+                        <>
+                          <IconButton size="small" aria-label={`Edit table ${table.tableNo}`} onClick={() => openEditDialog(table)} sx={{ color: "var(--primary)", border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" aria-label={`Delete table ${table.tableNo}`} onClick={() => { setSelectedTable(table); setDeleteOpen(true); }} sx={{ color: "var(--status-inactive-fg)", border: "1px solid var(--border)", borderRadius: "9px", width: 34, height: 34, flexShrink: 0 }}>
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      ) : null}
                     </Stack>
                   </TableCell>
                 </TableRow>

@@ -47,6 +47,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { useAuth } from "@/lib/auth-context";
 
 import AddEditMenuDialog from "./addEdit";
 import MenuViewDialog, { foodTypeTone } from "./view";
@@ -126,6 +127,7 @@ const MenuMobileCard = ({
   onDelete,
   onToggleAvailability,
   updatingStatusId,
+  canManage,
 }: {
   item: MenuItemType;
   onView: (item: MenuItemType) => void;
@@ -133,6 +135,7 @@ const MenuMobileCard = ({
   onDelete: (item: MenuItemType) => void;
   onToggleAvailability: (item: MenuItemType) => void;
   updatingStatusId: number | null;
+  canManage: boolean;
 }) => (
   <Paper
     sx={{
@@ -185,8 +188,8 @@ const MenuMobileCard = ({
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Box />
           <Chip
-            clickable={updatingStatusId !== item.id}
-            disabled={updatingStatusId === item.id}
+            clickable={canManage && updatingStatusId !== item.id}
+            disabled={!canManage || updatingStatusId === item.id}
             label={
               updatingStatusId === item.id
                 ? "Updating"
@@ -195,7 +198,7 @@ const MenuMobileCard = ({
                   : "Off"
             }
             size="small"
-            onClick={() => updatingStatusId !== item.id && onToggleAvailability(item)}
+            onClick={() => canManage && updatingStatusId !== item.id && onToggleAvailability(item)}
             sx={{
               flexShrink: 0,
               backgroundColor:
@@ -218,7 +221,7 @@ const MenuMobileCard = ({
                     ? "var(--status-active-border)"
                     : "var(--status-inactive-border)",
               fontWeight: 800,
-              cursor: updatingStatusId === item.id ? "wait" : "pointer",
+              cursor: !canManage ? "default" : updatingStatusId === item.id ? "wait" : "pointer",
               opacity: 1,
             }}
           />
@@ -265,12 +268,16 @@ const MenuMobileCard = ({
         <Button variant="contained" size="small" onClick={() => onView(item)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0 }}>
           View
         </Button>
-        <IconButton size="small" aria-label={`Edit ${item.name}`} onClick={() => onEdit(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
-          <EditOutlinedIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" aria-label={`Delete ${item.name}`} color="error" onClick={() => onDelete(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
-          <DeleteOutlineOutlinedIcon fontSize="small" />
-        </IconButton>
+        {canManage ? (
+          <>
+            <IconButton size="small" aria-label={`Edit ${item.name}`} onClick={() => onEdit(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px", color: "var(--primary)" }}>
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" aria-label={`Delete ${item.name}`} color="error" onClick={() => onDelete(item)} sx={{ width: 36, height: 36, border: "1px solid var(--border)", borderRadius: "12px" }}>
+              <DeleteOutlineOutlinedIcon fontSize="small" />
+            </IconButton>
+          </>
+        ) : null}
       </Stack>
     </Stack>
   </Paper>
@@ -311,6 +318,8 @@ export default function MenuManagementPage() {
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [totalRows, setTotalRows] = React.useState(0);
   const { showSnackbar } = useAppSnackbar();
+  const { hasPermission } = useAuth();
+  const canManageMenu = hasPermission("menu.manage");
 
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
@@ -492,11 +501,13 @@ export default function MenuManagementPage() {
   };
 
   const openCreateDialog = () => {
+    if (!canManageMenu) return;
     setEditorItem(null);
     setEditorOpen(true);
   };
 
   const openEditDialog = (item: MenuItemType) => {
+    if (!canManageMenu) return;
     setEditorItem(item);
     setEditorOpen(true);
   };
@@ -563,20 +574,22 @@ export default function MenuManagementPage() {
             >
               Export
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              onClick={openCreateDialog}
-              sx={{
-                borderRadius: "14px",
-                backgroundColor: "var(--primary)",
-                color: "var(--primary-foreground)",
-                boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
-                flex: { xs: 1, sm: "initial" },
-              }}
-            >
-              Add Menu
-            </Button>
+            {canManageMenu ? (
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={openCreateDialog}
+                sx={{
+                  borderRadius: "14px",
+                  backgroundColor: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+                  flex: { xs: 1, sm: "initial" },
+                }}
+              >
+                Add Menu
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
       </Paper>
@@ -733,6 +746,7 @@ export default function MenuManagementPage() {
                 onView={(menuItem) => setViewItem(menuItem)}
                 onEdit={openEditDialog}
                 onDelete={handleDelete}
+                canManage={canManageMenu}
                 onToggleAvailability={async (menuItem) => {
                   try {
                     setUpdatingStatusId(menuItem.id);
@@ -981,15 +995,16 @@ export default function MenuManagementPage() {
 
                   <TableCell align="center" sx={{ pr: 4 }}>
                     <Chip
-                      clickable={updatingStatusId !== item.id}
+                      clickable={canManageMenu && updatingStatusId !== item.id}
                       label={
                         updatingStatusId === item.id
                           ? "Updating..."
                           : getAvailabilityLabel(item.isAvailable)
                       }
                       size="medium"
-                      disabled={updatingStatusId === item.id}
+                      disabled={!canManageMenu || updatingStatusId === item.id}
                       onClick={async () => {
+                        if (!canManageMenu) return;
                         try {
                           setUpdatingStatusId(item.id);
 
@@ -1024,7 +1039,17 @@ export default function MenuManagementPage() {
                         }
                       }}
                       sx={
-                        updatingStatusId === item.id
+                        !canManageMenu
+                          ? {
+                            backgroundColor: item.isAvailable ? "var(--status-active-bg)" : "var(--status-inactive-bg)",
+                            color: item.isAvailable ? "var(--status-active-fg)" : "var(--status-inactive-fg)",
+                            border: "1px solid",
+                            borderColor: item.isAvailable ? "var(--status-active-border)" : "var(--status-inactive-border)",
+                            fontWeight: 600,
+                            cursor: "default",
+                            opacity: 1,
+                          }
+                          : updatingStatusId === item.id
                           ? {
                             backgroundColor: "#e5e7eb",
                             color: "#6b7280",
@@ -1065,26 +1090,30 @@ export default function MenuManagementPage() {
                       <VisibilityOutlinedIcon />
                     </IconButton>
 
-                    <IconButton
-                      size="small"
-                      aria-label={`Edit ${item.name}`}
-                      onClick={() =>
-                        openEditDialog(item)
-                      }
-                    >
-                      <EditOutlinedIcon />
-                    </IconButton>
+                    {canManageMenu ? (
+                      <>
+                        <IconButton
+                          size="small"
+                          aria-label={`Edit ${item.name}`}
+                          onClick={() =>
+                            openEditDialog(item)
+                          }
+                        >
+                          <EditOutlinedIcon />
+                        </IconButton>
 
-                    <IconButton
-                      size="small"
-                      aria-label={`Delete ${item.name}`}
-                      sx={{ color: "var(--status-inactive-fg)" }}
-                      onClick={() =>
-                        handleDelete(item)
-                      }
-                    >
-                      <DeleteOutlineOutlinedIcon />
-                    </IconButton>
+                        <IconButton
+                          size="small"
+                          aria-label={`Delete ${item.name}`}
+                          sx={{ color: "var(--status-inactive-fg)" }}
+                          onClick={() =>
+                            handleDelete(item)
+                          }
+                        >
+                          <DeleteOutlineOutlinedIcon />
+                        </IconButton>
+                      </>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))
