@@ -75,6 +75,7 @@ export default function BusinessAdminStaffPage() {
   const { role: myRole } = useAuth();
   const { showSnackbar } = useAppSnackbar();
   const isOwnerAdmin = myRole === "admin";
+  const canManageStaff = myRole === "admin" || myRole === "manager";
 
   const [loading, setLoading] = React.useState(true);
   const [members, setMembers] = React.useState<StaffMember[]>([]);
@@ -264,7 +265,7 @@ export default function BusinessAdminStaffPage() {
           <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadData(true)} sx={{ borderRadius: "12px", textTransform: "none" }}>
             Refresh
           </Button>
-          {isOwnerAdmin ? (
+          {canManageStaff ? (
             <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openCreate} sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}>
               Add staff
             </Button>
@@ -274,7 +275,7 @@ export default function BusinessAdminStaffPage() {
 
       {!isOwnerAdmin ? (
         <Alert severity="info" sx={{ borderRadius: "12px" }}>
-          You can view staff and access based on your permissions. Only the business owner/admin can add, edit, or remove staff and manage delegation unless explicitly permitted.
+          Staff management actions are available based on your role and delegated permissions. Server-side checks apply to every change.
         </Alert>
       ) : null}
 
@@ -320,7 +321,7 @@ export default function BusinessAdminStaffPage() {
                       <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>custom rules</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      {isOwnerAdmin ? (
+                      {canManageStaff ? (
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                           <Button size="small" startIcon={<EditOutlinedIcon fontSize="small" />} onClick={() => openEdit(member)} sx={{ textTransform: "none" }}>Edit</Button>
                           <Button size="small" startIcon={<TuneRoundedIcon fontSize="small" />} onClick={() => openPermissions(member)} sx={{ textTransform: "none" }}>Permissions</Button>
