@@ -18,6 +18,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
@@ -77,30 +78,42 @@ export default function SuperAdminLoyaltyOversightPage() {
     tab === "memberships" ? membershipsPg.current_page :
     tab === "rewards" ? rewardsPg.current_page : auditsPg.current_page;
 
-  const load = React.useCallback(async (opts?: { page?: number }) => {
+  const load = React.useCallback(async (opts?: {
+    page?: number;
+    tab?: TabKey;
+    businessId?: string;
+    search?: string;
+    status?: string;
+    action?: string;
+  }) => {
+    const activeTab = opts?.tab ?? tab;
+    const biz = (opts?.businessId ?? businessId).trim();
+    const q = (opts?.search ?? search).trim();
+    const st = opts?.status ?? status;
+    const act = (opts?.action ?? action).trim();
     setLoading(true);
     try {
       const page = opts?.page ?? 1;
       const common = {
-        business_id: businessId.trim() || undefined,
-        search: search.trim() || undefined,
+        business_id: biz || undefined,
+        search: q || undefined,
         page,
         per_page: 20,
       };
-      if (tab === "programs") {
+      if (activeTab === "programs") {
         const data = await getSuperAdminLoyaltyPrograms(common);
         setPrograms(data.items ?? []);
         setProgramsPg(data.pagination ?? defaultPagination());
-      } else if (tab === "memberships") {
+      } else if (activeTab === "memberships") {
         const data = await getSuperAdminLoyaltyMemberships(common);
         setMemberships(data.items ?? []);
         setMembershipsPg(data.pagination ?? defaultPagination());
-      } else if (tab === "rewards") {
-        const data = await getSuperAdminLoyaltyRewards({ ...common, status: status !== "all" ? status : undefined });
+      } else if (activeTab === "rewards") {
+        const data = await getSuperAdminLoyaltyRewards({ ...common, status: st !== "all" ? st : undefined });
         setRewards(data.items ?? []);
         setRewardsPg(data.pagination ?? defaultPagination());
       } else {
-        const data = await getSuperAdminLoyaltyAuditLogs({ ...common, action: action.trim() || undefined });
+        const data = await getSuperAdminLoyaltyAuditLogs({ ...common, action: act || undefined });
         setAudits(data.items ?? []);
         setAuditsPg(data.pagination ?? defaultPagination());
       }
@@ -110,6 +123,13 @@ export default function SuperAdminLoyaltyOversightPage() {
       setLoading(false);
     }
   }, [tab, businessId, search, status, action, showSnackbar]);
+
+  const drillToBusiness = React.useCallback((id: number | string, nextTab: TabKey = "memberships") => {
+    const idStr = String(id);
+    setBusinessId(idStr);
+    setTab(nextTab);
+    void load({ page: 1, tab: nextTab, businessId: idStr });
+  }, [load]);
 
   React.useEffect(() => {
     void load({ page: 1 });
@@ -178,6 +198,20 @@ export default function SuperAdminLoyaltyOversightPage() {
           <Button variant="contained" onClick={() => void load({ page: 1 })} disabled={loading} sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}>
             Apply
           </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setBusinessId("");
+              setSearch("");
+              setStatus("all");
+              setAction("");
+              void load({ page: 1, businessId: "", search: "", status: "all", action: "" });
+            }}
+            disabled={loading}
+            sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+          >
+            Clear
+          </Button>
         </Stack>
       </Paper>
 
@@ -207,8 +241,19 @@ export default function SuperAdminLoyaltyOversightPage() {
                     ) : programs.map((p) => (
                       <TableRow key={p.id} hover>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 700 }}>{p.business?.name || `Business #${p.business_id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>ID: {p.business_id}{p.business?.email ? ` · ${p.business.email}` : ""}</Typography>
+                          <Stack spacing={0.5} alignItems="flex-start">
+                            <Tooltip title="Filter oversight by this business">
+                              <Button size="small" onClick={() => drillToBusiness(p.business_id, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", color: "var(--primary)" }}>
+                                {p.business?.name || `Business #${p.business_id}`}
+                              </Button>
+                            </Tooltip>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>ID: {p.business_id}{p.business?.email ? ` · ${p.business.email}` : ""}</Typography>
+                            <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(p.business_id, "memberships")} />
+                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(p.business_id, "rewards")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(p.business_id, "audit")} />
+                            </Stack>
+                          </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.5} alignItems="flex-start">
@@ -270,8 +315,16 @@ export default function SuperAdminLoyaltyOversightPage() {
                           <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>ID: {m.customer_id} · Membership #{m.id}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 600 }}>{m.business_name || `#${m.business_id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Business ID: {m.business_id}</Typography>
+                          <Stack spacing={0.25} alignItems="flex-start">
+                            <Button size="small" onClick={() => drillToBusiness(m.business_id, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                              {m.business_name || `#${m.business_id}`}
+                            </Button>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Business ID: {m.business_id}</Typography>
+                            <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
+                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(m.business_id, "rewards")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(m.business_id, "audit")} />
+                            </Stack>
+                          </Stack>
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontWeight: 700 }}>Progress: {m.progress_orders} orders</Typography>
@@ -324,8 +377,16 @@ export default function SuperAdminLoyaltyOversightPage() {
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{r.customer?.email || r.customer?.phone || "—"}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 600 }}>{r.business_name || `#${r.business_id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier: {r.tier?.name || "—"}</Typography>
+                          <Stack spacing={0.25} alignItems="flex-start">
+                            <Button size="small" onClick={() => drillToBusiness(r.business_id, "rewards")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                              {r.business_name || `#${r.business_id}`}
+                            </Button>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier: {r.tier?.name || "—"}</Typography>
+                            <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
+                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(r.business_id, "memberships")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(r.business_id, "audit")} />
+                            </Stack>
+                          </Stack>
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>{String(r.reward_type || "—").replace(/_/g, " ")}</Typography>
@@ -375,8 +436,20 @@ export default function SuperAdminLoyaltyOversightPage() {
                           <Chip size="small" label={a.action || "—"} variant="outlined" sx={{ fontWeight: 700, maxWidth: 260 }} />
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 600 }}>{a.business_name || (a.business_id ? `Business #${a.business_id}` : "—")}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{a.customer_name ? `Customer: ${a.customer_name}` : (a.customer_id ? `Customer #${a.customer_id}` : "Customer: —")}</Typography>
+                          {a.business_id ? (
+                            <Stack spacing={0.25} alignItems="flex-start">
+                              <Button size="small" onClick={() => drillToBusiness(a.business_id, "audit")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                                {a.business_name || `Business #${a.business_id}`}
+                              </Button>
+                              <Stack direction="row" spacing={0.5}>
+                                <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(a.business_id, "memberships")} />
+                                <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(a.business_id, "rewards")} />
+                              </Stack>
+                            </Stack>
+                          ) : (
+                            <Typography sx={{ fontWeight: 600 }}>—</Typography>
+                          )}
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.25 }}>{a.customer_name ? `Customer: ${a.customer_name}` : (a.customer_id ? `Customer #${a.customer_id}` : "Customer: —")}</Typography>
                         </TableCell>
                         <TableCell sx={{ minWidth: 220 }}>
                           <Typography sx={{ fontSize: "0.82rem" }}>{a.target_type || "—"}{a.target_id != null ? ` #${a.target_id}` : ""}</Typography>
