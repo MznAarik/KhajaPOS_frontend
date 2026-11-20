@@ -46,6 +46,7 @@ import { UsersIcon, type UsersIconHandle } from "@/components/ui/users-icon";
 import { MessageSquareIcon, type MessageSquareIconHandle } from "@/components/ui/message-square-icon";
 import { CreditCardIcon, type CreditCardIconHandle } from "@/components/ui/credit-card-icon";
 import { ActivityIcon, type ActivityIconHandle } from "@/components/ui/activity-icon";
+import { GiftIcon, type GiftIconHandle } from "@/components/ui/gift-icon";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 
@@ -89,7 +90,7 @@ export default function SideNavLayout({
 }
 
 function SideNavShell({ children }: { children: React.ReactNode }) {
-    const { isSuperAdmin } = useAuth();
+    const { isSuperAdmin, role } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const reducedMotion = useReducedMotion();
@@ -107,6 +108,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const saUsageRef = React.useRef<ActivityIconHandle | null>(null);
     const saUsersRef = React.useRef<UsersIconHandle | null>(null);
     const reviewsIconRef = React.useRef<MessageSquareIconHandle | null>(null);
+    const loyaltyIconRef = React.useRef<GiftIconHandle | null>(null);
     const mainRef = React.useRef<HTMLDivElement | null>(null);
     const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
     const [notifLoading, setNotifLoading] = React.useState(false);
@@ -178,27 +180,33 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         };
     }, [isSuperAdmin]);
 
-    const navItems: NavItem[] = React.useMemo(
-        () =>
-            isSuperAdmin
-                ? [
-                    { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon, ref: saDashboardRef },
-                    { text: "Businesses", href: "/super-admin/businesses", icon: StoreIcon, ref: saBusinessesRef },
-                    { text: "Analytics", href: "/super-admin/analytics", icon: ChartSplineIcon, ref: saAnalyticsRef },
-                    { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: CreditCardIcon, ref: saSubsRef },
-                    { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: ActivityIcon, ref: saUsageRef },
-                    { text: "Users", href: "/super-admin/users", icon: UsersIcon, ref: saUsersRef },
-                ]
-                : [
-                    { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-                    { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
-                    { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
-                    { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
-                    { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
-                    { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
-                ],
-        [isSuperAdmin],
-    );
+    const navItems: NavItem[] = React.useMemo(() => {
+        if (isSuperAdmin) {
+            return [
+                { text: "Dashboard", href: "/super-admin/dashboard", icon: HouseIcon, ref: saDashboardRef },
+                { text: "Businesses", href: "/super-admin/businesses", icon: StoreIcon, ref: saBusinessesRef },
+                { text: "Analytics", href: "/super-admin/analytics", icon: ChartSplineIcon, ref: saAnalyticsRef },
+                { text: "Subscriptions & Payments", href: "/super-admin/subscriptions", icon: CreditCardIcon, ref: saSubsRef },
+                { text: "Usage & Operations", href: "/super-admin/usage-operations", icon: ActivityIcon, ref: saUsageRef },
+                { text: "Users", href: "/super-admin/users", icon: UsersIcon, ref: saUsersRef },
+            ];
+        }
+
+        const items: NavItem[] = [
+            { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
+            { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+            { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+            { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+            { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+            { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
+        ];
+
+        if (role === "admin" || role === "manager") {
+            items.push({ text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef });
+        }
+
+        return items;
+    }, [isSuperAdmin, role]);
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Home",
@@ -217,6 +225,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         "usage-operations": "Usage & Operations",
         notifications: "Notifications",
         reviews: "Reviews",
+        loyalty: "Loyalty",
         settings: "Settings",
     };
 
@@ -1072,6 +1081,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                                 "Tables": "Tables",
                                 "Orders": "Orders",
                                 "Reviews": "Reviews",
+                                "Loyalty": "Loyalty",
                             };
                             return (
                                 <BottomNavigationAction

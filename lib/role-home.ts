@@ -45,7 +45,12 @@ export const canRoleAccessPath = (
   }
 
   if (pathname === "/super-admin" || pathname.startsWith("/super-admin/")) return role === "super_admin";
-  if (pathname === "/business-admin" || pathname.startsWith("/business-admin/")) return role === "admin";
+  if (pathname === "/business-admin/loyalty" || pathname.startsWith("/business-admin/loyalty/")) {
+    return role === "admin" || role === "manager";
+  }
+  if (pathname === "/business-admin" || pathname.startsWith("/business-admin/")) {
+    return role === "admin" || role === "manager" || role === "cashier" || role === "kitchen_staff";
+  }
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return false;
   if (isAdminPath(pathname)) return false;
 
