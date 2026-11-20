@@ -1691,8 +1691,8 @@ const customerAuthHeaders = () => {
 
 export const customerRegister = async (payload: {
   name: string;
-  phone: string;
-  email?: string;
+  email: string;
+  phone?: string;
   password?: string;
 }): Promise<CustomerAuthResponse> => {
   const res = await api.post("/customer/auth/register", payload);
@@ -1700,7 +1700,7 @@ export const customerRegister = async (payload: {
 };
 
 export const customerRequestOtp = async (payload: {
-  phone: string;
+  email: string;
   purpose?: "login" | "registration";
 }): Promise<CustomerAuthResponse> => {
   const res = await api.post("/customer/auth/request-otp", payload);
@@ -1708,7 +1708,7 @@ export const customerRequestOtp = async (payload: {
 };
 
 export const customerVerifyOtp = async (payload: {
-  phone: string;
+  email: string;
   code: string;
   name?: string;
   password?: string;
@@ -1720,7 +1720,7 @@ export const customerVerifyOtp = async (payload: {
 };
 
 export const customerLogin = async (payload: {
-  phone: string;
+  email: string;
   password: string;
 }): Promise<CustomerAuthResponse> => {
   const res = await api.post("/customer/auth/login", payload);

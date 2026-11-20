@@ -340,12 +340,12 @@ export default function TableOrderPage() {
   const [customerAuthSubmitting, setCustomerAuthSubmitting] = React.useState(false);
   const [customerAuthError, setCustomerAuthError] = React.useState("");
   const [customerAuthInfo, setCustomerAuthInfo] = React.useState("");
-  const [customerPhone, setCustomerPhone] = React.useState("");
   const [customerName, setCustomerName] = React.useState("");
   const [customerEmail, setCustomerEmail] = React.useState("");
+  const [customerPhone, setCustomerPhone] = React.useState("");
   const [customerPassword, setCustomerPassword] = React.useState("");
   const [customerOtp, setCustomerOtp] = React.useState("");
-  const [customerOtpPhone, setCustomerOtpPhone] = React.useState("");
+  const [customerOtpEmail, setCustomerOtpEmail] = React.useState("");
   const tableId = menu?.table.id ?? 0;
 
   const refreshCustomerSession = React.useCallback(async () => {
@@ -779,9 +779,10 @@ export default function TableOrderPage() {
 
   const handleCustomerRegister = async () => {
     const name = customerName.trim();
+    const email = customerEmail.trim();
     const phone = customerPhone.trim();
-    if (!name || !phone) {
-      setCustomerAuthError("Name and mobile number are required.");
+    if (!name || !email) {
+      setCustomerAuthError("Name and email address are required.");
       return;
     }
     setCustomerAuthSubmitting(true);
@@ -790,14 +791,16 @@ export default function TableOrderPage() {
     try {
       const res: any = await customerRegister({
         name,
-        phone,
-        ...(customerEmail.trim() ? { email: customerEmail.trim() } : {}),
+        email,
+        ...(phone ? { phone } : {}),
         ...(customerPassword ? { password: customerPassword } : {}),
       });
-      setCustomerOtpPhone(phone);
+      setCustomerOtpEmail(email);
       setCustomerOtp("");
       setCustomerAuthMode("verify");
-      setCustomerAuthInfo(res?.message || "Verification code sent. Enter it below to complete sign-in.");
+      setCustomerAuthInfo(
+        res?.message || "A verification code has been sent to your email. Enter it below to complete sign-in."
+      );
     } catch (error: any) {
       setCustomerAuthError(extractErrorMessage(error, "Could not register. Please try again."));
     } finally {
@@ -806,20 +809,20 @@ export default function TableOrderPage() {
   };
 
   const handleCustomerRequestOtp = async (purpose: "login" | "registration" = "login") => {
-    const phone = (customerPhone || customerOtpPhone).trim();
-    if (!phone) {
-      setCustomerAuthError("Enter your mobile number first.");
+    const email = (customerEmail || customerOtpEmail).trim();
+    if (!email) {
+      setCustomerAuthError("Enter your email address first.");
       return;
     }
     setCustomerAuthSubmitting(true);
     setCustomerAuthError("");
     setCustomerAuthInfo("");
     try {
-      const res: any = await customerRequestOtp({ phone, purpose });
-      setCustomerOtpPhone(phone);
+      const res: any = await customerRequestOtp({ email, purpose });
+      setCustomerOtpEmail(email);
       setCustomerOtp("");
       setCustomerAuthMode("verify");
-      setCustomerAuthInfo(res?.message || "Verification code sent. Enter it below.");
+      setCustomerAuthInfo(res?.message || "A verification code has been sent to your email.");
     } catch (error: any) {
       setCustomerAuthError(extractErrorMessage(error, "Could not send verification code."));
     } finally {
@@ -828,10 +831,10 @@ export default function TableOrderPage() {
   };
 
   const handleCustomerVerifyOtp = async () => {
-    const phone = (customerOtpPhone || customerPhone).trim();
+    const email = (customerOtpEmail || customerEmail).trim();
     const code = customerOtp.trim();
-    if (!phone || !code) {
-      setCustomerAuthError("Mobile number and verification code are required.");
+    if (!email || !code) {
+      setCustomerAuthError("Email address and verification code are required.");
       return;
     }
     setCustomerAuthSubmitting(true);
@@ -839,7 +842,7 @@ export default function TableOrderPage() {
     setCustomerAuthInfo("");
     try {
       await customerVerifyOtp({
-        phone,
+        email,
         code,
         ...(customerName.trim() ? { name: customerName.trim() } : {}),
         ...(customerPassword ? { password: customerPassword } : {}),
@@ -860,17 +863,17 @@ export default function TableOrderPage() {
   };
 
   const handleCustomerLogin = async () => {
-    const phone = customerPhone.trim();
+    const email = customerEmail.trim();
     const password = customerPassword;
-    if (!phone || !password) {
-      setCustomerAuthError("Mobile number and password are required.");
+    if (!email || !password) {
+      setCustomerAuthError("Email address and password are required.");
       return;
     }
     setCustomerAuthSubmitting(true);
     setCustomerAuthError("");
     setCustomerAuthInfo("");
     try {
-      await customerLogin({ phone, password });
+      await customerLogin({ email, password });
       setCustomerSessionLoading(true);
       await refreshCustomerSession();
       setCustomerAuthOpen(false);
@@ -883,10 +886,10 @@ export default function TableOrderPage() {
         /not verified|verification code/i.test(String(data?.message ?? "")) ||
         /verification_required/i.test(JSON.stringify(data?.errors ?? {}));
       if (needsVerification) {
-        setCustomerOtpPhone(phone);
+        setCustomerOtpEmail(email);
         setCustomerOtp("");
         setCustomerAuthMode("verify");
-        setCustomerAuthInfo(extractErrorMessage(error, "Verification required. Enter the code sent to your mobile number."));
+        setCustomerAuthInfo(extractErrorMessage(error, "Verification required. Enter the code sent to your email address."));
       } else {
         setCustomerAuthError(extractErrorMessage(error, "Could not sign in. Please try again."));
       }
@@ -1392,9 +1395,9 @@ export default function TableOrderPage() {
               <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                 <Chip
                   size="small"
-                  label={customer.phone_verified_at ? "Verified" : "Unverified"}
-                  color={customer.phone_verified_at ? "success" : "default"}
-                  variant={customer.phone_verified_at ? "filled" : "outlined"}
+                  label={customer.email_verified_at ? "Email verified" : "Unverified"}
+                  color={customer.email_verified_at ? "success" : "default"}
+                  variant={customer.email_verified_at ? "filled" : "outlined"}
                   sx={{ fontWeight: 700 }}
                 />
                 <Button
@@ -1427,7 +1430,10 @@ export default function TableOrderPage() {
           ) : customer ? (
             <Stack spacing={1.25}>
               <Typography sx={{ fontWeight: 700 }}>
-                Hi, {customer.name || "Customer"} <Box component="span" sx={{ color: "var(--muted-foreground)", fontWeight: 600 }}>({customer.phone})</Box>
+                Hi, {customer.name || "Customer"}{" "}
+                <Box component="span" sx={{ color: "var(--muted-foreground)", fontWeight: 600 }}>
+                  ({customer.email || customer.phone || "Account"})
+                </Box>
               </Typography>
 
               {(() => {
@@ -1591,15 +1597,15 @@ export default function TableOrderPage() {
           {customerAuthMode === "register"
             ? "Create rewards account"
             : customerAuthMode === "verify"
-              ? "Verify mobile number"
+              ? "Verify email address"
               : "Sign in for rewards"}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
               {customerAuthMode === "verify"
-                ? "Enter the verification code sent to your mobile number. (In this development setup, codes may be available in the server log.)"
-                : "Use your mobile number so we can recognize you and track eligible orders for rewards at this restaurant."}
+                ? "Enter the verification code sent to your email address. If email delivery is not configured in this environment, check the server log for the code."
+                : "Use your email address so we can recognize you and track eligible orders for rewards at this restaurant."}
             </Typography>
 
             {customerAuthError ? <Alert severity="error">{customerAuthError}</Alert> : null}
@@ -1616,21 +1622,22 @@ export default function TableOrderPage() {
                   autoComplete="name"
                 />
                 <TextField
-                  label="Mobile number"
+                  label="Email address"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  fullWidth
+                  size="small"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                />
+                <TextField
+                  label="Mobile number (optional)"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   fullWidth
                   size="small"
                   autoComplete="tel"
                   placeholder="e.g. 98XXXXXXXX"
-                />
-                <TextField
-                  label="Email (optional)"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  fullWidth
-                  size="small"
-                  autoComplete="email"
                 />
                 <TextField
                   label="Password (optional)"
@@ -1640,7 +1647,7 @@ export default function TableOrderPage() {
                   fullWidth
                   size="small"
                   autoComplete="new-password"
-                  helperText="Set a password to sign in faster next time. You can also use OTP."
+                  helperText="Set a password to sign in faster next time. You can also use a verification code."
                 />
               </>
             ) : null}
@@ -1648,12 +1655,12 @@ export default function TableOrderPage() {
             {customerAuthMode === "signin" ? (
               <>
                 <TextField
-                  label="Mobile number"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  label="Email address"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
                   fullWidth
                   size="small"
-                  autoComplete="tel"
+                  autoComplete="email"
                 />
                 <TextField
                   label="Password"
@@ -1663,7 +1670,7 @@ export default function TableOrderPage() {
                   fullWidth
                   size="small"
                   autoComplete="current-password"
-                  helperText="If you didn't set a password, request a verification code instead."
+                  helperText="If you didn't set a password, use 'Send code' to sign in with a verification code."
                 />
               </>
             ) : null}
@@ -1671,15 +1678,15 @@ export default function TableOrderPage() {
             {customerAuthMode === "verify" ? (
               <>
                 <TextField
-                  label="Mobile number"
-                  value={customerOtpPhone || customerPhone}
+                  label="Email address"
+                  value={customerOtpEmail || customerEmail}
                   onChange={(e) => {
-                    setCustomerOtpPhone(e.target.value);
-                    setCustomerPhone(e.target.value);
+                    setCustomerOtpEmail(e.target.value);
+                    setCustomerEmail(e.target.value);
                   }}
                   fullWidth
                   size="small"
-                  autoComplete="tel"
+                  autoComplete="email"
                 />
                 <TextField
                   label="Verification code"
