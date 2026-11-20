@@ -35,6 +35,7 @@ import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import { useAuth } from "@/lib/auth-context";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import {
+  getLoyaltyMembership,
   getLoyaltyMemberships,
   getLoyaltyRewards,
   getLoyaltySummary,
@@ -95,6 +96,11 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   const [rewardStatusFilter, setRewardStatusFilter] = React.useState<string>("");
   const [summary, setSummary] = React.useState<LoyaltyBusinessSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = React.useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = React.useState<number | null>(null);
+  const [customerDetailOpen, setCustomerDetailOpen] = React.useState(false);
+  const [customerDetailLoading, setCustomerDetailLoading] = React.useState(false);
+  const [customerDetail, setCustomerDetail] = React.useState<any>(null);
+  const [customerRewards, setCustomerRewards] = React.useState<any[]>([]);
 
   const [revokeDialog, setRevokeDialog] = React.useState<{ open: boolean; reward: any | null; reason: string; submitting: boolean }>({
     open: false,
@@ -120,14 +126,41 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     if (!canManage) return;
     setRewardsLoading(true);
     try {
-      const data = await getLoyaltyRewards(rewardStatusFilter ? { status: rewardStatusFilter } : undefined);
+      const params: { status?: string; customer_id?: number } = {};
+      if (rewardStatusFilter) params.status = rewardStatusFilter;
+      if (selectedCustomerId) params.customer_id = selectedCustomerId;
+      const data = await getLoyaltyRewards(Object.keys(params).length ? params : undefined);
       setRewards(Array.isArray(data) ? data : []);
     } catch (error) {
       showSnackbar(safeError(error, "Failed to load rewards"), "error");
     } finally {
       setRewardsLoading(false);
     }
-  }, [canManage, rewardStatusFilter, showSnackbar]);
+  }, [canManage, rewardStatusFilter, selectedCustomerId, showSnackbar]);
+
+  const openCustomerDetail = React.useCallback(async (customerId: number) => {
+    setSelectedCustomerId(customerId);
+    setCustomerDetailOpen(true);
+    setCustomerDetailLoading(true);
+    setCustomerDetail(null);
+    setCustomerRewards([]);
+    try {
+      const [detail, rewardsData] = await Promise.all([
+        getLoyaltyMembership(customerId),
+        getLoyaltyRewards({ customer_id: customerId }),
+      ]);
+      setCustomerDetail(detail);
+      setCustomerRewards(Array.isArray(rewardsData) ? rewardsData : []);
+    } catch (error) {
+      showSnackbar(safeError(error, "Failed to load customer loyalty details"), "error");
+    } finally {
+      setCustomerDetailLoading(false);
+    }
+  }, [showSnackbar]);
+
+  const closeCustomerDetail = () => {
+    setCustomerDetailOpen(false);
+  };
 
   const loadSummary = React.useCallback(async () => {
     if (!canManage) return;
@@ -145,10 +178,15 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   React.useEffect(() => {
     if (canManage) {
       void loadMemberships();
-      void loadRewards();
       void loadSummary();
     }
-  }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canManage, loadMemberships, loadSummary]);
+
+  React.useEffect(() => {
+    if (canManage) {
+      void loadRewards();
+    }
+  }, [canManage, loadRewards]);
 
   const handleLookup = async () => {
     const code = lookupCode.trim();
@@ -533,6 +571,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                         <TableCell sx={{ fontWeight: 800 }}>Lifetime</TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>Available</TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>Last activity</TableCell>
+                        <TableCell sx={{ fontWeight: 800 }} align="right">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -566,6 +605,24 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                             <Chip size="small" label={Number(m.available_rewards_count) || 0} color={(Number(m.available_rewards_count) || 0) > 0 ? "success" : "default"} variant={(Number(m.available_rewards_count) || 0) > 0 ? "filled" : "outlined"} />
                           </TableCell>
                           <TableCell sx={{ whiteSpace: "nowrap" }}>{formatDateTime(m.last_reward_issued_at || m.updated_at)}</TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <Button size="small" variant="text" onClick={() => void openCustomerDetail(Number(m.customer_id || m.customer?.id))} sx={{ textTransform: "none", fontWeight: 700 }}>
+                                View
+                              </Button>
+                              <Button
+                                size="small"
+                                variant={selectedCustomerId === Number(m.customer_id || m.customer?.id) ? "contained" : "outlined"}
+                                onClick={() => setSelectedCustomerId((prev) => {
+                                  const id = Number(m.customer_id || m.customer?.id);
+                                  return prev === id ? null : id;
+                                })}
+                                sx={{ textTransform: "none", fontWeight: 700 }}
+                              >
+                                {selectedCustomerId === Number(m.customer_id || m.customer?.id) ? "Filtered" : "History"}
+                              </Button>
+                            </Stack>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -583,6 +640,17 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                   <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
                     Track issued, redeemed, expired, and revoked rewards. You can revoke an unused reward with a reason.
                   </Typography>
+                  {selectedCustomerId ? (
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} useFlexGap flexWrap="wrap">
+                      <Chip size="small" color="primary" label={`Filtered to customer #${selectedCustomerId}`} />
+                      <Button size="small" variant="text" onClick={() => setSelectedCustomerId(null)} sx={{ textTransform: "none", fontWeight: 700 }}>
+                        Clear filter
+                      </Button>
+                      <Button size="small" variant="text" onClick={() => void openCustomerDetail(selectedCustomerId)} sx={{ textTransform: "none", fontWeight: 700 }}>
+                        View details
+                      </Button>
+                    </Stack>
+                  ) : null}
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -708,6 +776,87 @@ export default function BusinessAdminLoyaltyRewardsPage() {
             {revokeDialog.submitting ? "Revoking…" : "Revoke"}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      <Dialog open={customerDetailOpen} onClose={closeCustomerDetail} fullWidth maxWidth="md" PaperProps={{ sx: { borderRadius: "16px" } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Customer loyalty details</DialogTitle>
+        <DialogContent dividers>
+          {customerDetailLoading ? (
+            <Box sx={{ display: "grid", placeItems: "center", py: 4 }}><CircularProgress size={24} /></Box>
+          ) : !customerDetail ? (
+            <Typography sx={{ color: "var(--muted-foreground)" }}>No details available.</Typography>
+          ) : (
+            <Stack spacing={2}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "12px", borderColor: "var(--border)" }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} useFlexGap flexWrap="wrap">
+                  <Box sx={{ minWidth: 220, flex: 1 }}>
+                    <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Customer</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>{customerDetail.membership?.customer?.name || "Customer"}</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{customerDetail.membership?.customer?.email || customerDetail.membership?.customer?.phone || "—"}</Typography>
+                  </Box>
+                  <Box sx={{ minWidth: 180 }}>
+                    <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Progress</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>{Number(customerDetail.membership?.current_progress_count) || 0} current</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Lifetime eligible orders: {Number(customerDetail.membership?.lifetime_eligible_orders) || 0}</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>Available rewards: {Array.isArray(customerDetail.available_rewards) ? customerDetail.available_rewards.length : 0}</Typography>
+                  </Box>
+                  <Box sx={{ minWidth: 220, flex: 1 }}>
+                    <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Next reward</Typography>
+                    {customerDetail.next_tier ? (
+                      <>
+                        <Typography sx={{ fontWeight: 700 }}>{customerDetail.next_tier.threshold_orders} orders</Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{customerDetail.next_tier.reward_description || customerDetail.next_tier.name || "Reward tier"}</Typography>
+                      </>
+                    ) : (
+                      <Typography sx={{ color: "var(--muted-foreground)" }}>No upcoming tier</Typography>
+                    )}
+                  </Box>
+                </Stack>
+              </Paper>
+              <Box>
+                <Typography sx={{ fontWeight: 800, mb: 1 }}>Reward history</Typography>
+                {customerRewards.length === 0 ? (
+                  <Typography sx={{ color: "var(--muted-foreground)" }}>No rewards found for this customer.</Typography>
+                ) : (
+                  <Box sx={{ overflowX: "auto" }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 800 }}>Code</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Reward</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 800 }}>History</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {customerRewards.map((r) => (
+                          <TableRow key={r.id} hover>
+                            <TableCell sx={{ fontFamily: "monospace", fontWeight: 700 }}>{r.reward_code || `#${r.id}`}</TableCell>
+                            <TableCell>
+                              <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>{String(r.reward_type || "").replace(/_/g, " ")}</Typography>
+                              <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{r.reward_description || "—"}</Typography>
+                            </TableCell>
+                            <TableCell><Chip size="small" label={String(r.status || "unknown")} color={statusColor(r.status)} sx={{ textTransform: "capitalize", fontWeight: 700 }} /></TableCell>
+                            <TableCell>
+                              <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(r.issued_at)}</Typography>
+                              {r.redeemed_at ? (
+                                <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                                  Redeemed: {formatDateTime(r.redeemed_at)}{r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}{r.redemption?.discount_amount != null ? ` · Rs. ${Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
+                                </Typography>
+                              ) : null}
+                              {r.revocation_reason ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Reason: {r.revocation_reason}</Typography> : null}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Box>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}><Button onClick={closeCustomerDetail} sx={{ textTransform: "none" }}>Close</Button></DialogActions>
       </Dialog>
     </Box>
   );

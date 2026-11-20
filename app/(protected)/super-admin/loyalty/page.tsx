@@ -402,7 +402,15 @@ export default function SuperAdminLoyaltyOversightPage() {
                         <TableCell>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Issued: {fmtShort(r.issued_at)}</Typography>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Expires: {fmtShort(r.expires_at)}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Redeemed: {fmtShort(r.redeemed_at)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                            Redeemed: {fmtShort(r.redeemed_at)}
+                            {r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}
+                          </Typography>
+                          {r.redemption?.discount_amount != null ? (
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                              Discount: Rs. {Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                            </Typography>
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     ))}
