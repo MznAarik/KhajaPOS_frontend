@@ -2167,6 +2167,21 @@ export const getLoyaltyAuditLogs = async (params?: {
   return unwrapApiData<LoyaltyAuditLogsResponse>(res.data);
 };
 
+export type LoyaltyTrendsResponse = {
+  range_days: number;
+  from: string;
+  to: string;
+  totals: { issued: number; available: number; redeemed: number; revoked: number; expired: number };
+  series: Array<{ date: string; issued: number; redeemed: number; revoked: number; expired: number }>;
+  top_tiers: Array<{ tier_id: number | null; tier_name: string; issued_count: number }>;
+  top_reasons: Array<{ reason: string; count: number }>;
+};
+
+export const getLoyaltyTrends = async (params?: { days?: number }): Promise<LoyaltyTrendsResponse> => {
+  const res = await api.get("/admin/loyalty/trends", { params });
+  return unwrapApiData<LoyaltyTrendsResponse>(res.data);
+};
+
 /* -------------------------------------------------------------------------- */
 /* Staff management (business admin)                                           */
 /* -------------------------------------------------------------------------- */

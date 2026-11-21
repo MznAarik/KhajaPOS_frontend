@@ -41,11 +41,13 @@ import {
   deleteLoyaltyTier,
   getLoyaltyAuditLogs,
   getLoyaltyProgram,
+  getLoyaltyTrends,
   saveLoyaltyProgram,
   updateLoyaltyTier,
   type LoyaltyAuditLogItem,
   type LoyaltyProgram,
   type LoyaltyTier,
+  type LoyaltyTrendsResponse,
 } from "@/lib/api";
 import { safeError } from "@/lib/safeError";
 
@@ -116,6 +118,8 @@ export default function BusinessAdminLoyaltyPage() {
   const [auditLastPage, setAuditLastPage] = React.useState(1);
   const [auditSearch, setAuditSearch] = React.useState("");
   const [auditAction, setAuditAction] = React.useState("");
+  const [trends, setTrends] = React.useState<LoyaltyTrendsResponse | null>(null);
+  const [trendsLoading, setTrendsLoading] = React.useState(false);
 
   const loadProgram = React.useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -161,6 +165,22 @@ export default function BusinessAdminLoyaltyPage() {
   React.useEffect(() => {
     void loadAuditLogs();
   }, [loadAuditLogs]);
+
+  const loadTrends = React.useCallback(async () => {
+    setTrendsLoading(true);
+    try {
+      const data = await getLoyaltyTrends({ days: 30 });
+      setTrends(data);
+    } catch (error) {
+      showSnackbar(safeError(error, "Failed to load loyalty trends"), "error");
+    } finally {
+      setTrendsLoading(false);
+    }
+  }, [showSnackbar]);
+
+  React.useEffect(() => {
+    void loadTrends();
+  }, [loadTrends]);
 
   const setProgramField = <K extends keyof LoyaltyProgram>(key: K, value: LoyaltyProgram[K]) => {
     setProgram((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -464,6 +484,95 @@ export default function BusinessAdminLoyaltyPage() {
                 </TableBody>
               </Table>
             </Box>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 }, borderRadius: "18px", borderColor: "var(--border)", bgcolor: "var(--surface)" }}>
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Trends (30 days)</Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.88rem" }}>
+              Tenant-scoped reward issuance/redemption activity over time.
+            </Typography>
+          </Box>
+
+          {trendsLoading ? (
+            <Box sx={{ py: 3, display: "grid", placeItems: "center" }}><CircularProgress size={24} /></Box>
+          ) : trends ? (
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                {[
+                  { label: "Issued", value: trends.totals.issued },
+                  { label: "Redeemed", value: trends.totals.redeemed },
+                  { label: "Revoked", value: trends.totals.revoked },
+                  { label: "Expired", value: trends.totals.expired },
+                  { label: "Available", value: trends.totals.available },
+                ].map((item) => (
+                  <Paper key={item.label} variant="outlined" sx={{ p: 1.25, minWidth: 120, borderRadius: "12px" }}>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>{item.label}</Typography>
+                    <Typography sx={{ fontWeight: 800, fontSize: "1.2rem" }}>{item.value}</Typography>
+                  </Paper>
+                ))}
+              </Stack>
+
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 0.75 }}>Top tiers (issued)</Typography>
+                  {trends.top_tiers.length === 0 ? <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>No data</Typography> : (
+                    <Stack spacing={0.5}>
+                      {trends.top_tiers.map((t) => (
+                        <Stack key={`${t.tier_id}-${t.tier_name}`} direction="row" justifyContent="space-between" sx={{ fontSize: "0.85rem" }}>
+                          <span>{t.tier_name}</span>
+                          <strong>{t.issued_count}</strong>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 0.75 }}>Top revocation reasons</Typography>
+                  {trends.top_reasons.length === 0 ? <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>No data</Typography> : (
+                    <Stack spacing={0.5}>
+                      {trends.top_reasons.map((r) => (
+                        <Stack key={r.reason} direction="row" justifyContent="space-between" sx={{ fontSize: "0.85rem", gap: 1 }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.reason}</span>
+                          <strong>{r.count}</strong>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Stack>
+
+              <Box sx={{ overflowX: "auto" }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 0.75 }}>Daily activity (last 14 days)</Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 800 }}>Date</TableCell>
+                      <TableCell sx={{ fontWeight: 800 }} align="right">Issued</TableCell>
+                      <TableCell sx={{ fontWeight: 800 }} align="right">Redeemed</TableCell>
+                      <TableCell sx={{ fontWeight: 800 }} align="right">Revoked</TableCell>
+                      <TableCell sx={{ fontWeight: 800 }} align="right">Expired</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {trends.series.slice(-14).reverse().map((row) => (
+                      <TableRow key={row.date} hover>
+                        <TableCell>{row.date}</TableCell>
+                        <TableCell align="right">{row.issued}</TableCell>
+                        <TableCell align="right">{row.redeemed}</TableCell>
+                        <TableCell align="right">{row.revoked}</TableCell>
+                        <TableCell align="right">{row.expired}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+            </Stack>
+          ) : (
+            <Alert severity="info" variant="outlined">No trend data available.</Alert>
           )}
         </Stack>
       </Paper>
