@@ -548,7 +548,6 @@ export default function RegisterPage() {
                                                         }}
                                                     >
                                                         {logoPreviewUrl ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
                                                             <Box
                                                                 component="img"
                                                                 src={logoPreviewUrl}

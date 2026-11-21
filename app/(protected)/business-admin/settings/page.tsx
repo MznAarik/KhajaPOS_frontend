@@ -258,7 +258,6 @@ export default function BusinessSettingsPage() {
                                     }}
                                 >
                                     {displayLogo ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <Box
                                             component="img"
                                             src={displayLogo}
