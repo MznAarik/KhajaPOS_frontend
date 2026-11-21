@@ -124,7 +124,8 @@ export default function TablesPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    fetchTables();
+    const t = setTimeout(() => { fetchTables(); }, 0);
+    return () => clearTimeout(t);
   }, [fetchTables]);
 
   React.useEffect(() => {

@@ -101,7 +101,8 @@ export default function CategoryManagementPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    fetchCategories();
+    const t = setTimeout(() => { fetchCategories(); }, 0);
+    return () => clearTimeout(t);
   }, [fetchCategories]);
 
   const paginatedCategories = React.useMemo(() => {

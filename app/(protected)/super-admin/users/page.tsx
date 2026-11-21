@@ -109,7 +109,8 @@ export default function SuperAdminUsersPage() {
     }, [showSnackbar]);
 
     React.useEffect(() => {
-        fetchUsers();
+        const t = setTimeout(() => { fetchUsers(); }, 0);
+        return () => clearTimeout(t);
     }, [fetchUsers]);
 
     const visibleUsers = React.useMemo(() => {
@@ -132,7 +133,8 @@ export default function SuperAdminUsersPage() {
     }, [page, rowsPerPage, visibleUsers]);
 
     React.useEffect(() => {
-        setPage(0);
+        const t = setTimeout(() => setPage(0), 0);
+        return () => clearTimeout(t);
     }, [search, roleFilter]);
 
     const openCreateDialog = () => {

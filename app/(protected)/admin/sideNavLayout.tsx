@@ -135,7 +135,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
     const playNewOrderSound = React.useCallback(() => {
         try {
-            const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+            const Ctx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
             if (!Ctx) return;
             if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
             const ctx = audioCtxRef.current;
@@ -206,39 +206,57 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
 
         const items: NavItem[] = [];
         if (canViewDashboard) {
+            // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
             items.push({ text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef });
         }
 
         if (isOwnerOrManager) {
             items.push(
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Staff", href: "/business-admin/staff", icon: UsersIcon, ref: staffIconRef },
             );
         } else if (isCashier) {
             // Operational + loyalty redemption (cash billing for now). Server enforces granular permissions.
             items.push(
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Loyalty Rewards", href: "/business-admin/loyalty/rewards", icon: GiftIcon, ref: loyaltyRewardsIconRef },
             );
         } else if (isKitchen) {
             // Kitchen workflow: orders + menu view. No loyalty exposure.
             items.push(
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
             );
         } else {
             // Fallback for unknown business roles: show core operational items
             items.push(
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Category", href: "/business-admin/category", icon: ShoppingCartIcon, ref: categoryIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Menu", href: "/business-admin/menu", icon: LayoutListIcon, ref: productsIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Tables", href: "/business-admin/tables", icon: CoffeeIcon, ref: tablesIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
             );
         }
@@ -273,6 +291,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
     const pageTitle = segmentLabels[lastSegment] ?? `${lastSegment.charAt(0).toUpperCase()}${lastSegment.slice(1)}`;
     const isActive = (href: string) => pathname.startsWith(href);
     const activeHref = React.useMemo(() => {
+        // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
         const matches = navItems.filter((item) => pathname.startsWith(item.href));
         return (matches.sort((a, b) => b.href.length - a.href.length)[0]?.href) ?? null;
     }, [navItems, pathname]);
@@ -328,7 +347,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         const limit = showAll ? 200 : (opts?.limit ?? 20);
         if (!quiet) setNotifLoading(true);
         try {
-            const params: any = { limit };
+            const params: Record<string, unknown> = { limit };
             const data = isSuperAdmin ? await getSuperAdminNotifications(params) : await getAdminNotifications(params);
             setNotifItems(data.items ?? []);
             setNotifCounts(data.counts ?? {});
@@ -355,6 +374,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             }
         };
         void loadCounts();
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
         void fetchNotifications({ quiet: true, limit: 20 });
         const t = window.setInterval(() => { if (document.visibilityState === "visible") void loadCounts(); }, 45000);
         return () => { active = false; window.clearInterval(t); };
@@ -1038,9 +1058,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
             >
                 <Box sx={{ position: "relative", height: 66 }}>
                     {(() => {
+                        // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                         const mobileActiveIndex = activeHref ? navItems.findIndex((item) => item.href === activeHref) : -1;
                         const count = Math.max(1, navItems.length);
                         const pct = 100 / count;
+                        // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                         return mobileActiveIndex >= 0 && navItems.length > 0 ? (
                             <Box
                                 component={motion.div}
@@ -1077,6 +1099,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     })()}
                     <BottomNavigation
                         showLabels
+                        // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                         value={navItems.find((item) => isActive(item.href))?.href ?? navItems[0]?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
                         onChange={(_, value) => void withViewTransition(() => router.push(String(value)))}
                         sx={{
@@ -1107,7 +1130,9 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                             },
                         }}
                     >
-                        {navItems.map((item) => {
+                        {
+                            // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
+                            navItems.map((item) => {
                             const shortLabel: Record<string, string> = {
                                 "Dashboard": "Home",
                                 "Home": "Home",

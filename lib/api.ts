@@ -78,7 +78,7 @@ api.interceptors.request.use((config) => {
 export type PlatformStatusAlert = {
   code: "MAINTENANCE_MODE" | "BUSINESS_SUSPENDED" | string;
   message: string;
-  data?: any;
+  data?: unknown;
 };
 
 const emitPlatformStatus = (alert: PlatformStatusAlert | null) => {
@@ -94,11 +94,12 @@ api.interceptors.response.use(
       "status" in response.data &&
       Number(response.data.status) === 0
     ) {
-      const code = (response.data as any)?.code;
+      const responseData = response.data as Record<string, unknown> | undefined;
+      const code = typeof responseData?.code === "string" ? responseData.code : undefined;
       if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
         emitPlatformStatus({
           code,
-          message: (response.data as any)?.message || "Service is temporarily unavailable.",
+          message: (typeof responseData?.message === "string" ? responseData.message : null) || "Service is temporarily unavailable.",
           data: response.data,
         });
       }
@@ -453,7 +454,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const res = await fetch(input, init);
 
-  let data: any = null;
+  let data: unknown = null;
 
   try {
     data = await res.json();
@@ -487,7 +488,7 @@ export async function apiRequest<T>(
     throw new Error(safeError({ response: { data } }, "Request failed."));
   }
 
-  return data;
+  return data as T;
 }
 
 export const unwrapApiData = <T,>(payload: unknown): T => {
@@ -1579,7 +1580,7 @@ export type PlatformAnalytics = {
       unknown_images?: number;
       missing_images?: number;
       fully_known?: boolean;
-      breakdown?: any;
+      breakdown?: Record<string, unknown>;
       note?: string;
     };
     tables: Array<{
@@ -1599,10 +1600,10 @@ export const getPlatformAnalytics = async (businessId?: number): Promise<Platfor
 
 /* Super-admin loyalty oversight (read-only) */
 export type SuperAdminPagination = { current_page: number; last_page: number; per_page: number; total: number };
-export type SuperAdminLoyaltyProgramsResponse = { items: any[]; pagination: SuperAdminPagination };
-export type SuperAdminLoyaltyMembershipsResponse = { items: any[]; pagination: SuperAdminPagination };
-export type SuperAdminLoyaltyRewardsResponse = { items: any[]; pagination: SuperAdminPagination };
-export type SuperAdminLoyaltyAuditLogsResponse = { items: any[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyProgramsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyMembershipsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyRewardsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyAuditLogsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
 
 export const getSuperAdminLoyaltyPrograms = async (params?: { business_id?: number | string; search?: string; page?: number; per_page?: number }) => {
   const res = await api.get("/superadmin/loyalty/programs", { params });
@@ -1689,7 +1690,7 @@ export type CustomerAuthResponse = {
   expires_at?: string | null;
   verification_required?: boolean;
   message?: string;
-  memberships?: any[];
+  memberships?: Record<string, unknown>[];
 };
 
 export const getStoredCustomerToken = (): string | null => {
@@ -1794,7 +1795,7 @@ export type SuperAdminSaasOverview = SuperAdminOverview & {
     paidRevenue: AnalyticsGrowth;
   };
   monthly?: Array<{ key: string; label: string; businesses: number; orders: number; orderRevenue: number; paidRevenue: number }>;
-  health?: any;
+  health?: Record<string, unknown>;
 };
 
 export type SubscriptionPlan = {
@@ -1808,7 +1809,7 @@ export type SubscriptionPlan = {
   trial_days: number;
   is_active: boolean;
   is_default: boolean;
-  features?: string[] | Record<string, any> | null;
+  features?: string[] | Record<string, unknown> | null;
   limits?: Record<string, number> | null;
   subscriptions_count?: number;
 };
@@ -1859,7 +1860,7 @@ export type SuperAdminNotificationItem = {
   business_id?: number | null;
   is_read: boolean;
   read_at?: string | null;
-  data?: any;
+  data?: Record<string, unknown> | null;
   created_at: string;
   business?: { id: number; name: string } | null;
 };
@@ -1909,22 +1910,22 @@ export const getSuperAdminSaasOverview = async (): Promise<SuperAdminSaasOvervie
 
 export const getSuperAdminBusinessDetails = async (id: number) => {
   const res = await api.get(`/superadmin/businesses/${id}/details`);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const suspendSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason: string }) => {
   const res = await api.post(`/superadmin/businesses/${id}/suspend`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const reactivateSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason?: string }) => {
   const res = await api.post(`/superadmin/businesses/${id}/reactivate`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const getSuperAdminBusinessAnalytics = async (id: number) => {
   const res = await api.get(`/superadmin/businesses/${id}/analytics`);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const getSuperAdminPlans = async (): Promise<{ items: SubscriptionPlan[] }> => {
@@ -1932,74 +1933,74 @@ export const getSuperAdminPlans = async (): Promise<{ items: SubscriptionPlan[] 
   return unwrapApiData(res.data);
 };
 
-export const saveSuperAdminPlan = async (payload: any, id?: number) => {
+export const saveSuperAdminPlan = async (payload: Record<string, unknown>, id?: number) => {
   const res = id ? await api.put(`/superadmin/plans/${id}`, payload) : await api.post("/superadmin/plans", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminSubscriptions = async (params?: any): Promise<{ items: BusinessSubscription[]; counts: any }> => {
+export const getSuperAdminSubscriptions = async (params?: Record<string, unknown>): Promise<{ items: BusinessSubscription[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/subscriptions", { params });
   return unwrapApiData(res.data);
 };
 
-export const assignSuperAdminSubscription = async (businessId: number, payload: any) => {
+export const assignSuperAdminSubscription = async (businessId: number, payload: Record<string, unknown>) => {
   const res = await api.post(`/superadmin/businesses/${businessId}/subscription`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminPayments = async (params?: any): Promise<{ items: SubscriptionPayment[]; counts: any }> => {
+export const getSuperAdminPayments = async (params?: Record<string, unknown>): Promise<{ items: SubscriptionPayment[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/payments", { params });
   return unwrapApiData(res.data);
 };
 
-export const recordSuperAdminPayment = async (payload: any) => {
+export const recordSuperAdminPayment = async (payload: Record<string, unknown>) => {
   const res = await api.post("/superadmin/payments", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+export const getSuperAdminNotifications = async (params?: Record<string, unknown>): Promise<{ items: SuperAdminNotificationItem[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/notifications", { params });
   return unwrapApiData(res.data);
 };
 
 export const markSuperAdminNotificationsRead = async (ids?: number[]) => {
   const res = await api.post("/superadmin/notifications/read", { ids: ids ?? [] });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+export const getAdminNotifications = async (params?: Record<string, unknown>): Promise<{ items: SuperAdminNotificationItem[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/admin/notifications", { params });
   return unwrapApiData(res.data);
 };
 
 export const markAdminNotificationsRead = async (ids?: number[]) => {
   const res = await api.post("/admin/notifications/read", { ids: ids ?? [] });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminUsage = async (): Promise<{ summary: any; items: BusinessUsageItem[] }> => {
+export const getSuperAdminUsage = async (): Promise<{ summary: Record<string, unknown>; items: BusinessUsageItem[] }> => {
   const res = await api.get("/superadmin/usage");
   return unwrapApiData(res.data);
 };
 
 export const getSuperAdminOperations = async () => {
   const res = await api.get("/superadmin/operations");
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const setSuperAdminMaintenance = async (payload: { enabled: boolean; message?: string; allow_super_admin?: boolean }) => {
   const res = await api.post("/superadmin/operations/maintenance", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminBackups = async (): Promise<{ items: BackupRecordItem[]; summary: any }> => {
+export const getSuperAdminBackups = async (): Promise<{ items: BackupRecordItem[]; summary: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/backups");
   return unwrapApiData(res.data);
 };
 
-export const recordSuperAdminBackup = async (payload: any) => {
+export const recordSuperAdminBackup = async (payload: Record<string, unknown>) => {
   const res = await api.post("/superadmin/backups", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 /* -------------------------------------------------------------------------- */
@@ -2021,7 +2022,7 @@ export type LoyaltyTier = {
   is_active: boolean;
   is_stackable?: boolean;
   sort_order?: number;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type LoyaltyProgram = {
@@ -2032,7 +2033,7 @@ export type LoyaltyProgram = {
   eligible_order_types: string[] | null;
   eligible_order_statuses: string[] | null;
   allow_reward_stacking: boolean;
-  settings?: any;
+  settings?: Record<string, unknown> | null;
   tiers: LoyaltyTier[];
 };
 
@@ -2060,34 +2061,34 @@ export const deleteLoyaltyTier = async (id: number): Promise<void> => {
   await api.delete(`/admin/loyalty/tiers/${id}`);
 };
 
-export const getLoyaltyMemberships = async (params?: { search?: string }): Promise<any[]> => {
+export const getLoyaltyMemberships = async (params?: { search?: string }): Promise<Record<string, unknown>[]> => {
   const res = await api.get("/admin/loyalty/memberships", { params });
-  return unwrapApiData<any[]>(res.data);
+  return unwrapApiData<Record<string, unknown>[]>(res.data);
 };
 
-export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number; reward_code?: string }): Promise<any[]> => {
+export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number; reward_code?: string }): Promise<Record<string, unknown>[]> => {
   const res = await api.get("/admin/loyalty/rewards", { params });
-  return unwrapApiData<any[]>(res.data);
+  return unwrapApiData<Record<string, unknown>[]>(res.data);
 };
 
-export const lookupLoyaltyReward = async (code: string): Promise<{ reward: any; redeemable: boolean; effective_status: string }> => {
+export const lookupLoyaltyReward = async (code: string): Promise<{ reward: Record<string, unknown>; redeemable: boolean; effective_status: string }> => {
   const res = await api.get("/admin/loyalty/rewards/lookup", { params: { code } });
   return unwrapApiData(res.data);
 };
 
-export const redeemLoyaltyReward = async (payload: { reward_code: string; order_id?: number; discount_amount?: number; metadata?: any }) => {
+export const redeemLoyaltyReward = async (payload: { reward_code: string; order_id?: number; discount_amount?: number; metadata?: Record<string, unknown> }) => {
   const res = await api.post("/admin/loyalty/rewards/redeem", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const revokeLoyaltyReward = async (id: number, reason: string) => {
   const res = await api.post(`/admin/loyalty/rewards/${id}/revoke`, { reason });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const getLoyaltyMembership = async (customerId: number) => {
   const res = await api.get("/admin/loyalty/membership", { params: { customer_id: customerId } });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export type LoyaltyBusinessSummary = {

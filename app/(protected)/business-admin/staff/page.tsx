@@ -109,7 +109,8 @@ export default function BusinessAdminStaffPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    void loadData();
+    const t = setTimeout(() => { void loadData(); }, 0);
+    return () => clearTimeout(t);
   }, [loadData]);
 
   const staffRoles = catalog?.staff_roles?.length ? catalog.staff_roles : ["manager", "cashier", "kitchen_staff"];

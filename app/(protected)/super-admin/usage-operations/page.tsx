@@ -93,9 +93,9 @@ export default function SuperAdminUsageOperationsPage() {
 
   const [tab, setTab] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
-  const [usage, setUsage] = React.useState<{ summary: any; items: BusinessUsageItem[] }>({ summary: {}, items: [] });
-  const [operations, setOperations] = React.useState<any>(null);
-  const [backups, setBackups] = React.useState<{ items: BackupRecordItem[]; summary: any }>({ items: [], summary: {} });
+  const [usage, setUsage] = React.useState<{ summary: Record<string, unknown>; items: BusinessUsageItem[] }>({ summary: {}, items: [] });
+  const [operations, setOperations] = React.useState<Record<string, unknown> | null>(null);
+  const [backups, setBackups] = React.useState<{ items: BackupRecordItem[]; summary: Record<string, unknown> }>({ items: [], summary: {} });
   const [maintenanceDialog, setMaintenanceDialog] = React.useState(false);
   const [maintenanceForm, setMaintenanceForm] = React.useState({ enabled: false, message: "The platform is temporarily under maintenance. Please try again later.", allow_super_admin: true });
   const [backupDialog, setBackupDialog] = React.useState(false);
@@ -114,10 +114,10 @@ export default function SuperAdminUsageOperationsPage() {
       setUsage(u);
       setOperations(o);
       setBackups(b);
-      const m = o?.health?.maintenance ?? o?.settings?.maintenance_mode ?? {};
+      const oh = (o?.health ?? {}) as Record<string, unknown>; const os2 = (o?.settings ?? {}) as Record<string, unknown>; const m = (oh.maintenance ?? os2.maintenance_mode ?? {}) as Record<string, unknown>;
       setMaintenanceForm({
         enabled: !!m.enabled,
-        message: m.message || "The platform is temporarily under maintenance. Please try again later.",
+        message: typeof m.message === "string" && m.message ? m.message : "The platform is temporarily under maintenance. Please try again later.",
         allow_super_admin: m.allow_super_admin !== false,
       });
     } catch (e) {
@@ -127,7 +127,7 @@ export default function SuperAdminUsageOperationsPage() {
     }
   }, [showSnackbar]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => { const t = setTimeout(() => { void load(); }, 0); return () => clearTimeout(t); }, [load]);
 
   const saveMaintenance = async () => {
     setSaving(true);
@@ -157,11 +157,11 @@ export default function SuperAdminUsageOperationsPage() {
     } catch (e) { setShakeBackup((k) => k + 1); showSnackbar(safeError(e, "Failed to record backup."), "error"); } finally { setSaving(false); }
   };
 
-  const health = operations?.health ?? {};
-  const db = health.database ?? {};
-  const queue = health.queue ?? {};
-  const requests = health.requests ?? {};
-  const maintenance = health.maintenance ?? {};
+  const health = (operations?.health ?? {}) as Record<string, unknown>;
+  const db = (health.database ?? {}) as Record<string, unknown>;
+  const queue = (health.queue ?? {}) as Record<string, unknown>;
+  const requests = (health.requests ?? {}) as Record<string, unknown>;
+  const maintenance = (health.maintenance ?? {}) as Record<string, unknown>;
 
   const filteredUsage = React.useMemo(() => {
     const q = usageSearch.trim().toLowerCase();
@@ -206,13 +206,13 @@ export default function SuperAdminUsageOperationsPage() {
         </Stack>
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))", xl: "repeat(8,minmax(0,1fr))" }, gap: 1 }}>
           {[
-            { label: "Usage warnings", value: usage.summary?.warnings ?? 0, accent: (usage.summary?.warnings ?? 0) > 0 ? "#f59e0b" : "var(--chart-1)" },
-            { label: "Critical quotas", value: usage.summary?.critical ?? 0, accent: (usage.summary?.critical ?? 0) > 0 ? "#dc2626" : "var(--chart-2)" },
-            { label: "Total images", value: usage.summary?.total_images ?? 0, accent: "#8b5cf6" },
-            { label: "Known storage", value: fmtBytes(usage.summary?.known_storage_bytes ?? 0), accent: "var(--chart-4, #14b8a6)" },
-            { label: "Unknown/missing", value: `${usage.summary?.unknown_images ?? 0} / ${usage.summary?.missing_images ?? 0}`, accent: ((usage.summary?.unknown_images ?? 0) + (usage.summary?.missing_images ?? 0)) > 0 ? "#f59e0b" : "var(--chart-1)" },
+            { label: "Usage warnings", value: Number(usage.summary?.warnings ?? 0), accent: Number(usage.summary?.warnings ?? 0) > 0 ? "#f59e0b" : "var(--chart-1)" },
+            { label: "Critical quotas", value: Number(usage.summary?.critical ?? 0), accent: Number(usage.summary?.critical ?? 0) > 0 ? "#dc2626" : "var(--chart-2)" },
+            { label: "Total images", value: Number(usage.summary?.total_images ?? 0), accent: "#8b5cf6" },
+            { label: "Known storage", value: fmtBytes(Number(usage.summary?.known_storage_bytes ?? 0)), accent: "var(--chart-4, #14b8a6)" },
+            { label: "Unknown/missing", value: `${Number(usage.summary?.unknown_images ?? 0)} / ${Number(usage.summary?.missing_images ?? 0)}`, accent: (Number(usage.summary?.unknown_images ?? 0) + Number(usage.summary?.missing_images ?? 0)) > 0 ? "#f59e0b" : "var(--chart-1)" },
             { label: "Database", value: db.ok ? "OK" : "Error", accent: db.ok ? "#2563eb" : "#dc2626" },
-            { label: "Failed jobs", value: queue.failed_jobs ?? 0, accent: (queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2" },
+            { label: "Failed jobs", value: Number(queue.failed_jobs ?? 0), accent: Number(queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2" },
             { label: "Maintenance", value: maintenance.enabled ? "On" : "Off", accent: maintenance.enabled ? "#f59e0b" : "var(--chart-1)" },
           ].map((k) => (
             <Paper
@@ -236,7 +236,7 @@ export default function SuperAdminUsageOperationsPage() {
               }}
             >
               <Typography sx={{ position: "relative", zIndex: 1, fontSize: "0.64rem", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)", lineHeight: 1.2 }}>{k.label}</Typography>
-              <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "0.95rem", sm: "1.02rem" }, fontWeight: 900, wordBreak: "break-word", mt: 0.15, lineHeight: 1.2, color: ["#dc2626", "#f59e0b"].includes(k.accent) && typeof k.value !== "string" ? undefined : undefined }}>{typeof k.value === "number" ? k.value.toLocaleString("en-IN") : k.value}</Typography>
+              <Typography sx={{ position: "relative", zIndex: 1, fontSize: { xs: "0.95rem", sm: "1.02rem" }, fontWeight: 900, wordBreak: "break-word", mt: 0.15, lineHeight: 1.2, color: ["#dc2626", "#f59e0b"].includes(k.accent) && typeof k.value !== "string" ? undefined : undefined }}>{typeof k.value === "number" ? k.value.toLocaleString("en-IN") : String(k.value)}</Typography>
             </Paper>
           ))}
         </Box>
@@ -259,9 +259,9 @@ export default function SuperAdminUsageOperationsPage() {
             <Box sx={{ minWidth: 0 }}>
               {usage.summary?.storage_instrumented === false ? (
                 <Alert severity="info" sx={{ m: 1.25, borderRadius: "12px" }}>Per-business storage is not instrumented and is reported as unavailable (not fabricated).</Alert>
-              ) : (usage.summary?.unknown_images ?? 0) > 0 || (usage.summary?.missing_images ?? 0) > 0 ? (
+              ) : Number(usage.summary?.unknown_images ?? 0) > 0 || Number(usage.summary?.missing_images ?? 0) > 0 ? (
                 <Alert severity="info" sx={{ m: 1.25, borderRadius: "12px" }}>
-                  <strong>Per-business storage:</strong> known image bytes (logo + menu images). Unknown: <strong>{usage.summary?.unknown_images ?? 0}</strong>, missing: <strong>{usage.summary?.missing_images ?? 0}</strong> (not fabricated).
+                  <strong>Per-business storage:</strong> known image bytes (logo + menu images). Unknown: <strong>{Number(usage.summary?.unknown_images ?? 0)}</strong>, missing: <strong>{Number(usage.summary?.missing_images ?? 0)}</strong> (not fabricated).
                 </Alert>
               ) : (
                 <Alert severity="success" sx={{ m: 1.25, borderRadius: "12px" }}>
@@ -369,12 +369,12 @@ export default function SuperAdminUsageOperationsPage() {
                           <TableCell sx={{ minWidth: 110 }}><Typography sx={{ fontSize: "0.82rem", fontWeight: 850 }}>{s?.total_images ?? row.metrics?.image_count ?? 0}</Typography><Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>L {logo?.images ?? 0} · M {menuImgs?.images ?? 0}</Typography></TableCell>
                           <TableCell sx={{ minWidth: 140 }}><Typography sx={{ fontSize: "0.82rem", fontWeight: 850 }}>{fmtBytes(s?.known_bytes ?? 0)}</Typography>{(s?.unknown_images ?? 0) > 0 || (s?.missing_images ?? 0) > 0 ? <Typography sx={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700 }}>Unknown {s?.unknown_images ?? 0} · Missing {s?.missing_images ?? 0}</Typography> : <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{s?.fully_known ? "Fully known" : "—"}</Typography>}</TableCell>
                           {["orders_per_month", "menu_items", "tables", "users"].map((m) => {
-                            const val = (row.metrics as any)?.[m] ?? 0;
-                            const lim = (row.limits as any)?.[m];
-                            const pct = lim ? Math.min(100, (val / lim) * 100) : null;
+                            const val = (row.metrics as Record<string, unknown> | undefined)?.[m] ?? 0;
+                            const lim = (row.limits as Record<string, unknown> | undefined)?.[m];
+                            const pct = lim ? Math.min(100, (Number(val) / Number(lim)) * 100) : null;
                             return (
                               <TableCell key={m} sx={{ minWidth: 100 }}>
-                                <Typography sx={{ fontSize: "0.8rem", fontWeight: 800 }}>{val}{lim ? ` / ${lim}` : ""}</Typography>
+                                <Typography sx={{ fontSize: "0.8rem", fontWeight: 800 }}>{String(val)}{lim ? ` / ${String(lim)}` : ""}</Typography>
                                 {pct != null ? <LinearProgress variant="determinate" value={pct} sx={{ mt: 0.5, height: 6, borderRadius: 999, backgroundColor: "var(--muted)", "& .MuiLinearProgress-bar": { backgroundColor: pct >= 100 ? "#dc2626" : pct >= 80 ? "#f59e0b" : "var(--primary)" } }} /> : <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>No limit</Typography>}
                               </TableCell>
                             );
@@ -395,13 +395,13 @@ export default function SuperAdminUsageOperationsPage() {
 
           {tab === 1 && (
             <Box sx={{ p: { xs: 1.25, md: 2.25 }, display: "grid", gap: 1.25, minWidth: 0 }}>
-              {maintenance.enabled ? <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ borderRadius: "12px" }}>Maintenance mode is enabled: {maintenance.message}</Alert> : <Alert severity="success" sx={{ borderRadius: "12px" }}>Maintenance mode is off.</Alert>}
+              {maintenance.enabled ? <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ borderRadius: "12px" }}>Maintenance mode is enabled: {String(maintenance.message ?? "")}</Alert> : <Alert severity="success" sx={{ borderRadius: "12px" }}>Maintenance mode is off.</Alert>}
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2,minmax(0,1fr))" }, gap: 1.25 }}>
                 {(() => {
                   const dbAccent = db.ok ? "#2563eb" : "#dc2626";
-                  const jobsAccent = (queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2";
+                  const jobsAccent = Number(queue.failed_jobs ?? 0) > 0 ? "#dc2626" : "#0891b2";
                   const apiAccent = requests.instrumented
-                    ? ((requests.server_errors ?? 0) > 0 || (requests.error_rate ?? 0) >= 5 ? "#dc2626" : (requests.errors ?? 0) > 0 ? "#f59e0b" : "var(--chart-2)")
+                    ? (Number(requests.server_errors ?? 0) > 0 || Number(requests.error_rate ?? 0) >= 5 ? "#dc2626" : Number(requests.errors ?? 0) > 0 ? "#f59e0b" : "var(--chart-2)")
                     : "var(--chart-4, var(--chart-2))";
                   const cacheAccent = "var(--chart-3)";
                   const glow = (accent: string) => ({
@@ -426,15 +426,15 @@ export default function SuperAdminUsageOperationsPage() {
                         <Box sx={{ position: "relative", zIndex: 1 }}>
                           <Typography sx={{ fontWeight: 900, mb: 1 }}>Database</Typography>
                           <SevChip severity={db.ok ? "success" : "critical"} label={db.ok ? "Connected" : "Error"} />
-                          <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 1 }}>Name: {db.name || "—"}</Typography>
-                          {db.error ? <Typography sx={{ fontSize: "0.78rem", color: "#dc2626", mt: 0.5, wordBreak: "break-word" }}>{db.error}</Typography> : null}
+                          <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", mt: 1 }}>Name: {String(db.name ?? "—")}</Typography>
+                          {db.error ? <Typography sx={{ fontSize: "0.78rem", color: "#dc2626", mt: 0.5, wordBreak: "break-word" }}>{String(db.error)}</Typography> : null}
                         </Box>
                       </Paper>
                       <Paper elevation={0} sx={glow(jobsAccent)}>
                         <Box sx={{ position: "relative", zIndex: 1 }}>
                           <Typography sx={{ fontWeight: 900, mb: 1 }}>Queues / Jobs</Typography>
-                          <Typography sx={{ fontSize: "0.85rem" }}>Pending: <strong>{queue.pending_jobs ?? 0}</strong> · Failed: <strong>{queue.failed_jobs ?? 0}</strong></Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Instrumented: {String(!!queue.instrumented)}. {health.workers?.note}</Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Pending: <strong>{Number(queue.pending_jobs ?? 0)}</strong> � Failed: <strong>{Number(queue.failed_jobs ?? 0)}</strong></Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Instrumented: {String(!!queue.instrumented)}. {String((health.workers as Record<string, unknown> | undefined)?.note ?? "")}</Typography>
                         </Box>
                       </Paper>
                       <Paper elevation={0} sx={glow(apiAccent)}>
@@ -442,8 +442,8 @@ export default function SuperAdminUsageOperationsPage() {
                           <Typography sx={{ fontWeight: 900, mb: 1, lineHeight: 1.25 }}>API request health <Box component="span" sx={{ display: "block", mt: 0.15, fontSize: "0.78em", fontWeight: 800, color: "var(--muted-foreground)" }}>(15 min)</Box></Typography>
                           {requests.instrumented ? (
                             <>
-                              <Typography sx={{ fontSize: "0.85rem" }}>Requests: <strong>{requests.requests}</strong> · Errors: <strong>{requests.errors}</strong> · Server errors: <strong>{requests.server_errors}</strong></Typography>
-                              <Typography sx={{ fontSize: "0.85rem", mt: 0.5 }}>Error rate: <strong>{requests.error_rate}%</strong></Typography>
+                              <Typography sx={{ fontSize: "0.85rem" }}>Requests: <strong>{String(requests.requests ?? 0)}</strong> � Errors: <strong>{String(requests.errors ?? 0)}</strong> � Server errors: <strong>{String(requests.server_errors ?? 0)}</strong></Typography>
+                              <Typography sx={{ fontSize: "0.85rem", mt: 0.5 }}>Error rate: <strong>{String(requests.error_rate ?? 0)}%</strong></Typography>
                             </>
                           ) : <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>API request logging is not instrumented (`api_request_logs` unavailable).</Typography>}
                         </Box>
@@ -451,7 +451,7 @@ export default function SuperAdminUsageOperationsPage() {
                       <Paper elevation={0} sx={glow(cacheAccent)}>
                         <Box sx={{ position: "relative", zIndex: 1 }}>
                           <Typography sx={{ fontWeight: 900, mb: 1 }}>Cache / Runtime</Typography>
-                          <Typography sx={{ fontSize: "0.85rem" }}>Cache driver: <strong>{health.cache?.driver || "—"}</strong></Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Cache driver: <strong>{String((health.cache as Record<string, unknown> | undefined)?.driver ?? "—")}</strong></Typography>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.75 }}>Worker heartbeats are not instrumented; queue table counts shown when available.</Typography>
                         </Box>
                       </Paper>
@@ -495,8 +495,8 @@ export default function SuperAdminUsageOperationsPage() {
                 </Table>
               </Box>
               <Box sx={{ p: 1.25, pt: 1, borderTop: "1px solid var(--border)" }}>
-                {backups.summary?.stale ? <Alert severity="warning" sx={{ borderRadius: "12px", mb: 1 }}>No recent successful backup detected. Last success: {fmtDate(backups.summary?.last_success_at)}.</Alert> : null}
-                {backups.summary?.automated_verification === false ? <Alert severity="info" sx={{ borderRadius: "12px" }}>{backups.summary?.note || "Automated backup verification is not instrumented."}</Alert> : null}
+                {backups.summary?.stale ? <Alert severity="warning" sx={{ borderRadius: "12px", mb: 1 }}>No recent successful backup detected. Last success: {fmtDate(String(backups.summary?.last_success_at ?? ""))}.</Alert> : null}
+                {backups.summary?.automated_verification === false ? <Alert severity="info" sx={{ borderRadius: "12px" }}>{String(backups.summary?.note ?? "Automated backup verification is not instrumented.")}</Alert> : null}
               </Box>
             </Box>
           )}

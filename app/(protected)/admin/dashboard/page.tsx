@@ -384,7 +384,8 @@ function SuperAdminDashboard() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    void fetchOverview(true);
+    const t = setTimeout(() => { void fetchOverview(true); }, 0);
+    return () => clearTimeout(t);
   }, [fetchOverview]);
 
   React.useEffect(() => {
@@ -623,20 +624,20 @@ function SuperAdminDashboard() {
 <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft, minWidth: 0 }}>
             <Typography sx={{ fontSize: "1.05rem", fontWeight: 900 }}>System health</Typography>
             <Stack spacing={1} sx={{ mt: 1.25 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Database</Typography><Chip size="small" label={health?.database?.ok ? "Connected" : "Issue"} sx={{ height: 22, fontWeight: 800, color: health?.database?.ok ? "#166534" : "#991b1b", backgroundColor: health?.database?.ok ? "#dcfce7" : "#fee2e2" }} /></Stack>
-              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>DB: {health?.database?.name || "—"} · Cache: {health?.cache?.driver || "—"}</Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Database</Typography><Chip size="small" label={(health?.database as Record<string, unknown> | undefined)?.ok ? "Connected" : "Issue"} sx={{ height: 22, fontWeight: 800, color: (health?.database as Record<string, unknown> | undefined)?.ok ? "#166534" : "#991b1b", backgroundColor: (health?.database as Record<string, unknown> | undefined)?.ok ? "#dcfce7" : "#fee2e2" }} /></Stack>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>DB: {String((health?.database as Record<string, unknown> | undefined)?.name || "—")} • Cache: {String((health?.cache as Record<string, unknown> | undefined)?.driver || "—")}</Typography>
               <Divider />
               <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Queue/jobs</Typography>
-              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Pending {health?.queue?.pending_jobs ?? 0} · Failed {health?.queue?.failed_jobs ?? 0}{health?.queue?.instrumented ? "" : " (not fully instrumented)"}</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Pending {String((health?.queue as Record<string, unknown> | undefined)?.pending_jobs ?? 0)} • Failed {String((health?.queue as Record<string, unknown> | undefined)?.failed_jobs ?? 0)}{(health?.queue as Record<string, unknown> | undefined)?.instrumented ? "" : " (not fully instrumented)"}</Typography>
               <Divider />
               <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>API errors (15m)</Typography>
-              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{health?.requests?.instrumented ? `${health.requests.error_rate ?? 0}% · ${health.requests.errors ?? 0}/${health.requests.requests ?? 0} requests` : "API request logging not instrumented"}</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{(health?.requests as Record<string, unknown> | undefined)?.instrumented ? `${String((health?.requests as Record<string, unknown>).error_rate ?? 0)}% • ${String((health?.requests as Record<string, unknown>).errors ?? 0)}/${String((health?.requests as Record<string, unknown>).requests ?? 0)} requests` : "API request logging not instrumented"}</Typography>
               <Divider />
               <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Maintenance</Typography>
-              <Chip size="small" label={health?.maintenance?.enabled ? "Enabled" : "Off"} sx={{ alignSelf: "flex-start", height: 22, fontWeight: 800, color: health?.maintenance?.enabled ? "#92400e" : "#166534", backgroundColor: health?.maintenance?.enabled ? "#fef3c7" : "#dcfce7" }} />
+              <Chip size="small" label={(health?.maintenance as Record<string, unknown> | undefined)?.enabled ? "Enabled" : "Off"} sx={{ alignSelf: "flex-start", height: 22, fontWeight: 800, color: (health?.maintenance as Record<string, unknown> | undefined)?.enabled ? "#92400e" : "#166534", backgroundColor: (health?.maintenance as Record<string, unknown> | undefined)?.enabled ? "#fef3c7" : "#dcfce7" }} />
               <Divider />
               <Typography sx={{ fontSize: "0.82rem", fontWeight: 750 }}>Backups</Typography>
-              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last success: {health?.backups?.last_success_at ? new Date(health.backups.last_success_at).toLocaleString() : "None recorded"}{health?.backups?.automated_verification === false ? " · automated verification not instrumented" : ""}</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last success: {(health?.backups as Record<string, unknown> | undefined)?.last_success_at ? new Date(String((health?.backups as Record<string, unknown>).last_success_at)).toLocaleString() : "None recorded"}{(health?.backups as Record<string, unknown> | undefined)?.automated_verification === false ? " • automated verification not instrumented" : ""}</Typography>
             </Stack>
           </Paper>
 <Paper elevation={0} sx={{ p: { xs: 1.75, md: 2.5 }, borderRadius: "22px", border: "1px solid var(--border)", backgroundColor: "var(--card)", backgroundImage: cardTopRightAccentSoft }}>
@@ -733,13 +734,14 @@ function BusinessAdminDashboard() {
         const data = await getDashboardStats(requestedPeriod);
         setStats(data);
         setPlatformBlock(null);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch dashboard:", error);
-        const code = error?.response?.data?.code;
+        const err = error as { response?: { data?: { code?: string; message?: string } } };
+        const code = err?.response?.data?.code;
         if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
           setPlatformBlock({
             code,
-            message: error?.response?.data?.message || "Service is temporarily unavailable.",
+            message: String(err?.response?.data?.message || "Service is temporarily unavailable."),
           });
         } else {
           showSnackbar(safeError(error, "Failed to load dashboard."), "error");
@@ -753,7 +755,8 @@ function BusinessAdminDashboard() {
   );
 
   React.useEffect(() => {
-    fetchStats(period);
+    const t = setTimeout(() => { fetchStats(period); }, 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchStats]);
 

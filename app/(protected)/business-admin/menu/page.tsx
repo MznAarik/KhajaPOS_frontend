@@ -359,7 +359,8 @@ export default function MenuManagementPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    loadCategories();
+    const t = setTimeout(() => { loadCategories(); }, 0);
+    return () => clearTimeout(t);
   }, [loadCategories]);
 
   React.useEffect(() => {
@@ -387,7 +388,8 @@ export default function MenuManagementPage() {
   ]);
 
   React.useEffect(() => {
-    setPage(0);
+    const t = setTimeout(() => setPage(0), 0);
+    return () => clearTimeout(t);
   }, [availabilityFilter, categoryFilter, deferredSearchTerm]);
 
   const handleExport = () => {

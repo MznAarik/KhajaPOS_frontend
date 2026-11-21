@@ -47,7 +47,7 @@ import {
 import { safeError } from "@/lib/safeError";
 
 type LookupResult = {
-  reward: any;
+  reward: Record<string, unknown>;
   redeemable: boolean;
   effective_status: string;
 };
@@ -87,11 +87,11 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   const [redeeming, setRedeeming] = React.useState(false);
   const [redeemOrderId, setRedeemOrderId] = React.useState("");
 
-  const [memberships, setMemberships] = React.useState<any[]>([]);
+  const [memberships, setMemberships] = React.useState<Record<string, unknown>[]>([]);
   const [membershipsLoading, setMembershipsLoading] = React.useState(false);
   const [membershipSearch, setMembershipSearch] = React.useState("");
 
-  const [rewards, setRewards] = React.useState<any[]>([]);
+  const [rewards, setRewards] = React.useState<Record<string, unknown>[]>([]);
   const [rewardsLoading, setRewardsLoading] = React.useState(false);
   const [rewardStatusFilter, setRewardStatusFilter] = React.useState<string>("");
   const [summary, setSummary] = React.useState<LoyaltyBusinessSummary | null>(null);
@@ -99,10 +99,10 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   const [selectedCustomerId, setSelectedCustomerId] = React.useState<number | null>(null);
   const [customerDetailOpen, setCustomerDetailOpen] = React.useState(false);
   const [customerDetailLoading, setCustomerDetailLoading] = React.useState(false);
-  const [customerDetail, setCustomerDetail] = React.useState<any>(null);
-  const [customerRewards, setCustomerRewards] = React.useState<any[]>([]);
+  const [customerDetail, setCustomerDetail] = React.useState<Record<string, unknown> | null>(null);
+  const [customerRewards, setCustomerRewards] = React.useState<Record<string, unknown>[]>([]);
 
-  const [revokeDialog, setRevokeDialog] = React.useState<{ open: boolean; reward: any | null; reason: string; submitting: boolean }>({
+  const [revokeDialog, setRevokeDialog] = React.useState<{ open: boolean; reward: Record<string, unknown> | null; reason: string; submitting: boolean }>({
     open: false,
     reward: null,
     reason: "",
@@ -176,16 +176,18 @@ export default function BusinessAdminLoyaltyRewardsPage() {
   }, [canManage, showSnackbar]);
 
   React.useEffect(() => {
-    if (canManage) {
+    if (!canManage) return;
+    const t = setTimeout(() => {
       void loadMemberships();
       void loadSummary();
-    }
+    }, 0);
+    return () => clearTimeout(t);
   }, [canManage, loadMemberships, loadSummary]);
 
   React.useEffect(() => {
-    if (canManage) {
-      void loadRewards();
-    }
+    if (!canManage) return;
+    const t = setTimeout(() => { void loadRewards(); }, 0);
+    return () => clearTimeout(t);
   }, [canManage, loadRewards]);
 
   const handleLookup = async () => {
@@ -201,8 +203,9 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     try {
       const result = await lookupLoyaltyReward(code);
       setLookupResult(result);
-    } catch (error: any) {
-      const msg = error?.response?.status === 404 ? "Reward not found." : safeError(error, "Failed to look up reward.");
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      const msg = status === 404 ? "Reward not found." : safeError(error, "Failed to look up reward.");
       setLookupError(msg);
     } finally {
       setLookupLoading(false);
@@ -216,7 +219,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     try {
       const orderIdNum = redeemOrderId.trim() ? Number(redeemOrderId.trim()) : undefined;
       const res = await redeemLoyaltyReward({
-        reward_code: lookupResult.reward.reward_code,
+        reward_code: String((lookupResult.reward as Record<string, unknown>).reward_code ?? ""),
         order_id: Number.isFinite(orderIdNum as number) ? (orderIdNum as number) : undefined,
         metadata: Number.isFinite(orderIdNum as number) ? { source: "rewards_page_cash_settlement", payment_mode: "cash" } : undefined,
       });
@@ -227,7 +230,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
         "success",
       );
       setLookupResult({
-        reward: res?.reward ?? { ...lookupResult.reward, status: "redeemed" },
+        reward: (res?.reward ?? { ...(lookupResult.reward as Record<string, unknown>), status: "redeemed" }) as Record<string, unknown>,
         redeemable: false,
         effective_status: "redeemed",
       });
@@ -244,7 +247,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     }
   };
 
-  const openRevoke = (reward: any) => {
+  const openRevoke = (reward: Record<string, unknown>) => {
     setRevokeDialog({ open: true, reward, reason: "", submitting: false });
   };
 
@@ -262,7 +265,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
     }
     setRevokeDialog((p) => ({ ...p, submitting: true }));
     try {
-      await revokeLoyaltyReward(revokeDialog.reward.id, reason);
+      await revokeLoyaltyReward(Number((revokeDialog.reward as Record<string, unknown>).id), reason);
       showSnackbar("Reward revoked.", "success");
       closeRevoke();
       await loadRewards();
@@ -345,12 +348,12 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                 <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                     <Typography sx={{ fontWeight: 800, fontSize: "1.05rem" }}>
-                      {lookupResult.reward?.reward_code || "Reward"}
+                      {String((lookupResult.reward as Record<string, unknown> | undefined)?.reward_code || "Reward")}
                     </Typography>
                     <Chip
                       size="small"
-                      label={String(lookupResult.effective_status || lookupResult.reward?.status || "unknown").replace(/_/g, " ")}
-                      color={statusColor(lookupResult.effective_status || lookupResult.reward?.status)}
+                      label={String(lookupResult.effective_status || (lookupResult.reward as Record<string, unknown> | undefined)?.status || "unknown").replace(/_/g, " ")}
+                      color={statusColor(String((lookupResult.effective_status || (lookupResult.reward as Record<string, unknown> | undefined)?.status) ?? ""))}
                       sx={{ fontWeight: 700, textTransform: "capitalize" }}
                     />
                     {lookupResult.redeemable ? <Chip size="small" label="Redeemable" color="success" variant="outlined" /> : null}
@@ -384,29 +387,29 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                   <Box sx={{ minWidth: 220, flex: 1 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Customer</Typography>
                     <Typography sx={{ fontWeight: 700 }}>
-                      {lookupResult.reward?.customer?.name || "Customer"}
+                      {String(((lookupResult.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.name || "Customer")}
                     </Typography>
                     <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
-                      {lookupResult.reward?.customer?.email || lookupResult.reward?.customer?.phone || "—"}
+                      {String(((lookupResult.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.email || ((lookupResult.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.phone || "—")}
                     </Typography>
                   </Box>
                   <Box sx={{ minWidth: 220, flex: 1 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Reward</Typography>
                     <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>
-                      {String(lookupResult.reward?.reward_type || "Reward").replace(/_/g, " ")}
-                      {lookupResult.reward?.reward_value != null ? ` (${lookupResult.reward.reward_value})` : ""}
+                      {String((lookupResult.reward as Record<string, unknown> | undefined)?.reward_type || "Reward").replace(/_/g, " ")}
+                      {(lookupResult.reward as Record<string, unknown> | undefined)?.reward_value != null ? ` (${String((lookupResult.reward as Record<string, unknown> | undefined)?.reward_value ?? "")})` : ""}
                     </Typography>
                     <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
-                      {lookupResult.reward?.reward_description || lookupResult.reward?.tier?.reward_description || "—"}
+                      {String((lookupResult.reward as Record<string, unknown> | undefined)?.reward_description || ((lookupResult.reward as Record<string, unknown> | undefined)?.tier as Record<string, unknown> | undefined)?.reward_description || "—")}
                     </Typography>
                   </Box>
                   <Box sx={{ minWidth: 180 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Validity</Typography>
                     <Typography sx={{ fontWeight: 700 }}>
-                      {lookupResult.reward?.expires_at ? `Expires ${formatDateTime(lookupResult.reward.expires_at)}` : "No expiry"}
+                      {(lookupResult.reward as Record<string, unknown> | undefined)?.expires_at ? `Expires ${formatDateTime(String((lookupResult.reward as Record<string, unknown> | undefined)?.expires_at ?? ""))}` : "No expiry"}
                     </Typography>
                     <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>
-                      Issued {formatDateTime(lookupResult.reward?.issued_at)}
+                      Issued {formatDateTime(String((lookupResult.reward as Record<string, unknown> | undefined)?.issued_at ?? ""))}
                     </Typography>
                   </Box>
                 </Stack>
@@ -418,7 +421,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                 ) : null}
                 {lookupResult.effective_status === "redeemed" ? (
                   <Alert severity="info" sx={{ borderRadius: "12px" }}>
-                    Redeemed {formatDateTime(lookupResult.reward?.redeemed_at)}.
+                    Redeemed {formatDateTime(String((lookupResult.reward as Record<string, unknown> | undefined)?.redeemed_at ?? ""))}.
                   </Alert>
                 ) : null}
               </Stack>
@@ -492,7 +495,7 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                       </TableHead>
                       <TableBody>
                         {summary!.recent_redemptions.map((r) => (
-                          <TableRow key={r.id} hover>
+                          <TableRow key={String(r.id)} hover>
                             <TableCell sx={{ whiteSpace: "nowrap" }}>{formatDateTime(r.created_at || undefined)}</TableCell>
                             <TableCell>{r.customer?.name || r.customer?.email || r.customer?.phone || "—"}</TableCell>
                             <TableCell>
@@ -576,11 +579,11 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                     </TableHead>
                     <TableBody>
                       {memberships.map((m) => (
-                        <TableRow key={m.id} hover>
+                        <TableRow key={String(m.id)} hover>
                           <TableCell>
-                            <Typography sx={{ fontWeight: 700 }}>{m.customer?.name || "Customer"}</Typography>
+                            <Typography sx={{ fontWeight: 700 }}>{String((m.customer as Record<string, unknown> | undefined)?.name || "Customer")}</Typography>
                             <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                              {m.customer?.email || m.customer?.phone || "—"}
+                              {String((m.customer as Record<string, unknown> | undefined)?.email || (m.customer as Record<string, unknown> | undefined)?.phone || "—")}
                             </Typography>
                           </TableCell>
                           <TableCell>
@@ -590,10 +593,10 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                           <TableCell>
                             {m.next_tier ? (
                               <>
-                                <Typography sx={{ fontWeight: 700 }}>{m.next_tier.threshold_orders} orders</Typography>
+                                <Typography sx={{ fontWeight: 700 }}>{String((m.next_tier as Record<string, unknown>).threshold_orders ?? "")} orders</Typography>
                                 <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                                  {m.progress_to_next?.remaining ?? 0} more to go
-                                  {m.next_tier.reward_description ? ` · ${m.next_tier.reward_description}` : ""}
+                                  {String((m.progress_to_next as Record<string, unknown> | undefined)?.remaining ?? 0)} more to go
+                                  {(m.next_tier as Record<string, unknown>).reward_description ? ` • ${String((m.next_tier as Record<string, unknown>).reward_description)}` : ""}
                                 </Typography>
                               </>
                             ) : (
@@ -604,22 +607,22 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                           <TableCell>
                             <Chip size="small" label={Number(m.available_rewards_count) || 0} color={(Number(m.available_rewards_count) || 0) > 0 ? "success" : "default"} variant={(Number(m.available_rewards_count) || 0) > 0 ? "filled" : "outlined"} />
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>{formatDateTime(m.last_reward_issued_at || m.updated_at)}</TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>{formatDateTime(String(m.last_reward_issued_at || m.updated_at || ""))}</TableCell>
                           <TableCell align="right">
                             <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                              <Button size="small" variant="text" onClick={() => void openCustomerDetail(Number(m.customer_id || m.customer?.id))} sx={{ textTransform: "none", fontWeight: 700 }}>
+                              <Button size="small" variant="text" onClick={() => void openCustomerDetail(Number(m.customer_id || (m.customer as Record<string, unknown> | undefined)?.id))} sx={{ textTransform: "none", fontWeight: 700 }}>
                                 View
                               </Button>
                               <Button
                                 size="small"
-                                variant={selectedCustomerId === Number(m.customer_id || m.customer?.id) ? "contained" : "outlined"}
+                                variant={selectedCustomerId === Number(m.customer_id || (m.customer as Record<string, unknown> | undefined)?.id) ? "contained" : "outlined"}
                                 onClick={() => setSelectedCustomerId((prev) => {
-                                  const id = Number(m.customer_id || m.customer?.id);
+                                  const id = Number(m.customer_id || (m.customer as Record<string, unknown> | undefined)?.id);
                                   return prev === id ? null : id;
                                 })}
                                 sx={{ textTransform: "none", fontWeight: 700 }}
                               >
-                                {selectedCustomerId === Number(m.customer_id || m.customer?.id) ? "Filtered" : "History"}
+                                {selectedCustomerId === Number(m.customer_id || (m.customer as Record<string, unknown> | undefined)?.id) ? "Filtered" : "History"}
                               </Button>
                             </Stack>
                           </TableCell>
@@ -693,34 +696,34 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                     </TableHead>
                     <TableBody>
                       {rewards.map((r) => (
-                        <TableRow key={r.id} hover>
-                          <TableCell sx={{ fontWeight: 700, fontFamily: "monospace" }}>{r.reward_code}</TableCell>
+                        <TableRow key={String(r.id)} hover>
+                          <TableCell sx={{ fontWeight: 700, fontFamily: "monospace" }}>{String(r.reward_code ?? "")}</TableCell>
                           <TableCell>
-                            <Typography sx={{ fontWeight: 700 }}>{r.customer?.name || "Customer"}</Typography>
-                            <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{r.customer?.email || r.customer?.phone || "—"}</Typography>
+                            <Typography sx={{ fontWeight: 700 }}>{String((r.customer as Record<string, unknown> | undefined)?.name || "Customer")}</Typography>
+                            <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{String((r.customer as Record<string, unknown> | undefined)?.email || (r.customer as Record<string, unknown> | undefined)?.phone || "—")}</Typography>
                           </TableCell>
                           <TableCell>
                             <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>{String(r.reward_type || "").replace(/_/g, " ")}</Typography>
-                            <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{r.reward_description || "—"}</Typography>
+                            <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{String(r.reward_description || "—")}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip size="small" label={String(r.status || "unknown")} color={statusColor(r.status)} sx={{ textTransform: "capitalize", fontWeight: 700 }} />
+                            <Chip size="small" label={String(r.status || "unknown")} color={statusColor(String(r.status ?? ""))} sx={{ textTransform: "capitalize", fontWeight: 700 }} />
                           </TableCell>
                           <TableCell sx={{ minWidth: 220 }}>
-                            <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(r.issued_at)}</Typography>
+                            <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(String(r.issued_at ?? ""))}</Typography>
                             <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                              {r.expires_at ? `Expires: ${formatDateTime(r.expires_at)}` : "No expiry"}
+                              {r.expires_at ? `Expires: ${formatDateTime(String(r.expires_at ?? ""))}` : "No expiry"}
                             </Typography>
                             {r.status === "redeemed" ? (
                               <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                                Redeemed: {formatDateTime(r.redeemed_at)}
-                                {r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}
-                                {r.redemption?.discount_amount != null ? ` · Rs. ${Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
+                                Redeemed: {formatDateTime(String(r.redeemed_at ?? ""))}
+                                {r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id ? ` • Order #${String(r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id)}` : ""}
+                                {(r.redemption as Record<string, unknown> | undefined)?.discount_amount != null ? ` • Rs. ${Number((r.redemption as Record<string, unknown>).discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
                               </Typography>
                             ) : null}
                             {r.status === "revoked" && r.revocation_reason ? (
                               <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                                Reason: {r.revocation_reason}
+                                Reason: {String(r.revocation_reason)}
                               </Typography>
                             ) : null}
                           </TableCell>
@@ -791,21 +794,21 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2} useFlexGap flexWrap="wrap">
                   <Box sx={{ minWidth: 220, flex: 1 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Customer</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{customerDetail.membership?.customer?.name || "Customer"}</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{customerDetail.membership?.customer?.email || customerDetail.membership?.customer?.phone || "—"}</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>{String((customerDetail.membership as Record<string, unknown> | undefined)?.customer ? ((customerDetail.membership as Record<string, unknown>).customer as Record<string, unknown>).name : "") || "Customer"}</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{String(((customerDetail.membership as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.email || ((customerDetail.membership as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.phone || "—")}</Typography>
                   </Box>
                   <Box sx={{ minWidth: 180 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Progress</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{Number(customerDetail.membership?.current_progress_count) || 0} current</Typography>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Lifetime eligible orders: {Number(customerDetail.membership?.lifetime_eligible_orders) || 0}</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>{Number((customerDetail.membership as Record<string, unknown> | undefined)?.current_progress_count) || 0} current</Typography>
+                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Lifetime eligible orders: {Number((customerDetail.membership as Record<string, unknown> | undefined)?.lifetime_eligible_orders) || 0}</Typography>
                     <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>Available rewards: {Array.isArray(customerDetail.available_rewards) ? customerDetail.available_rewards.length : 0}</Typography>
                   </Box>
                   <Box sx={{ minWidth: 220, flex: 1 }}>
                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontWeight: 700, textTransform: "uppercase" }}>Next reward</Typography>
                     {customerDetail.next_tier ? (
                       <>
-                        <Typography sx={{ fontWeight: 700 }}>{customerDetail.next_tier.threshold_orders} orders</Typography>
-                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{customerDetail.next_tier.reward_description || customerDetail.next_tier.name || "Reward tier"}</Typography>
+                        <Typography sx={{ fontWeight: 700 }}>{String((customerDetail.next_tier as Record<string, unknown>).threshold_orders ?? "")} orders</Typography>
+                        <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{String((customerDetail.next_tier as Record<string, unknown>).reward_description || (customerDetail.next_tier as Record<string, unknown>).name || "Reward tier")}</Typography>
                       </>
                     ) : (
                       <Typography sx={{ color: "var(--muted-foreground)" }}>No upcoming tier</Typography>
@@ -830,21 +833,21 @@ export default function BusinessAdminLoyaltyRewardsPage() {
                       </TableHead>
                       <TableBody>
                         {customerRewards.map((r) => (
-                          <TableRow key={r.id} hover>
-                            <TableCell sx={{ fontFamily: "monospace", fontWeight: 700 }}>{r.reward_code || `#${r.id}`}</TableCell>
+                          <TableRow key={String(r.id)} hover>
+                            <TableCell sx={{ fontFamily: "monospace", fontWeight: 700 }}>{String(r.reward_code || `#${String(r.id)}`)}</TableCell>
                             <TableCell>
                               <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>{String(r.reward_type || "").replace(/_/g, " ")}</Typography>
-                              <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{r.reward_description || "—"}</Typography>
+                              <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{String(r.reward_description || "—")}</Typography>
                             </TableCell>
-                            <TableCell><Chip size="small" label={String(r.status || "unknown")} color={statusColor(r.status)} sx={{ textTransform: "capitalize", fontWeight: 700 }} /></TableCell>
+                            <TableCell><Chip size="small" label={String(r.status || "unknown")} color={statusColor(String(r.status ?? ""))} sx={{ textTransform: "capitalize", fontWeight: 700 }} /></TableCell>
                             <TableCell>
-                              <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(r.issued_at)}</Typography>
+                              <Typography sx={{ fontSize: "0.85rem" }}>Issued: {formatDateTime(String(r.issued_at ?? ""))}</Typography>
                               {r.redeemed_at ? (
                                 <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                                  Redeemed: {formatDateTime(r.redeemed_at)}{r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}{r.redemption?.discount_amount != null ? ` · Rs. ${Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
+                                  Redeemed: {formatDateTime(String(r.redeemed_at))}{r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id ? ` • Order #${String(r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id)}` : ""}{(r.redemption as Record<string, unknown> | undefined)?.discount_amount != null ? ` • Rs. ${Number((r.redemption as Record<string, unknown>).discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : ""}
                                 </Typography>
                               ) : null}
-                              {r.revocation_reason ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Reason: {r.revocation_reason}</Typography> : null}
+                              {r.revocation_reason ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Reason: {String(r.revocation_reason)}</Typography> : null}
                             </TableCell>
                           </TableRow>
                         ))}

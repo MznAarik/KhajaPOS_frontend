@@ -179,7 +179,7 @@ export default function OrdersPage() {
 
   const [redeemOrder, setRedeemOrder] = React.useState<KitchenOrder | null>(null);
   const [redeemCode, setRedeemCode] = React.useState("");
-  const [redeemLookup, setRedeemLookup] = React.useState<any | null>(null);
+  const [redeemLookup, setRedeemLookup] = React.useState<Record<string, unknown> | null>(null);
   const [redeemError, setRedeemError] = React.useState("");
   const [redeemLookupLoading, setRedeemLookupLoading] = React.useState(false);
   const [redeemSubmitting, setRedeemSubmitting] = React.useState(false);
@@ -212,7 +212,7 @@ export default function OrdersPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchDays();
+    const init = setTimeout(() => { fetchDays(); }, 0);
 
     const DAYS_REFRESH_MS = 600000;
     const daysInterval = window.setInterval(fetchDays, DAYS_REFRESH_MS);
@@ -222,6 +222,7 @@ export default function OrdersPage() {
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      clearTimeout(init);
       window.clearInterval(daysInterval);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -240,8 +241,10 @@ export default function OrdersPage() {
   }, []);
 
   React.useEffect(() => {
-    setLoading(true);
-    void fetchOrders();
+    const init = setTimeout(() => {
+      setLoading(true);
+      void fetchOrders();
+    }, 0);
 
     const ORDERS_POLL_MS = 15000;
     const interval = window.setInterval(() => {
@@ -257,6 +260,7 @@ export default function OrdersPage() {
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      clearTimeout(init);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -358,7 +362,7 @@ export default function OrdersPage() {
     setRedeemError("");
   };
 
-  const estimateCashDiscount = React.useCallback((reward: any, orderTotal: number) => {
+  const estimateCashDiscount = React.useCallback((reward: Record<string, unknown> | null | undefined, orderTotal: number) => {
     const total = Math.max(0, Number(orderTotal) || 0);
     const value = reward?.reward_value != null ? Math.max(0, Number(reward.reward_value) || 0) : null;
     const type = String(reward?.reward_type || "").toLowerCase();
@@ -391,12 +395,12 @@ export default function OrdersPage() {
   };
 
   const handleRedeemForOrder = async () => {
-    if (!redeemOrder || !redeemLookup?.reward?.reward_code || !redeemLookup.redeemable) return;
+    if (!redeemOrder || !(redeemLookup?.reward as Record<string, unknown> | undefined)?.reward_code || !redeemLookup?.redeemable) return;
     setRedeemSubmitting(true);
     try {
-      const discountAmount = estimateCashDiscount(redeemLookup.reward, Number(redeemOrder.totalAmount || 0));
+      const discountAmount = estimateCashDiscount(redeemLookup.reward as Record<string, unknown> | null | undefined, Number(redeemOrder.totalAmount || 0));
       await redeemLoyaltyReward({
-        reward_code: redeemLookup.reward.reward_code,
+        reward_code: String((redeemLookup.reward as Record<string, unknown>).reward_code ?? ""),
         order_id: redeemOrder.id,
         discount_amount: discountAmount,
         metadata: { source: "orders_cash_settlement" },
@@ -1326,24 +1330,24 @@ export default function OrdersPage() {
               <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px", backgroundColor: "var(--background)" }}>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                    <Typography sx={{ fontWeight: 800 }}>{redeemLookup.reward?.reward_code || "Reward"}</Typography>
+                    <Typography sx={{ fontWeight: 800 }}>{String((redeemLookup.reward as Record<string, unknown> | undefined)?.reward_code || "Reward")}</Typography>
                     <Chip
                       size="small"
-                      label={String(redeemLookup.effective_status || redeemLookup.reward?.status || "unknown").replace(/_/g, " ")}
+                      label={String(redeemLookup.effective_status || (redeemLookup.reward as Record<string, unknown> | undefined)?.status || "unknown").replace(/_/g, " ")}
                       color={redeemLookup.redeemable ? "success" : "warning"}
                       sx={{ textTransform: "capitalize", fontWeight: 700 }}
                     />
                   </Stack>
                   <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-foreground)" }}>
-                    Customer: {redeemLookup.reward?.customer?.name || "—"} {redeemLookup.reward?.customer?.email ? `(${redeemLookup.reward.customer.email})` : ""}
+                    Customer: {String(((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.name || "—")} {((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.email ? `(${String(((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown>).email)})` : ""}
                   </Typography>
                   <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-foreground)" }}>
-                    Reward: {String(redeemLookup.reward?.reward_type || "—").replace(/_/g, " ")}
-                    {redeemLookup.reward?.reward_value != null ? ` · Value ${redeemLookup.reward.reward_value}` : ""}
+                    Reward: {String((redeemLookup.reward as Record<string, unknown> | undefined)?.reward_type || "—").replace(/_/g, " ")}
+                    {(redeemLookup.reward as Record<string, unknown> | undefined)?.reward_value != null ? ` • Value ${String((redeemLookup.reward as Record<string, unknown>).reward_value)}` : ""}
                   </Typography>
                   {redeemOrder ? (
                     <Typography sx={{ fontWeight: 800, color: "var(--foreground)" }}>
-                      Estimated cash discount: Rs. {estimateCashDiscount(redeemLookup.reward, Number(redeemOrder.totalAmount || 0)).toFixed(2)}
+                      Estimated cash discount: Rs. {estimateCashDiscount(redeemLookup.reward as Record<string, unknown> | null | undefined, Number(redeemOrder.totalAmount || 0)).toFixed(2)}
                     </Typography>
                   ) : null}
                   {!redeemLookup.redeemable ? (

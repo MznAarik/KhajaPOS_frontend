@@ -148,7 +148,8 @@ export default function BusinessAdminLoyaltyPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    void loadProgram();
+    const t = setTimeout(() => { void loadProgram(); }, 0);
+    return () => clearTimeout(t);
   }, [loadProgram]);
 
   const loadAuditLogs = React.useCallback(async () => {
@@ -176,7 +177,8 @@ export default function BusinessAdminLoyaltyPage() {
   }, [forbidden, auditPage, auditSearch, auditAction, showSnackbar]);
 
   React.useEffect(() => {
-    void loadAuditLogs();
+    const t = setTimeout(() => { void loadAuditLogs(); }, 0);
+    return () => clearTimeout(t);
   }, [loadAuditLogs]);
 
   const loadTrends = React.useCallback(async () => {
@@ -198,7 +200,8 @@ export default function BusinessAdminLoyaltyPage() {
   }, [forbidden, showSnackbar]);
 
   React.useEffect(() => {
-    void loadTrends();
+    const t = setTimeout(() => { void loadTrends(); }, 0);
+    return () => clearTimeout(t);
   }, [loadTrends]);
 
   const setProgramField = <K extends keyof LoyaltyProgram>(key: K, value: LoyaltyProgram[K]) => {

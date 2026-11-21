@@ -64,13 +64,13 @@ export default function SuperAdminLoyaltyOversightPage() {
   const [status, setStatus] = React.useState("all");
   const [action, setAction] = React.useState("");
 
-  const [programs, setPrograms] = React.useState<any[]>([]);
+  const [programs, setPrograms] = React.useState<Record<string, unknown>[]>([]);
   const [programsPg, setProgramsPg] = React.useState<SuperAdminPagination>(defaultPagination());
-  const [memberships, setMemberships] = React.useState<any[]>([]);
+  const [memberships, setMemberships] = React.useState<Record<string, unknown>[]>([]);
   const [membershipsPg, setMembershipsPg] = React.useState<SuperAdminPagination>(defaultPagination());
-  const [rewards, setRewards] = React.useState<any[]>([]);
+  const [rewards, setRewards] = React.useState<Record<string, unknown>[]>([]);
   const [rewardsPg, setRewardsPg] = React.useState<SuperAdminPagination>(defaultPagination());
-  const [audits, setAudits] = React.useState<any[]>([]);
+  const [audits, setAudits] = React.useState<Record<string, unknown>[]>([]);
   const [auditsPg, setAuditsPg] = React.useState<SuperAdminPagination>(defaultPagination());
 
   const currentPage =
@@ -132,7 +132,8 @@ export default function SuperAdminLoyaltyOversightPage() {
   }, [load]);
 
   React.useEffect(() => {
-    void load({ page: 1 });
+    const t = setTimeout(() => { void load({ page: 1 }); }, 0);
+    return () => clearTimeout(t);
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pg =
@@ -239,52 +240,52 @@ export default function SuperAdminLoyaltyOversightPage() {
                     {programs.length === 0 ? (
                       <TableRow><TableCell colSpan={6}><Typography sx={{ color: "var(--muted-foreground)" }}>No loyalty programs found.</Typography></TableCell></TableRow>
                     ) : programs.map((p) => (
-                      <TableRow key={p.id} hover>
+                      <TableRow key={String(p.id)} hover>
                         <TableCell>
                           <Stack spacing={0.5} alignItems="flex-start">
                             <Tooltip title="Filter oversight by this business">
-                              <Button size="small" onClick={() => drillToBusiness(p.business_id, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", color: "var(--primary)" }}>
-                                {p.business?.name || `Business #${p.business_id}`}
+                              <Button size="small" onClick={() => drillToBusiness(p.business_id as number | string, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", color: "var(--primary)" }}>
+                                {String((p.business as Record<string, unknown> | undefined)?.name || `Business #${String(p.business_id)}`)}
                               </Button>
                             </Tooltip>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>ID: {p.business_id}{p.business?.email ? ` · ${p.business.email}` : ""}</Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>ID: {String(p.business_id)}{(p.business as Record<string, unknown> | undefined)?.email ? ` • ${String((p.business as Record<string, unknown> | undefined)?.email)}` : ""}</Typography>
                             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(p.business_id, "memberships")} />
-                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(p.business_id, "rewards")} />
-                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(p.business_id, "audit")} />
+                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(p.business_id as number | string, "memberships")} />
+                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(p.business_id as number | string, "rewards")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(p.business_id as number | string, "audit")} />
                             </Stack>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.5} alignItems="flex-start">
                             <StatusChip value={p.is_enabled ? "active" : "inactive"} />
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Program #{p.id}</Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Program #{String(p.id)}</Typography>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, textTransform: "capitalize" }}>{String(p.progress_policy || "—").replace(/_/g, " ")}</Typography>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                            Statuses: {(p.eligible_order_statuses || []).join(", ") || "—"}
+                            Statuses: {((p.eligible_order_statuses as unknown[] | undefined) || []).join(", ") || "—"}
                           </Typography>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                            Types: {(p.eligible_order_types || []).length ? (p.eligible_order_types || []).join(", ") : "all"} · Stacking: {p.allow_reward_stacking ? "yes" : "no"}
+                            Types: {((p.eligible_order_types as unknown[] | undefined) || []).length ? ((p.eligible_order_types as unknown[] | undefined) || []).join(", ") : "all"} · Stacking: {p.allow_reward_stacking ? "yes" : "no"}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ minWidth: 260 }}>
-                          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{p.tiers_count ?? (p.tiers?.length ?? 0)} tier(s)</Typography>
+                          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{String(p.tiers_count ?? ((p.tiers as unknown[] | undefined)?.length ?? 0))} tier(s)</Typography>
                           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                            {(p.tiers || []).slice(0, 6).map((t: any) => (
-                              <Chip key={t.id} size="small" variant="outlined" label={`${t.name} @ ${t.threshold_orders}`} sx={{ fontWeight: 600 }} />
+                            {((p.tiers as Record<string, unknown>[] | undefined) || []).slice(0, 6).map((t: Record<string, unknown>) => (
+                              <Chip key={String(t.id)} size="small" variant="outlined" label={`${String(t.name)} @ ${String(t.threshold_orders)}`} sx={{ fontWeight: 600 }} />
                             ))}
-                            {(p.tiers || []).length > 6 ? <Chip size="small" label={`+${(p.tiers || []).length - 6} more`} /> : null}
+                            {((p.tiers as unknown[] | undefined) || []).length > 6 ? <Chip size="small" label={`+${((p.tiers as unknown[] | undefined) || []).length - 6} more`} /> : null}
                           </Stack>
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontSize: "0.85rem" }}>Members: <b>{p.memberships_count ?? 0}</b></Typography>
-                          <Typography sx={{ fontSize: "0.85rem" }}>Rewards: <b>{p.rewards_total ?? 0}</b></Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Available {p.rewards_available ?? 0} · Redeemed {p.rewards_redeemed ?? 0}</Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Members: <b>{String(p.memberships_count ?? 0)}</b></Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Rewards: <b>{String(p.rewards_total ?? 0)}</b></Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Available {String(p.rewards_available ?? 0)} • Redeemed {String(p.rewards_redeemed ?? 0)}</Typography>
                         </TableCell>
-                        <TableCell>{fmtDate(p.updated_at)}</TableCell>
+                        <TableCell>{fmtDate(String(p.updated_at ?? ""))}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -308,38 +309,38 @@ export default function SuperAdminLoyaltyOversightPage() {
                     {memberships.length === 0 ? (
                       <TableRow><TableCell colSpan={5}><Typography sx={{ color: "var(--muted-foreground)" }}>No memberships found.</Typography></TableCell></TableRow>
                     ) : memberships.map((m) => (
-                      <TableRow key={m.id} hover>
+                      <TableRow key={String(m.id)} hover>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 700 }}>{m.customer?.name || `Customer #${m.customer_id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{m.customer?.email || m.customer?.phone || "—"}</Typography>
-                          <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>ID: {m.customer_id} · Membership #{m.id}</Typography>
+                          <Typography sx={{ fontWeight: 700 }}>{String((m.customer as Record<string, unknown> | undefined)?.name || `Customer #${String(m.customer_id)}`)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{String((m.customer as Record<string, unknown> | undefined)?.email || (m.customer as Record<string, unknown> | undefined)?.phone || "—")}</Typography>
+                          <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>ID: {String(m.customer_id)} • Membership #{String(m.id)}</Typography>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.25} alignItems="flex-start">
-                            <Button size="small" onClick={() => drillToBusiness(m.business_id, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
-                              {m.business_name || `#${m.business_id}`}
+                            <Button size="small" onClick={() => drillToBusiness(m.business_id as number | string, "memberships")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                              {String(m.business_name || `#${String(m.business_id)}`)}
                             </Button>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Business ID: {m.business_id}</Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Business ID: {String(m.business_id)}</Typography>
                             <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
-                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(m.business_id, "rewards")} />
-                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(m.business_id, "audit")} />
+                              <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(m.business_id as number | string, "rewards")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(m.business_id as number | string, "audit")} />
                             </Stack>
                           </Stack>
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 700 }}>Progress: {m.progress_orders} orders</Typography>
-                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Lifetime: {m.lifetime_orders} · Counted: {m.orders_count}</Typography>
-                          {m.current_tier_reached != null ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier reached: {m.current_tier_reached}</Typography> : null}
+                          <Typography sx={{ fontWeight: 700 }}>Progress: {String(m.progress_orders ?? 0)} orders</Typography>
+                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Lifetime: {String(m.lifetime_orders ?? 0)} • Counted: {String(m.orders_count ?? 0)}</Typography>
+                          {m.current_tier_reached != null ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier reached: {String(m.current_tier_reached)}</Typography> : null}
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontSize: "0.85rem" }}>Total: <b>{m.rewards_total ?? 0}</b></Typography>
-                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Available {m.rewards_available ?? 0} · Redeemed {m.rewards_redeemed ?? 0}</Typography>
+                          <Typography sx={{ fontSize: "0.85rem" }}>Total: <b>{String(m.rewards_total ?? 0)}</b></Typography>
+                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Available {String(m.rewards_available ?? 0)} • Redeemed {String(m.rewards_redeemed ?? 0)}</Typography>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.5} alignItems="flex-start">
-                            <StatusChip value={m.status} />
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last order: {fmtShort(m.last_order_at)}</Typography>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last reward: {fmtShort(m.last_reward_at)}</Typography>
+                            <StatusChip value={String(m.status ?? "")} />
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last order: {fmtShort(m.last_order_at as string | null | undefined)}</Typography>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Last reward: {fmtShort(m.last_reward_at as string | null | undefined)}</Typography>
                           </Stack>
                         </TableCell>
                       </TableRow>
@@ -366,49 +367,49 @@ export default function SuperAdminLoyaltyOversightPage() {
                     {rewards.length === 0 ? (
                       <TableRow><TableCell colSpan={6}><Typography sx={{ color: "var(--muted-foreground)" }}>No rewards found.</Typography></TableCell></TableRow>
                     ) : rewards.map((r) => (
-                      <TableRow key={r.id} hover>
+                      <TableRow key={String(r.id)} hover>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 800, fontFamily: "monospace" }}>{r.reward_code || `#${r.id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Reward #{r.id}</Typography>
-                          {r.reward_description ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{r.reward_description}</Typography> : null}
+                          <Typography sx={{ fontWeight: 800, fontFamily: "monospace" }}>{String(r.reward_code || `#${String(r.id)}`)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Reward #{String(r.id)}</Typography>
+                          {r.reward_description ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{String(r.reward_description)}</Typography> : null}
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontWeight: 700 }}>{r.customer?.name || `Customer #${r.customer_id}`}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{r.customer?.email || r.customer?.phone || "—"}</Typography>
+                          <Typography sx={{ fontWeight: 700 }}>{String((r.customer as Record<string, unknown> | undefined)?.name || `Customer #${String(r.customer_id)}`)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{String((r.customer as Record<string, unknown> | undefined)?.email || (r.customer as Record<string, unknown> | undefined)?.phone || "—")}</Typography>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.25} alignItems="flex-start">
-                            <Button size="small" onClick={() => drillToBusiness(r.business_id, "rewards")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
-                              {r.business_name || `#${r.business_id}`}
-                            </Button>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier: {r.tier?.name || "—"}</Typography>
+                            <Button size="small" onClick={() => drillToBusiness(r.business_id as number | string, "rewards")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                                {String(r.business_name || `#${String(r.business_id)}`)}
+                              </Button>
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Tier: {String((r.tier as Record<string, unknown> | undefined)?.name || "—")}</Typography>
                             <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
-                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(r.business_id, "memberships")} />
-                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(r.business_id, "audit")} />
+                              <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(r.business_id as number | string, "memberships")} />
+                              <Chip size="small" variant="outlined" clickable label="Audit" onClick={() => drillToBusiness(r.business_id as number | string, "audit")} />
                             </Stack>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontWeight: 700, textTransform: "capitalize" }}>{String(r.reward_type || "—").replace(/_/g, " ")}</Typography>
-                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Value: {r.reward_value ?? "—"}</Typography>
+                          <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>Value: {String(r.reward_value ?? "—")}</Typography>
                         </TableCell>
                         <TableCell>
                           <Stack spacing={0.5} alignItems="flex-start">
-                            <StatusChip value={r.effective_status || r.status} />
-                            {r.status !== r.effective_status ? <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Stored: {r.status}</Typography> : null}
-                            {r.revocation_reason ? <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Reason: {r.revocation_reason}</Typography> : null}
+                            <StatusChip value={String(r.effective_status || r.status || "")} />
+                            {r.status !== r.effective_status ? <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Stored: {String(r.status ?? "")}</Typography> : null}
+                            {r.revocation_reason ? <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Reason: {String(r.revocation_reason)}</Typography> : null}
                           </Stack>
                         </TableCell>
                         <TableCell>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Issued: {fmtShort(r.issued_at)}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Expires: {fmtShort(r.expires_at)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Issued: {fmtShort(r.issued_at as string | null | undefined)}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Expires: {fmtShort(r.expires_at as string | null | undefined)}</Typography>
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                            Redeemed: {fmtShort(r.redeemed_at)}
-                            {r.redeemed_order_id || r.redemption?.order_id ? ` · Order #${r.redeemed_order_id || r.redemption?.order_id}` : ""}
+                            Redeemed: {fmtShort(r.redeemed_at as string | null | undefined)}
+                            {r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id ? ` • Order #${String(r.redeemed_order_id || (r.redemption as Record<string, unknown> | undefined)?.order_id)}` : ""}
                           </Typography>
-                          {r.redemption?.discount_amount != null ? (
+                          {(r.redemption as Record<string, unknown> | undefined)?.discount_amount != null ? (
                             <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                              Discount: Rs. {Number(r.redemption.discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              Discount: Rs. {Number((r.redemption as Record<string, unknown>).discount_amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                             </Typography>
                           ) : null}
                         </TableCell>
@@ -435,23 +436,23 @@ export default function SuperAdminLoyaltyOversightPage() {
                     {audits.length === 0 ? (
                       <TableRow><TableCell colSpan={5}><Typography sx={{ color: "var(--muted-foreground)" }}>No audit logs found.</Typography></TableCell></TableRow>
                     ) : audits.map((a) => (
-                      <TableRow key={a.id} hover>
+                      <TableRow key={String(a.id)} hover>
                         <TableCell sx={{ minWidth: 180 }}>
-                          <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{fmtDate(a.created_at)}</Typography>
-                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Actor: {a.actor_role || "—"} {a.actor_id != null ? `(ID ${a.actor_id})` : ""}</Typography>
+                          <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{fmtDate(String(a.created_at ?? ""))}</Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Actor: {String(a.actor_role || "—")} {a.actor_id != null ? `(ID ${String(a.actor_id)})` : ""}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip size="small" label={a.action || "—"} variant="outlined" sx={{ fontWeight: 700, maxWidth: 260 }} />
+                          <Chip size="small" label={String(a.action || "—")} variant="outlined" sx={{ fontWeight: 700, maxWidth: 260 }} />
                         </TableCell>
                         <TableCell>
                           {a.business_id ? (
                             <Stack spacing={0.25} alignItems="flex-start">
-                              <Button size="small" onClick={() => drillToBusiness(a.business_id, "audit")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
-                                {a.business_name || `Business #${a.business_id}`}
+                              <Button size="small" onClick={() => drillToBusiness(a.business_id as number | string, "audit")} sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 600, justifyContent: "flex-start" }}>
+                                {String(a.business_name || `Business #${String(a.business_id)}`)}
                               </Button>
                               <Stack direction="row" spacing={0.5}>
-                                <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(a.business_id, "memberships")} />
-                                <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(a.business_id, "rewards")} />
+                                <Chip size="small" variant="outlined" clickable label="Progress" onClick={() => drillToBusiness(a.business_id as number | string, "memberships")} />
+                                <Chip size="small" variant="outlined" clickable label="Rewards" onClick={() => drillToBusiness(a.business_id as number | string, "rewards")} />
                               </Stack>
                             </Stack>
                           ) : (
@@ -460,8 +461,8 @@ export default function SuperAdminLoyaltyOversightPage() {
                           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.25 }}>{a.customer_name ? `Customer: ${a.customer_name}` : (a.customer_id ? `Customer #${a.customer_id}` : "Customer: —")}</Typography>
                         </TableCell>
                         <TableCell sx={{ minWidth: 220 }}>
-                          <Typography sx={{ fontSize: "0.82rem" }}>{a.target_type || "—"}{a.target_id != null ? ` #${a.target_id}` : ""}</Typography>
-                          {a.reason ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{a.reason}</Typography> : null}
+                          <Typography sx={{ fontSize: "0.82rem" }}>{String(a.target_type || "—")}{a.target_id != null ? ` #${String(a.target_id)}` : ""}</Typography>
+                          {a.reason ? <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>{String(a.reason)}</Typography> : null}
                         </TableCell>
                         <TableCell sx={{ minWidth: 260 }}>
                           <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 420 }}>

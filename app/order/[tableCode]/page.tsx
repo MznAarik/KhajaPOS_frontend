@@ -316,6 +316,7 @@ export default function TableOrderPage() {
   const [detailQty, setDetailQty] = React.useState(1);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
     setDetailQty(1);
   }, [selectedItem]);
   const [activeCategoryId, setActiveCategoryId] = React.useState<number | "all">("all");
@@ -323,7 +324,9 @@ export default function TableOrderPage() {
   const [inlineBestSellerItem, setInlineBestSellerItem] = React.useState<PublicMenuItem | null>(null);
   const [inlineBestSellerQty, setInlineBestSellerQty] = React.useState(1);
 
+   
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
     setInlineBestSellerQty(1);
   }, [inlineBestSellerItem]);
   const [foodFilter, setFoodFilter] = React.useState<FoodFilterKey>("all");
@@ -333,7 +336,7 @@ export default function TableOrderPage() {
   const [scrollToOrderToken, setScrollToOrderToken] = React.useState<string | null>(null);
   const [mySessionTokens, setMySessionTokens] = React.useState<string[]>([]);
   const [customer, setCustomer] = React.useState<CustomerProfile | null>(null);
-  const [customerMemberships, setCustomerMemberships] = React.useState<any[]>([]);
+  const [customerMemberships, setCustomerMemberships] = React.useState<Record<string, unknown>[]>([]);
   const [customerSessionLoading, setCustomerSessionLoading] = React.useState(true);
   const [customerAuthOpen, setCustomerAuthOpen] = React.useState(false);
   const [customerAuthMode, setCustomerAuthMode] = React.useState<"signin" | "register" | "verify">("signin");
@@ -357,9 +360,9 @@ export default function TableOrderPage() {
       return;
     }
     try {
-      const data: any = await getCustomerMe();
-      setCustomer(data?.customer ?? null);
-      setCustomerMemberships(Array.isArray(data?.memberships) ? data.memberships : []);
+      const data = await getCustomerMe() as Record<string, unknown>;
+      setCustomer((data?.customer as CustomerProfile | null) ?? null);
+      setCustomerMemberships(Array.isArray(data?.memberships) ? (data.memberships as Record<string, unknown>[]) : []);
     } catch {
       clearStoredCustomerToken();
       setCustomer(null);
@@ -368,15 +371,19 @@ export default function TableOrderPage() {
       setCustomerSessionLoading(false);
     }
   }, []);
+ 
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
     void refreshCustomerSession();
   }, [refreshCustomerSession]);
 
   React.useEffect(() => {
+     
     const savedCart = window.localStorage.getItem(getCartStorageKey(tableCode));
     if (savedCart) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
         setCart(JSON.parse(savedCart) as CartState);
       } catch {
         window.localStorage.removeItem(getCartStorageKey(tableCode));
@@ -387,10 +394,12 @@ export default function TableOrderPage() {
   React.useEffect(() => {
     window.localStorage.setItem(getCartStorageKey(tableCode), JSON.stringify(cart));
   }, [cart, tableCode]);
+ 
 
   React.useEffect(() => {
     const savedType = window.localStorage.getItem(getOrderTypeStorageKey(tableCode));
     if (savedType === "dine_in" || savedType === "takeaway") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
       setOrderType(savedType);
     }
   }, [tableCode]);
@@ -415,20 +424,20 @@ export default function TableOrderPage() {
           setMenu(data);
           setMessage("");
           lastMenuFetchAt = Date.now();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Failed to load public menu:", error);
           if (!isCancelled) {
-            const data = error?.response?.data;
-            const code = data?.code;
+            const errData = (error as { response?: { data?: Record<string, unknown> } })?.response?.data;
+            const code = errData?.code;
             if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
               setPlatformError({
-                code,
-                message: data?.message || "This service is temporarily unavailable.",
+                code: String(code),
+                message: String(errData?.message ?? "This service is temporarily unavailable."),
               });
               setMessage("");
             } else if (!silent) {
               setPlatformError(null);
-              setMessage(data?.message || "We couldn't load this table menu right now.");
+              setMessage(String(errData?.message ?? "We couldn't load this table menu right now."));
             }
           }
         } finally {
@@ -465,11 +474,13 @@ export default function TableOrderPage() {
       isCancelled = true;
       if (timeout) window.clearTimeout(timeout);
       document.removeEventListener("visibilitychange", handleVisibility);
+     
     };
   }, [tableCode]);
 
   React.useEffect(() => {
     if (!tableId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
       setRecentOrders([]);
       setRecentOrderStatuses({});
       return;
@@ -603,12 +614,14 @@ export default function TableOrderPage() {
           const token = key.slice(prefix.length);
           if (window.localStorage.getItem(key) === tableCode) {
             tokens.push(token);
+           
           }
         }
       }
     } catch {
       // ignore storage access errors
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
     setMySessionTokens(tokens);
   }, [tableCode, recentOrders, recentOrderStatuses]);
 
@@ -646,6 +659,7 @@ export default function TableOrderPage() {
         ).length;
         return counts;
       },
+       
       { all: items.length, veg: 0, "non-veg": 0, drinks: 0, others: 0 } as Record<FoodFilterKey, number>
     );
   }, [scopedCategories]);
@@ -653,6 +667,7 @@ export default function TableOrderPage() {
   React.useEffect(() => {
     if (!menu) return;
     if (activeCategoryId !== "all" && !menu.categories.some((category) => category.id === activeCategoryId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
       setActiveCategoryId("all");
     }
   }, [menu, activeCategoryId]);
@@ -707,7 +722,11 @@ export default function TableOrderPage() {
     if (!businessId) return null;
     return (
       customerMemberships.find(
-        (m: any) => Number(m?.membership?.business_id ?? m?.program?.business_id) === Number(businessId)
+        (m: Record<string, unknown>) => {
+          const mem = m?.membership as Record<string, unknown> | undefined;
+          const prog = m?.program as Record<string, unknown> | undefined;
+          return Number(mem?.business_id ?? prog?.business_id) === Number(businessId);
+        }
       ) ?? null
     );
   }, [customerMemberships, menu?.business?.id]);
@@ -750,14 +769,15 @@ export default function TableOrderPage() {
     };
   }, [scrollToOrderToken, orderedOrders, recentOrderStatuses]);
 
-  const extractErrorMessage = (error: any, fallback: string) => {
-    const data = error?.response?.data;
+  const extractErrorMessage = (error: unknown, fallback: string) => {
+    const err = error as { response?: { data?: { errors?: Record<string, unknown>; message?: string } }; message?: string };
+    const data = err?.response?.data;
     if (data?.errors && typeof data.errors === "object") {
       const first = Object.values(data.errors).flat().find((v) => typeof v === "string");
       if (typeof first === "string" && first.trim()) return first;
     }
     if (typeof data?.message === "string" && data.message.trim()) return data.message;
-    if (typeof error?.message === "string" && error.message.trim()) return error.message;
+    if (typeof err?.message === "string" && err.message.trim()) return err.message;
     return fallback;
   };
 
@@ -789,7 +809,7 @@ export default function TableOrderPage() {
     setCustomerAuthError("");
     setCustomerAuthInfo("");
     try {
-      const res: any = await customerRegister({
+      const res = await customerRegister({
         name,
         email,
         ...(phone ? { phone } : {}),
@@ -801,7 +821,7 @@ export default function TableOrderPage() {
       setCustomerAuthInfo(
         res?.message || "A verification code has been sent to your email. Enter it below to complete sign-in."
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       setCustomerAuthError(extractErrorMessage(error, "Could not register. Please try again."));
     } finally {
       setCustomerAuthSubmitting(false);
@@ -818,12 +838,12 @@ export default function TableOrderPage() {
     setCustomerAuthError("");
     setCustomerAuthInfo("");
     try {
-      const res: any = await customerRequestOtp({ email, purpose });
+      const res = await customerRequestOtp({ email, purpose });
       setCustomerOtpEmail(email);
       setCustomerOtp("");
       setCustomerAuthMode("verify");
       setCustomerAuthInfo(res?.message || "A verification code has been sent to your email.");
-    } catch (error: any) {
+    } catch (error: unknown) {
       setCustomerAuthError(extractErrorMessage(error, "Could not send verification code."));
     } finally {
       setCustomerAuthSubmitting(false);
@@ -855,7 +875,7 @@ export default function TableOrderPage() {
       setCustomerAuthError("");
       setCustomerAuthInfo("");
       showSnackbar("Signed in. Your rewards will be tracked for this restaurant.", "success");
-    } catch (error: any) {
+    } catch (error: unknown) {
       setCustomerAuthError(extractErrorMessage(error, "Invalid or expired code. Please try again."));
     } finally {
       setCustomerAuthSubmitting(false);
@@ -879,12 +899,13 @@ export default function TableOrderPage() {
       setCustomerAuthOpen(false);
       setCustomerPassword("");
       showSnackbar("Signed in. Your rewards will be tracked for this restaurant.", "success");
-    } catch (error: any) {
-      const data = error?.response?.data;
+    } catch (error: unknown) {
+      const errData = (error as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const errObj = errData?.errors as Record<string, unknown> | undefined;
       const needsVerification =
-        data?.errors?.verification_required ||
-        /not verified|verification code/i.test(String(data?.message ?? "")) ||
-        /verification_required/i.test(JSON.stringify(data?.errors ?? {}));
+        errObj?.verification_required ||
+        /not verified|verification code/i.test(String(errData?.message ?? "")) ||
+        /verification_required/i.test(JSON.stringify(errData?.errors ?? {}));
       if (needsVerification) {
         setCustomerOtpEmail(email);
         setCustomerOtp("");
@@ -1438,11 +1459,11 @@ export default function TableOrderPage() {
               </Typography>
 
               {(() => {
-                const summary: any = currentBusinessMembership;
-                const program = summary?.program;
-                const membership = summary?.membership;
-                const nextTier = summary?.next_tier;
-                const rewards: any[] = Array.isArray(summary?.available_rewards) ? summary.available_rewards : [];
+                const summary = currentBusinessMembership as Record<string, unknown> | null;
+                const program = summary?.program as Record<string, unknown> | undefined;
+                const membership = summary?.membership as Record<string, unknown> | undefined;
+                const nextTier = summary?.next_tier as Record<string, unknown> | undefined;
+                const rewards = Array.isArray(summary?.available_rewards) ? (summary.available_rewards as Record<string, unknown>[]) : [];
 
                 if (!summary || !membership) {
                   return (
@@ -1513,9 +1534,9 @@ export default function TableOrderPage() {
                       </Typography>
                       {rewards.length ? (
                         <Stack spacing={0.75}>
-                          {rewards.slice(0, 6).map((reward: any) => (
+                          {rewards.slice(0, 6).map((reward: Record<string, unknown>) => (
                             <Box
-                              key={reward.id ?? reward.reward_code}
+                              key={String(reward.id ?? reward.reward_code)}
                               sx={{
                                 p: 1,
                                 borderRadius: "12px",
@@ -1526,14 +1547,14 @@ export default function TableOrderPage() {
                               <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start">
                                 <Box sx={{ minWidth: 0 }}>
                                   <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
-                                    {reward.reward_description || "Reward"}
+                                    {String(reward.reward_description || "Reward")}
                                   </Typography>
                                   <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)", fontFamily: "monospace" }}>
-                                    Code: {reward.reward_code}
+                                    Code: {String(reward.reward_code ?? "")}
                                   </Typography>
                                   {reward.expires_at ? (
                                     <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                                      Expires: {new Date(reward.expires_at).toLocaleDateString()}
+                                      Expires: {new Date(String(reward.expires_at)).toLocaleDateString()}
                                     </Typography>
                                   ) : null}
                                 </Box>

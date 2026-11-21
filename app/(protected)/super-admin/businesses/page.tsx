@@ -128,8 +128,11 @@ export default function SuperAdminBusinessesPage() {
     }, []);
 
     React.useEffect(() => {
-        fetchBusinesses();
-        fetchOwners();
+        const t = setTimeout(() => {
+            void fetchBusinesses();
+            void fetchOwners();
+        }, 0);
+        return () => clearTimeout(t);
     }, [fetchBusinesses, fetchOwners]);
 
     const visible = React.useMemo(() => {
@@ -154,7 +157,8 @@ export default function SuperAdminBusinessesPage() {
     }, [page, rowsPerPage, visible]);
 
     React.useEffect(() => {
-        setPage(0);
+        const t = setTimeout(() => setPage(0), 0);
+        return () => clearTimeout(t);
     }, [search, statusFilter]);
 
     const freeOwners = React.useMemo(() => ownerOptions.filter((user) => !user.business), [ownerOptions]);

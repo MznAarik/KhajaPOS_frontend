@@ -551,7 +551,7 @@ export default function AdminAnalyticsPage() {
   const [failed, setFailed] = React.useState(false);
   const [metric, setMetric] = React.useState<AnalyticsTrendValue>("businesses");
   const [trendMode, setTrendMode] = React.useState<"monthly" | "cumulative">("monthly");
-  const [businesses, setBusinesses] = React.useState<any[]>([]);
+  const [businesses, setBusinesses] = React.useState<Record<string, unknown>[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<string>("all");
   const { showSnackbar } = useAppSnackbar();
 
@@ -587,9 +587,9 @@ export default function AdminAnalyticsPage() {
 
   React.useEffect(() => {
     api.get("/superadmin/businesses")
-      .then((res: any) => {
-        const data = res.data?.data ?? res.data ?? [];
-        const items = Array.isArray(data) ? data : data?.items;
+      .then((res: { data?: unknown }) => {
+        const data = (res.data as { data?: unknown })?.data ?? res.data ?? [];
+        const items = Array.isArray(data) ? data : (data as { items?: unknown[] })?.items;
         setBusinesses(Array.isArray(items) ? items : []);
       })
       .catch(() => setBusinesses([]));
@@ -809,8 +809,8 @@ export default function AdminAnalyticsPage() {
               >
                 <MenuItem value="all">All businesses</MenuItem>
                 {businesses.map((b) => (
-                  <MenuItem key={b.id} value={String(b.id)}>
-                    {b.name}
+                  <MenuItem key={String(b.id)} value={String(b.id)}>
+                    {String(b.name ?? "")}
                   </MenuItem>
                 ))}
               </Select>
@@ -856,9 +856,9 @@ export default function AdminAnalyticsPage() {
         <SectionCard>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.2rem" }, fontWeight: 900 }}>{filteredBusiness.name} — business analytics</Typography>
+              <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.2rem" }, fontWeight: 900 }}>{String(filteredBusiness.name ?? "")} — business analytics</Typography>
               <Typography sx={{ color: "var(--muted-foreground)", fontWeight: 650, fontSize: "0.88rem" }}>
-                {titleCase(filteredBusiness.businessType)} · {filteredBusiness.isActive ? "Active" : "Inactive"} · Focused view
+                {titleCase(String(filteredBusiness.businessType ?? ""))} • {filteredBusiness.isActive ? "Active" : "Inactive"} • Focused view
               </Typography>
             </Box>
             <Button size="small" onClick={() => void withViewTransition(() => setSelectedBusinessId("all"))} sx={{ borderRadius: "10px", fontWeight: 800 }}>
@@ -1217,7 +1217,7 @@ export default function AdminAnalyticsPage() {
                                 overflowWrap: "anywhere",
                               }}
                             >
-                              {business.name}
+                              {String(business.name ?? "")}
                             </Typography>
                             <Chip
                               size="small"
@@ -1233,7 +1233,7 @@ export default function AdminAnalyticsPage() {
                             />
                             <Chip
                               size="small"
-                              label={titleCase(business.businessType)}
+                              label={titleCase(String(business.businessType ?? ""))}
                               variant="outlined"
                               sx={{ maxWidth: { xs: "100%", sm: 240 }, height: 22, fontSize: "0.66rem", fontWeight: 800, borderRadius: "999px", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
                             />
@@ -1596,12 +1596,12 @@ export default function AdminAnalyticsPage() {
                           {index + 1}
                         </Box>
                         <Box component="span" sx={{ fontWeight: 850, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {business.name}
+                          {String(business.name ?? "")}
                         </Box>
                       </Stack>
                     </TableCell>
                     <TableCell sx={{ ...bodyCellSx, color: "var(--muted-foreground)" }}>
-                      {business.businessType === "—" ? "—" : titleCase(business.businessType)}
+                      {business.businessType === "—" ? "—" : titleCase(String(business.businessType ?? ""))}
                     </TableCell>
                     <TableCell sx={bodyCellSx}>
                       <Box

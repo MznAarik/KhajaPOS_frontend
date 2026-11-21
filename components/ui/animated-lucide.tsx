@@ -97,7 +97,7 @@ export function createAnimatedLucideIcon(Icon: LucideLike, opts: Opts) {
         initial="normal"
         variants={hover}
         style={{ color }}
-        {...(props as any)}
+        {...(props as Record<string, unknown>)}
       >
         <Icon size={size} strokeWidth={2} aria-hidden />
       </motion.div>

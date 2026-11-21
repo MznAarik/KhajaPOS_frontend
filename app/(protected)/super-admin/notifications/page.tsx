@@ -30,7 +30,7 @@ export default function SuperAdminNotificationsPage() {
   const reducedMotion = useReducedMotion();
   const [loading, setLoading] = React.useState(true);
   const [items, setItems] = React.useState<SuperAdminNotificationItem[]>([]);
-  const [counts, setCounts] = React.useState<any>({});
+  const [counts, setCounts] = React.useState<Record<string, unknown>>({});
   const [unreadOnly, setUnreadOnly] = React.useState("all");
   const [severity, setSeverity] = React.useState("all");
   const [saving, setSaving] = React.useState(false);
@@ -39,7 +39,7 @@ export default function SuperAdminNotificationsPage() {
   const load = React.useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const params: any = {};
+      const params: Record<string, unknown> = {};
       if (unreadOnly === "unread") params.unread = "1";
       if (severity !== "all") params.severity = severity;
       const data = await getSuperAdminNotifications(params);
@@ -52,7 +52,7 @@ export default function SuperAdminNotificationsPage() {
     }
   }, [showSnackbar, unreadOnly, severity]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => { const t = setTimeout(() => { void load(); }, 0); return () => clearTimeout(t); }, [load]);
 
   const markAllRead = async () => {
     setSaving(true);
@@ -87,7 +87,7 @@ export default function SuperAdminNotificationsPage() {
           </Stack>
         </Stack>
         <Stack direction="row" spacing={1.25} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
-          {[{ label: "Total", value: counts.total ?? 0 }, { label: "Unread", value: counts.unread ?? 0 }, { label: "Critical unread", value: counts.critical ?? 0 }].map((k) => (
+          {[{ label: "Total", value: Number(counts.total ?? 0) }, { label: "Unread", value: Number(counts.unread ?? 0) }, { label: "Critical unread", value: Number(counts.critical ?? 0) }].map((k) => (
             <Paper key={k.label} elevation={0} sx={{ px: 1.5, py: 1, borderRadius: "14px", border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
               <Typography component="span" sx={{ fontSize: "0.72rem", fontWeight: 850, color: "var(--muted-foreground)", mr: 1 }}>{k.label}</Typography>
               <Typography component="span" sx={{ fontWeight: 900 }}>{k.value}</Typography>

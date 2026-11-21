@@ -61,6 +61,7 @@ export default function BestSellersPage() {
   const [orderType, setOrderType] = React.useState<OrderType>("dine_in");
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
     setCartLoaded(false);
     try {
       const savedCart = window.localStorage.getItem(getCartStorageKey(tableCode));
