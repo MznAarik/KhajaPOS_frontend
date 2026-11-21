@@ -13,8 +13,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const base: MetadataRoute.Sitemap = [
-    { url: `${siteUrl}/landing`, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    { url: `${siteUrl}/auth/register`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${siteUrl}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${siteUrl}/features`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${siteUrl}/pricing`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${siteUrl}/faq`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${siteUrl}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${siteUrl}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${siteUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${siteUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
@@ -30,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}/business/${b.id}`,
       lastModified: b.updated_at ? new Date(b.updated_at) : now,
       changeFrequency: "weekly" as const,
-      priority: 0.7,
+      priority: 0.6,
     }));
 
   return [...base, ...businessEntries];

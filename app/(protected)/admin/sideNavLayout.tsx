@@ -221,11 +221,11 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                 // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Orders", href: "/business-admin/orders", icon: DashboardIcon, ref: ordersIconRef },
                 // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
-                { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
-                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Loyalty", href: "/business-admin/loyalty", icon: GiftIcon, ref: loyaltyIconRef },
                 // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
                 { text: "Staff", href: "/business-admin/staff", icon: UsersIcon, ref: staffIconRef },
+                // eslint-disable-next-line react-hooks/refs -- stable useRef objects, not read as .current during render
+                { text: "Reviews", href: "/business-admin/reviews", icon: MessageSquareIcon, ref: reviewsIconRef },
             );
         } else if (isCashier) {
             // Operational + loyalty redemption (cash billing for now). Server enforces granular permissions.

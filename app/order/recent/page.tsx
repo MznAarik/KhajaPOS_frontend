@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import RecentOrderClient from "./recent-client";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function RecentOrderPage({
   searchParams,

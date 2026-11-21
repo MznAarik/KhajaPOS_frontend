@@ -5,58 +5,57 @@ import { poppins } from "./src/fonts";
 import ThemeRegistry from "@/components/common/ThemeRegistry";
 import { THEME_INIT_SCRIPT } from "@/components/common/theme-mode";
 import { SnackbarProviderCustom } from "@/components/common/SnackBar";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_OG_IMAGE, getSiteUrl } from "@/lib/seo";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const SITE_DESCRIPTION =
-  "KhajaPOS is a modern restaurant POS system with QR table ordering, kitchen display, menu management, real-time order tracking and sales analytics.";
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "KhajaPOS — Restaurant POS & Table Ordering System",
+    default: "KhajaPOS — POS Software for Restaurants in Nepal",
     template: "%s | KhajaPOS",
   },
   description: SITE_DESCRIPTION,
   keywords: [
+    "POS software Nepal",
+    "restaurant billing software",
     "restaurant POS system",
-    "POS for restaurants",
-    "table ordering system",
-    "QR code ordering",
+    "QR table ordering",
     "kitchen display system",
     "menu management software",
-    "billing and invoicing",
-    "sales analytics POS",
+    "inventory and billing system",
     "KhajaPOS",
   ],
-  applicationName: "KhajaPOS",
-  authors: [{ name: "KhajaPOS" }],
-  alternates: {
-    canonical: "/landing",
-  },
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME }],
   openGraph: {
     type: "website",
-    siteName: "KhajaPOS",
-    title: "KhajaPOS — Restaurant POS & Table Ordering System",
+    siteName: SITE_NAME,
+    title: "KhajaPOS — POS Software for Restaurants in Nepal",
     description: SITE_DESCRIPTION,
-    url: `${SITE_URL}/landing`,
+    url: siteUrl,
     locale: "en_US",
     images: [
       {
-        url: "/images.png",
-        width: 512,
-        height: 512,
-        alt: "KhajaPOS — Restaurant POS & Table Ordering System",
+        url: SITE_OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "KhajaPOS — Restaurant POS and billing software in Nepal",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "KhajaPOS — Restaurant POS & Table Ordering System",
+    title: "KhajaPOS — POS Software for Restaurants in Nepal",
     description: SITE_DESCRIPTION,
-    images: ["/images.png"],
+    images: [SITE_OG_IMAGE],
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: "/images.png", // TODO: replace with dedicated /favicon.ico
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

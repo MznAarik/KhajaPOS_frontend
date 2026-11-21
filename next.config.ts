@@ -11,6 +11,17 @@ const nextConfig: NextConfig = {
   experimental: {
     agentUpgrade: "security",
   },
+
+  async redirects() {
+    return [
+      {
+        // SEO: marketing content moved to /; keep /landing as a permanent redirect.
+        source: "/landing",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

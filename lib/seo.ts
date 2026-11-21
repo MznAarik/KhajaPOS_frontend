@@ -1,5 +1,16 @@
+export const SITE_NAME = "KhajaPOS";
+export const SITE_URL_DEFAULT = "https://khaja-pos.vercel.app";
+export const SITE_DESCRIPTION =
+  "KhajaPOS is restaurant POS and billing software in Nepal with QR table ordering, menu management, live orders, and sales analytics.";
+export const SITE_OG_IMAGE = "/og-image.png"; // TODO: add 1200x630 branded OG image in /public
+
 export function getSiteUrl() {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? SITE_URL_DEFAULT).replace(/\/+$/, "");
+}
+
+export function absoluteUrl(path = "/") {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${getSiteUrl()}${normalized}`;
 }
 
 export function getApiOrigin() {
@@ -8,7 +19,10 @@ export function getApiOrigin() {
     .replace(/\/+$/, "");
 }
 
-export async function fetchPublicJson<T>(path: string, init?: RequestInit & { next?: { revalidate?: number } }): Promise<T | null> {
+export async function fetchPublicJson<T>(
+  path: string,
+  init?: RequestInit & { next?: { revalidate?: number } },
+): Promise<T | null> {
   const origin = getApiOrigin();
   if (!origin) return null;
   const url = `${origin}${path.startsWith("/") ? path : `/${path}`}`;
