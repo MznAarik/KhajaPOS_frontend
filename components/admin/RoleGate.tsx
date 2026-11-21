@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   OWNER_PATHS,
   SUPERADMIN_PATHS,
+  canRoleAccessPath,
   homeForRole,
   matchesPath,
 } from "@/lib/role-home";
@@ -58,6 +59,12 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (isBusinessWorkspace && matchesPath(pathname, OWNER_PATHS) && !canRoleAccessPath(user?.role, pathname)) {
+      redirected.current = true;
+      router.replace(homeForRole(user?.role));
+      return;
+    }
+
     if (!isSuperAdmin && !isBusinessWorkspace && user && (matchesPath(pathname, OWNER_PATHS) || matchesPath(pathname, SUPERADMIN_PATHS))) {
       redirected.current = true;
       router.replace(homeForRole("user"));
@@ -91,7 +98,17 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if ((matchesPath(pathname ?? "", OWNER_PATHS) && !isBusinessWorkspace) || (matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) || pathname?.startsWith("/admin")) {
+  const rolePathBlocked =
+    isBusinessWorkspace &&
+    matchesPath(pathname ?? "", OWNER_PATHS) &&
+    !canRoleAccessPath(user?.role, pathname ?? "");
+
+  if (
+    rolePathBlocked ||
+    (matchesPath(pathname ?? "", OWNER_PATHS) && !isBusinessWorkspace) ||
+    (matchesPath(pathname ?? "", SUPERADMIN_PATHS) && !isSuperAdmin) ||
+    pathname?.startsWith("/admin")
+  ) {
     return null;
   }
 

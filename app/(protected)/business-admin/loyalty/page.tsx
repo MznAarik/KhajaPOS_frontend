@@ -120,6 +120,7 @@ export default function BusinessAdminLoyaltyPage() {
   const [auditAction, setAuditAction] = React.useState("");
   const [trends, setTrends] = React.useState<LoyaltyTrendsResponse | null>(null);
   const [trendsLoading, setTrendsLoading] = React.useState(false);
+  const [forbidden, setForbidden] = React.useState(false);
 
   const loadProgram = React.useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -133,8 +134,14 @@ export default function BusinessAdminLoyaltyPage() {
         eligible_order_types: Array.isArray(data.eligible_order_types) ? data.eligible_order_types : [],
         tiers: Array.isArray(data.tiers) ? data.tiers : [],
       });
-    } catch (error) {
-      showSnackbar(safeError(error, "Failed to load loyalty settings"), "error");
+      setForbidden(false);
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setForbidden(true);
+      } else {
+        showSnackbar(safeError(error, "Failed to load loyalty settings"), "error");
+      }
     } finally {
       if (!quiet) setLoading(false);
     }
@@ -145,6 +152,7 @@ export default function BusinessAdminLoyaltyPage() {
   }, [loadProgram]);
 
   const loadAuditLogs = React.useCallback(async () => {
+    if (forbidden) return;
     setAuditLoading(true);
     try {
       const data = await getLoyaltyAuditLogs({
@@ -155,28 +163,39 @@ export default function BusinessAdminLoyaltyPage() {
       });
       setAuditLogs(Array.isArray(data.items) ? data.items : []);
       setAuditLastPage(Math.max(1, Number(data.pagination?.last_page || 1)));
-    } catch (error) {
-      showSnackbar(safeError(error, "Failed to load loyalty audit logs"), "error");
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setForbidden(true);
+      } else {
+        showSnackbar(safeError(error, "Failed to load loyalty audit logs"), "error");
+      }
     } finally {
       setAuditLoading(false);
     }
-  }, [auditPage, auditSearch, auditAction, showSnackbar]);
+  }, [forbidden, auditPage, auditSearch, auditAction, showSnackbar]);
 
   React.useEffect(() => {
     void loadAuditLogs();
   }, [loadAuditLogs]);
 
   const loadTrends = React.useCallback(async () => {
+    if (forbidden) return;
     setTrendsLoading(true);
     try {
       const data = await getLoyaltyTrends({ days: 30 });
       setTrends(data);
-    } catch (error) {
-      showSnackbar(safeError(error, "Failed to load loyalty trends"), "error");
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setForbidden(true);
+      } else {
+        showSnackbar(safeError(error, "Failed to load loyalty trends"), "error");
+      }
     } finally {
       setTrendsLoading(false);
     }
-  }, [showSnackbar]);
+  }, [forbidden, showSnackbar]);
 
   React.useEffect(() => {
     void loadTrends();
@@ -289,6 +308,17 @@ export default function BusinessAdminLoyaltyPage() {
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "50vh" }}>
         <CircularProgress sx={{ color: "var(--primary)" }} />
       </Box>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <Paper sx={{ p: 3, borderRadius: "20px", border: "1px solid var(--border)" }}>
+        <Typography sx={{ fontWeight: 800, mb: 1 }}>Loyalty settings</Typography>
+        <Alert severity="warning" sx={{ borderRadius: "12px" }}>
+          You do not have permission to view loyalty settings. This area is available to business admins and managers.
+        </Alert>
+      </Paper>
     );
   }
 
