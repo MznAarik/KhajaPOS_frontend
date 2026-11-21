@@ -25,7 +25,8 @@ export default function ReviewForm({
   const [name, setName] = React.useState(customerName ?? "");
   const [email, setEmail] = React.useState(customerEmail ?? "");
   const [submitting, setSubmitting] = React.useState(false);
-  const showSnackbar = (message: string, options?: any) => {
+  const showSnackbar = (message: string, options?: unknown) => {
+    void options;
     if (typeof window !== "undefined") {
       console.log(message);
     }
@@ -50,8 +51,10 @@ export default function ReviewForm({
       showSnackbar("Review submitted successfully", { severity: "success" });
       setComment("");
       if (onSuccess) onSuccess();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to submit review";
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Failed to submit review";
       showSnackbar(msg, { severity: "error" });
     } finally {
       setSubmitting(false);

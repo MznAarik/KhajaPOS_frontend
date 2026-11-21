@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import {
-  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, Grow, Fade, InputLabel, MenuItem, Paper, Select, Skeleton, Stack, Tab, Tabs,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
@@ -24,7 +24,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
-import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
+import { cardTopRightAccentFor } from "@/lib/ui";
 
 const fmtMoney = (v: number | string, currency = "NPR") =>
   `${currency} ${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -110,9 +110,9 @@ export default function SuperAdminSubscriptionsPage() {
   const [loading, setLoading] = React.useState(true);
   const [plans, setPlans] = React.useState<SubscriptionPlan[]>([]);
   const [subs, setSubs] = React.useState<BusinessSubscription[]>([]);
-  const [subCounts, setSubCounts] = React.useState<any>({});
+  const [subCounts, setSubCounts] = React.useState<Record<string, unknown>>({});
   const [payments, setPayments] = React.useState<SubscriptionPayment[]>([]);
-  const [payCounts, setPayCounts] = React.useState<any>({});
+  const [payCounts, setPayCounts] = React.useState<Record<string, unknown>>({});
   const [businesses, setBusinesses] = React.useState<SuperAdminBusiness[]>([]);
   const [planDialog, setPlanDialog] = React.useState<{ open: boolean; id?: number; name: string; price: string; currency: string; billing_cycle: string; trial_days: string; description: string; is_active: boolean; is_default: boolean; limitsText: string }>({ open: false, name: "", price: "0", currency: "NPR", billing_cycle: "monthly", trial_days: "0", description: "", is_active: true, is_default: false, limitsText: '{"orders_per_month":1000,"menu_items":200,"tables":30,"users":5}' });
   const [assignDialog, setAssignDialog] = React.useState<{ open: boolean; business_id: string; plan_id: string; status: string; auto_renew: boolean; notes: string }>({ open: false, business_id: "", plan_id: "", status: "active", auto_renew: true, notes: "" });
@@ -138,7 +138,7 @@ export default function SuperAdminSubscriptionsPage() {
     }
   }, [showSnackbar]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => { const t = setTimeout(() => { void load(); }, 0); return () => clearTimeout(t); }, [load]);
 
   const savePlan = async () => {
     if (!planDialog.name.trim()) {
@@ -147,8 +147,8 @@ export default function SuperAdminSubscriptionsPage() {
     }
     setSaving(true);
     try {
-      let limits: any = {};
-      try { limits = planDialog.limitsText ? JSON.parse(planDialog.limitsText) : {}; } catch { setShakePlan((k) => k + 1); throw new Error("Limits must be valid JSON."); }
+      let limits: Record<string, unknown> = {};
+      try { limits = planDialog.limitsText ? JSON.parse(planDialog.limitsText) as Record<string, unknown> : {}; } catch { setShakePlan((k) => k + 1); throw new Error("Limits must be valid JSON."); }
       await saveSuperAdminPlan({ name: planDialog.name, price: Number(planDialog.price || 0), currency: planDialog.currency, billing_cycle: planDialog.billing_cycle, trial_days: Number(planDialog.trial_days || 0), description: planDialog.description, is_active: planDialog.is_active, is_default: planDialog.is_default, limits }, planDialog.id);
       setPlanDialog((d) => ({ ...d, open: false }));
       showSnackbar(planDialog.id ? "Plan updated." : "Plan created.", "success");
@@ -232,13 +232,17 @@ export default function SuperAdminSubscriptionsPage() {
         </Stack>
 
         <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(3,minmax(0,1fr))", lg: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
-          {[
-            { label: "Plans", value: plans.length, accent: "var(--chart-1)" },
-            { label: "Active subs", value: subCounts.active ?? 0, accent: "#16a34a" },
-            { label: "Past due", value: subCounts.past_due ?? 0, accent: (subCounts.past_due ?? 0) > 0 ? "#f59e0b" : "var(--chart-2)", warn: (subCounts.past_due ?? 0) > 0 },
-            { label: "Overdue payments", value: payCounts.overdue ?? overdue.length, accent: (payCounts.overdue ?? overdue.length) > 0 ? "#dc2626" : "var(--chart-3)", warn: (payCounts.overdue ?? overdue.length) > 0 },
-            { label: "Paid revenue", value: fmtMoney(payCounts.revenue ?? 0), accent: "var(--chart-4, #0ea5e9)" },
-          ].map((k, idx) => (
+          {(() => {
+            const pastDue = Number(subCounts.past_due ?? 0);
+            const overdueCount = Number(payCounts.overdue ?? overdue.length);
+            return [
+              { label: "Plans", value: plans.length as string | number, accent: "var(--chart-1)", warn: false },
+              { label: "Active subs", value: Number(subCounts.active ?? 0) as string | number, accent: "#16a34a", warn: false },
+              { label: "Past due", value: pastDue as string | number, accent: pastDue > 0 ? "#f59e0b" : "var(--chart-2)", warn: pastDue > 0 },
+              { label: "Overdue payments", value: overdueCount as string | number, accent: overdueCount > 0 ? "#dc2626" : "var(--chart-3)", warn: overdueCount > 0 },
+              { label: "Paid revenue", value: fmtMoney(Number(payCounts.revenue ?? 0)) as string | number, accent: "var(--chart-4, #0ea5e9)", warn: false },
+            ];
+          })().map((k, idx) => (
             <Paper
               key={k.label}
               elevation={0}

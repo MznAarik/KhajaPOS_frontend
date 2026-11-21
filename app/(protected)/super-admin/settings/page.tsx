@@ -14,7 +14,7 @@ import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
 export default function SuperAdminSettingsPage() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [ops, setOps] = React.useState<any>(null);
+  const [ops, setOps] = React.useState<Record<string, unknown> | null>(null);
   const [maintenance, setMaintenance] = React.useState({ enabled: false, message: "The platform is temporarily under maintenance. Please try again later.", allow_super_admin: true });
   const { showSnackbar } = useAppSnackbar();
 
@@ -22,11 +22,14 @@ export default function SuperAdminSettingsPage() {
     if (!quiet) setLoading(true);
     try {
       const data = await getSuperAdminOperations();
-      setOps(data);
-      const m = data?.health?.maintenance ?? data?.settings?.maintenance_mode ?? {};
+      setOps(data as Record<string, unknown>);
+      const d = (data ?? {}) as Record<string, unknown>;
+      const health = (d.health ?? {}) as Record<string, unknown>;
+      const settings = (d.settings ?? {}) as Record<string, unknown>;
+      const m = (health.maintenance ?? settings.maintenance_mode ?? {}) as Record<string, unknown>;
       setMaintenance({
         enabled: !!m.enabled,
-        message: m.message || "The platform is temporarily under maintenance. Please try again later.",
+        message: typeof m.message === "string" && m.message ? m.message : "The platform is temporarily under maintenance. Please try again later.",
         allow_super_admin: m.allow_super_admin !== false,
       });
     } catch (e) {
@@ -36,7 +39,7 @@ export default function SuperAdminSettingsPage() {
     }
   }, [showSnackbar]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => { const t = setTimeout(() => { void load(); }, 0); return () => clearTimeout(t); }, [load]);
 
   const save = async () => {
     setSaving(true);
@@ -87,9 +90,18 @@ export default function SuperAdminSettingsPage() {
           </Stack>
           <Divider sx={{ my: 2.5 }} />
           <Typography sx={{ fontWeight: 900, mb: 0.75 }}>Operational status snapshot</Typography>
-          <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
-            Database: <strong>{ops?.health?.database?.ok ? "connected" : "issue"}</strong> · Queue failed jobs: <strong>{ops?.health?.queue?.failed_jobs ?? 0}</strong> · Cache: <strong>{ops?.health?.cache?.driver ?? "—"}</strong>
-          </Typography>
+          {(() => {
+            const o = (ops ?? {}) as Record<string, unknown>;
+            const h = (o.health ?? {}) as Record<string, unknown>;
+            const db = (h.database ?? {}) as Record<string, unknown>;
+            const q = (h.queue ?? {}) as Record<string, unknown>;
+            const c = (h.cache ?? {}) as Record<string, unknown>;
+            return (
+              <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
+                Database: <strong>{db.ok ? "connected" : "issue"}</strong> • Queue failed jobs: <strong>{String(q.failed_jobs ?? 0)}</strong> • Cache: <strong>{String(c.driver ?? "—")}</strong>
+              </Typography>
+            );
+          })()}
           <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 1 }}>
             Additional platform settings can be added here as backend support is introduced. Usage/backup/notification controls are available in their dedicated modules.
           </Typography>

@@ -78,7 +78,7 @@ api.interceptors.request.use((config) => {
 export type PlatformStatusAlert = {
   code: "MAINTENANCE_MODE" | "BUSINESS_SUSPENDED" | string;
   message: string;
-  data?: any;
+  data?: unknown;
 };
 
 const emitPlatformStatus = (alert: PlatformStatusAlert | null) => {
@@ -94,11 +94,12 @@ api.interceptors.response.use(
       "status" in response.data &&
       Number(response.data.status) === 0
     ) {
-      const code = (response.data as any)?.code;
+      const responseData = response.data as Record<string, unknown> | undefined;
+      const code = typeof responseData?.code === "string" ? responseData.code : undefined;
       if (code === "MAINTENANCE_MODE" || code === "BUSINESS_SUSPENDED") {
         emitPlatformStatus({
           code,
-          message: (response.data as any)?.message || "Service is temporarily unavailable.",
+          message: (typeof responseData?.message === "string" ? responseData.message : null) || "Service is temporarily unavailable.",
           data: response.data,
         });
       }
@@ -453,7 +454,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const res = await fetch(input, init);
 
-  let data: any = null;
+  let data: unknown = null;
 
   try {
     data = await res.json();
@@ -487,7 +488,7 @@ export async function apiRequest<T>(
     throw new Error(safeError({ response: { data } }, "Request failed."));
   }
 
-  return data;
+  return data as T;
 }
 
 export const unwrapApiData = <T,>(payload: unknown): T => {
@@ -775,16 +776,21 @@ export const placePublicOrder = async (payload: {
   sessionToken?: string;
   orderType?: OrderType;
 }) => {
-  const res = await api.post<PlaceOrderResponse>("/public/orders", {
-    table_id: payload.tableId,
-    remarks: payload.remarks?.trim() ?? "",
-    items: payload.items.map((item) => ({
-      menu_item_id: item.menuItemId,
-      quantity: item.quantity,
-    })),
-    ...(payload.orderType ? { order_type: payload.orderType } : {}),
-    ...(payload.sessionToken ? { session_token: payload.sessionToken } : {}),
-  });
+  const customerToken = getStoredCustomerToken();
+  const res = await api.post<PlaceOrderResponse>(
+    "/public/orders",
+    {
+      table_id: payload.tableId,
+      remarks: payload.remarks?.trim() ?? "",
+      items: payload.items.map((item) => ({
+        menu_item_id: item.menuItemId,
+        quantity: item.quantity,
+      })),
+      ...(payload.orderType ? { order_type: payload.orderType } : {}),
+      ...(payload.sessionToken ? { session_token: payload.sessionToken } : {}),
+    },
+    customerToken ? { headers: { Authorization: `Bearer ${customerToken}` } } : undefined,
+  );
 
   return normalizeOrder(unwrapApiData<PlaceOrderResponse["data"]>(res.data));
 };
@@ -1109,9 +1115,24 @@ export const deleteMenu = async (menuId: number) => {
 /* Superadmin: users, owners, restaurants + role-based access                  */
 /* -------------------------------------------------------------------------- */
 
-export type UserRole = "user" | "admin" | "super_admin";
+export type UserRole =
+  | "user"
+  | "admin"
+  | "super_admin"
+  | "manager"
+  | "cashier"
+  | "kitchen_staff";
 
-export const USER_ROLES: UserRole[] = ["user", "admin", "super_admin"];
+export const USER_ROLES: UserRole[] = [
+  "user",
+  "admin",
+  "super_admin",
+  "manager",
+  "cashier",
+  "kitchen_staff",
+];
+
+export const BUSINESS_STAFF_ROLES: UserRole[] = ["manager", "cashier", "kitchen_staff"];
 
 export const USER_ROLE_META: Record<
   UserRole,
@@ -1121,13 +1142,31 @@ export const USER_ROLE_META: Record<
     label: "Super Admin",
     color: "#7c3aed",
     bg: "#f3e8ff",
-    hint: "Full access to users, owners and restaurants",
+    hint: "Full access to platform management",
   },
   admin: {
-    label: "Owner",
+    label: "Business Admin",
     color: "#2563eb",
     bg: "#dbeafe",
-    hint: "Owns one restaurant, full access to its admin panel",
+    hint: "Owns and manages a restaurant workspace",
+  },
+  manager: {
+    label: "Manager",
+    color: "#0f766e",
+    bg: "#ccfbf1",
+    hint: "Restaurant operations manager with delegated capabilities",
+  },
+  cashier: {
+    label: "Cashier",
+    color: "#b45309",
+    bg: "#fef3c7",
+    hint: "Handles orders, payments, and customer/reward validation",
+  },
+  kitchen_staff: {
+    label: "Kitchen Staff",
+    color: "#b91c1c",
+    bg: "#fee2e2",
+    hint: "Handles kitchen/order preparation workflow",
   },
   user: {
     label: "User",
@@ -1541,7 +1580,7 @@ export type PlatformAnalytics = {
       unknown_images?: number;
       missing_images?: number;
       fully_known?: boolean;
-      breakdown?: any;
+      breakdown?: Record<string, unknown>;
       note?: string;
     };
     tables: Array<{
@@ -1557,6 +1596,30 @@ export const getPlatformAnalytics = async (businessId?: number): Promise<Platfor
     params: businessId ? { business_id: businessId } : undefined,
   });
   return unwrapApiData<PlatformAnalytics>(res.data);
+};
+
+/* Super-admin loyalty oversight (read-only) */
+export type SuperAdminPagination = { current_page: number; last_page: number; per_page: number; total: number };
+export type SuperAdminLoyaltyProgramsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyMembershipsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyRewardsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+export type SuperAdminLoyaltyAuditLogsResponse = { items: Record<string, unknown>[]; pagination: SuperAdminPagination };
+
+export const getSuperAdminLoyaltyPrograms = async (params?: { business_id?: number | string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/programs", { params });
+  return unwrapApiData<SuperAdminLoyaltyProgramsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyMemberships = async (params?: { business_id?: number | string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/memberships", { params });
+  return unwrapApiData<SuperAdminLoyaltyMembershipsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyRewards = async (params?: { business_id?: number | string; status?: string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/rewards", { params });
+  return unwrapApiData<SuperAdminLoyaltyRewardsResponse>(res.data);
+};
+export const getSuperAdminLoyaltyAuditLogs = async (params?: { business_id?: number | string; action?: string; search?: string; page?: number; per_page?: number }) => {
+  const res = await api.get("/superadmin/loyalty/audit-logs", { params });
+  return unwrapApiData<SuperAdminLoyaltyAuditLogsResponse>(res.data);
 };
 
 export type BusinessSettings = {
@@ -1603,6 +1666,108 @@ export const resendVerification = async (email: string): Promise<string> => {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Customer auth (QR loyalty / rewards)                                        */
+/* -------------------------------------------------------------------------- */
+
+export const CUSTOMER_TOKEN_STORAGE_KEY = "khajapos_customer_token";
+
+export type CustomerProfile = {
+  id: number;
+  name: string;
+  phone: string;
+  phone_verified_at: string | null;
+  email: string | null;
+  email_verified_at: string | null;
+  status: string;
+  last_login_at: string | null;
+  created_at?: string | null;
+};
+
+export type CustomerAuthResponse = {
+  customer?: CustomerProfile;
+  token?: string;
+  token_type?: string;
+  expires_at?: string | null;
+  verification_required?: boolean;
+  message?: string;
+  memberships?: Record<string, unknown>[];
+};
+
+export const getStoredCustomerToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const token = window.localStorage.getItem(CUSTOMER_TOKEN_STORAGE_KEY);
+  return token && token.trim() ? token.trim() : null;
+};
+
+export const setStoredCustomerToken = (token: string) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, token);
+};
+
+export const clearStoredCustomerToken = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CUSTOMER_TOKEN_STORAGE_KEY);
+};
+
+const customerAuthHeaders = () => {
+  const token = getStoredCustomerToken();
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+};
+
+export const customerRegister = async (payload: {
+  name: string;
+  email: string;
+  phone?: string;
+  password?: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/register", payload);
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerRequestOtp = async (payload: {
+  email: string;
+  purpose?: "login" | "registration";
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/request-otp", payload);
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerVerifyOtp = async (payload: {
+  email: string;
+  code: string;
+  name?: string;
+  password?: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/verify-otp", payload);
+  const data = unwrapApiData<CustomerAuthResponse>(res.data);
+  if (data?.token) setStoredCustomerToken(data.token);
+  return data;
+};
+
+export const customerLogin = async (payload: {
+  email: string;
+  password: string;
+}): Promise<CustomerAuthResponse> => {
+  const res = await api.post("/customer/auth/login", payload);
+  const data = unwrapApiData<CustomerAuthResponse>(res.data);
+  if (data?.token) setStoredCustomerToken(data.token);
+  return data;
+};
+
+export const getCustomerMe = async (): Promise<CustomerAuthResponse> => {
+  const res = await api.get("/customer/auth/me", { headers: customerAuthHeaders() });
+  return unwrapApiData<CustomerAuthResponse>(res.data);
+};
+
+export const customerLogout = async (): Promise<void> => {
+  try {
+    await api.post("/customer/auth/logout", null, { headers: customerAuthHeaders() });
+  } finally {
+    clearStoredCustomerToken();
+  }
+};
+
+/* -------------------------------------------------------------------------- */
 /* Superadmin: SaaS platform management                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -1630,7 +1795,7 @@ export type SuperAdminSaasOverview = SuperAdminOverview & {
     paidRevenue: AnalyticsGrowth;
   };
   monthly?: Array<{ key: string; label: string; businesses: number; orders: number; orderRevenue: number; paidRevenue: number }>;
-  health?: any;
+  health?: Record<string, unknown>;
 };
 
 export type SubscriptionPlan = {
@@ -1644,7 +1809,7 @@ export type SubscriptionPlan = {
   trial_days: number;
   is_active: boolean;
   is_default: boolean;
-  features?: string[] | Record<string, any> | null;
+  features?: string[] | Record<string, unknown> | null;
   limits?: Record<string, number> | null;
   subscriptions_count?: number;
 };
@@ -1695,7 +1860,7 @@ export type SuperAdminNotificationItem = {
   business_id?: number | null;
   is_read: boolean;
   read_at?: string | null;
-  data?: any;
+  data?: Record<string, unknown> | null;
   created_at: string;
   business?: { id: number; name: string } | null;
 };
@@ -1745,22 +1910,22 @@ export const getSuperAdminSaasOverview = async (): Promise<SuperAdminSaasOvervie
 
 export const getSuperAdminBusinessDetails = async (id: number) => {
   const res = await api.get(`/superadmin/businesses/${id}/details`);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const suspendSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason: string }) => {
   const res = await api.post(`/superadmin/businesses/${id}/suspend`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const reactivateSuperAdminBusiness = async (id: number, payload: { confirm: boolean; reason?: string }) => {
   const res = await api.post(`/superadmin/businesses/${id}/reactivate`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const getSuperAdminBusinessAnalytics = async (id: number) => {
   const res = await api.get(`/superadmin/businesses/${id}/analytics`);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const getSuperAdminPlans = async (): Promise<{ items: SubscriptionPlan[] }> => {
@@ -1768,72 +1933,320 @@ export const getSuperAdminPlans = async (): Promise<{ items: SubscriptionPlan[] 
   return unwrapApiData(res.data);
 };
 
-export const saveSuperAdminPlan = async (payload: any, id?: number) => {
+export const saveSuperAdminPlan = async (payload: Record<string, unknown>, id?: number) => {
   const res = id ? await api.put(`/superadmin/plans/${id}`, payload) : await api.post("/superadmin/plans", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminSubscriptions = async (params?: any): Promise<{ items: BusinessSubscription[]; counts: any }> => {
+export const getSuperAdminSubscriptions = async (params?: Record<string, unknown>): Promise<{ items: BusinessSubscription[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/subscriptions", { params });
   return unwrapApiData(res.data);
 };
 
-export const assignSuperAdminSubscription = async (businessId: number, payload: any) => {
+export const assignSuperAdminSubscription = async (businessId: number, payload: Record<string, unknown>) => {
   const res = await api.post(`/superadmin/businesses/${businessId}/subscription`, payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminPayments = async (params?: any): Promise<{ items: SubscriptionPayment[]; counts: any }> => {
+export const getSuperAdminPayments = async (params?: Record<string, unknown>): Promise<{ items: SubscriptionPayment[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/payments", { params });
   return unwrapApiData(res.data);
 };
 
-export const recordSuperAdminPayment = async (payload: any) => {
+export const recordSuperAdminPayment = async (payload: Record<string, unknown>) => {
   const res = await api.post("/superadmin/payments", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+export const getSuperAdminNotifications = async (params?: Record<string, unknown>): Promise<{ items: SuperAdminNotificationItem[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/notifications", { params });
   return unwrapApiData(res.data);
 };
 
 export const markSuperAdminNotificationsRead = async (ids?: number[]) => {
   const res = await api.post("/superadmin/notifications/read", { ids: ids ?? [] });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getAdminNotifications = async (params?: any): Promise<{ items: SuperAdminNotificationItem[]; counts: any }> => {
+export const getAdminNotifications = async (params?: Record<string, unknown>): Promise<{ items: SuperAdminNotificationItem[]; counts: Record<string, unknown> }> => {
   const res = await api.get("/admin/notifications", { params });
   return unwrapApiData(res.data);
 };
 
 export const markAdminNotificationsRead = async (ids?: number[]) => {
   const res = await api.post("/admin/notifications/read", { ids: ids ?? [] });
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminUsage = async (): Promise<{ summary: any; items: BusinessUsageItem[] }> => {
+export const getSuperAdminUsage = async (): Promise<{ summary: Record<string, unknown>; items: BusinessUsageItem[] }> => {
   const res = await api.get("/superadmin/usage");
   return unwrapApiData(res.data);
 };
 
 export const getSuperAdminOperations = async () => {
   const res = await api.get("/superadmin/operations");
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
 export const setSuperAdminMaintenance = async (payload: { enabled: boolean; message?: string; allow_super_admin?: boolean }) => {
   const res = await api.post("/superadmin/operations/maintenance", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
 };
 
-export const getSuperAdminBackups = async (): Promise<{ items: BackupRecordItem[]; summary: any }> => {
+export const getSuperAdminBackups = async (): Promise<{ items: BackupRecordItem[]; summary: Record<string, unknown> }> => {
   const res = await api.get("/superadmin/backups");
   return unwrapApiData(res.data);
 };
 
-export const recordSuperAdminBackup = async (payload: any) => {
+export const recordSuperAdminBackup = async (payload: Record<string, unknown>) => {
   const res = await api.post("/superadmin/backups", payload);
-  return unwrapApiData<any>(res.data);
+  return unwrapApiData<Record<string, unknown>>(res.data);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Loyalty (business admin/staff)                                              */
+/* -------------------------------------------------------------------------- */
+
+export type LoyaltyTier = {
+  id: number;
+  loyalty_program_id?: number;
+  business_id?: number;
+  name: string | null;
+  threshold_orders: number;
+  reward_type: "percentage_discount" | "fixed_discount" | "free_item" | "free_drink" | "custom" | string;
+  reward_value: string | number | null;
+  reward_description: string | null;
+  validity_days: number | null;
+  min_order_amount: string | number | null;
+  applicable_order_types: string[] | null;
+  is_active: boolean;
+  is_stackable?: boolean;
+  sort_order?: number;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type LoyaltyProgram = {
+  id?: number;
+  business_id?: number;
+  is_enabled: boolean;
+  progress_policy: "reset" | "accumulate" | "rolling" | string;
+  eligible_order_types: string[] | null;
+  eligible_order_statuses: string[] | null;
+  allow_reward_stacking: boolean;
+  settings?: Record<string, unknown> | null;
+  tiers: LoyaltyTier[];
+};
+
+export const getLoyaltyProgram = async (): Promise<LoyaltyProgram> => {
+  const res = await api.get("/admin/loyalty/program");
+  return unwrapApiData<LoyaltyProgram>(res.data);
+};
+
+export const saveLoyaltyProgram = async (payload: Partial<LoyaltyProgram>): Promise<LoyaltyProgram> => {
+  const res = await api.put("/admin/loyalty/program", payload);
+  return unwrapApiData<LoyaltyProgram>(res.data);
+};
+
+export const createLoyaltyTier = async (payload: Partial<LoyaltyTier>): Promise<LoyaltyTier> => {
+  const res = await api.post("/admin/loyalty/tiers", payload);
+  return unwrapApiData<LoyaltyTier>(res.data);
+};
+
+export const updateLoyaltyTier = async (id: number, payload: Partial<LoyaltyTier>): Promise<LoyaltyTier> => {
+  const res = await api.put(`/admin/loyalty/tiers/${id}`, payload);
+  return unwrapApiData<LoyaltyTier>(res.data);
+};
+
+export const deleteLoyaltyTier = async (id: number): Promise<void> => {
+  await api.delete(`/admin/loyalty/tiers/${id}`);
+};
+
+export const getLoyaltyMemberships = async (params?: { search?: string }): Promise<Record<string, unknown>[]> => {
+  const res = await api.get("/admin/loyalty/memberships", { params });
+  return unwrapApiData<Record<string, unknown>[]>(res.data);
+};
+
+export const getLoyaltyRewards = async (params?: { status?: string; customer_id?: number; reward_code?: string }): Promise<Record<string, unknown>[]> => {
+  const res = await api.get("/admin/loyalty/rewards", { params });
+  return unwrapApiData<Record<string, unknown>[]>(res.data);
+};
+
+export const lookupLoyaltyReward = async (code: string): Promise<{ reward: Record<string, unknown>; redeemable: boolean; effective_status: string }> => {
+  const res = await api.get("/admin/loyalty/rewards/lookup", { params: { code } });
+  return unwrapApiData(res.data);
+};
+
+export const redeemLoyaltyReward = async (payload: { reward_code: string; order_id?: number; discount_amount?: number; metadata?: Record<string, unknown> }) => {
+  const res = await api.post("/admin/loyalty/rewards/redeem", payload);
+  return unwrapApiData<Record<string, unknown>>(res.data);
+};
+
+export const revokeLoyaltyReward = async (id: number, reason: string) => {
+  const res = await api.post(`/admin/loyalty/rewards/${id}/revoke`, { reason });
+  return unwrapApiData<Record<string, unknown>>(res.data);
+};
+
+export const getLoyaltyMembership = async (customerId: number) => {
+  const res = await api.get("/admin/loyalty/membership", { params: { customer_id: customerId } });
+  return unwrapApiData<Record<string, unknown>>(res.data);
+};
+
+export type LoyaltyBusinessSummary = {
+  program: {
+    id?: number;
+    is_enabled: boolean;
+    progress_policy?: string | null;
+    eligible_order_statuses?: string[] | null;
+    eligible_order_types?: string[] | null;
+  } | null;
+  members: {
+    total: number;
+    active: number;
+    with_progress: number;
+    with_available_rewards: number;
+    lifetime_eligible_orders: number;
+  };
+  rewards: {
+    issued: number;
+    available: number;
+    redeemed: number;
+    expired: number;
+    revoked: number;
+  };
+  recent_redemptions: Array<{
+    id: number;
+    status?: string | null;
+    discount_amount?: string | number | null;
+    processed_role?: string | null;
+    created_at?: string | null;
+    reward?: { id: number; reward_code?: string; reward_type?: string; reward_value?: string | number | null; reward_description?: string | null; status?: string | null } | null;
+    customer?: { id: number; name?: string | null; email?: string | null; phone?: string | null } | null;
+    order?: { id: number; table_no?: string | null; order_type?: string | null; total_amount?: string | number | null; order_status?: string | null } | null;
+  }>;
+};
+
+export const getLoyaltySummary = async (): Promise<LoyaltyBusinessSummary> => {
+  const res = await api.get("/admin/loyalty/summary");
+  return unwrapApiData<LoyaltyBusinessSummary>(res.data);
+};
+
+export type LoyaltyAuditLogItem = {
+  id: number;
+  actor_id?: number | null;
+  actor_role?: string | null;
+  action: string;
+  target_type?: string | null;
+  target_id?: number | null;
+  business_id?: number | null;
+  customer_id?: number | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  reason?: string | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string | null;
+};
+
+export type LoyaltyAuditLogsResponse = {
+  items: LoyaltyAuditLogItem[];
+  pagination: { current_page: number; per_page: number; total: number; last_page: number };
+};
+
+export const getLoyaltyAuditLogs = async (params?: {
+  action?: string;
+  search?: string;
+  customer_id?: number;
+  target_type?: string;
+  target_id?: number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<LoyaltyAuditLogsResponse> => {
+  const res = await api.get("/admin/loyalty/audit-logs", { params });
+  return unwrapApiData<LoyaltyAuditLogsResponse>(res.data);
+};
+
+export type LoyaltyTrendsResponse = {
+  range_days: number;
+  from: string;
+  to: string;
+  totals: { issued: number; available: number; redeemed: number; revoked: number; expired: number };
+  series: Array<{ date: string; issued: number; redeemed: number; revoked: number; expired: number }>;
+  top_tiers: Array<{ tier_id: number | null; tier_name: string; issued_count: number }>;
+  top_reasons: Array<{ reason: string; count: number }>;
+};
+
+export const getLoyaltyTrends = async (params?: { days?: number }): Promise<LoyaltyTrendsResponse> => {
+  const res = await api.get("/admin/loyalty/trends", { params });
+  return unwrapApiData<LoyaltyTrendsResponse>(res.data);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Staff management (business admin)                                           */
+/* -------------------------------------------------------------------------- */
+
+export type StaffPermissionOverride = {
+  permission_key: string;
+  is_granted: boolean;
+  expires_at?: string | null;
+};
+
+export type StaffMember = {
+  id: number;
+  business_id: number;
+  user_id: number;
+  role: string;
+  status: string;
+  is_primary?: boolean;
+  joined_at?: string | null;
+  last_access_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    is_active?: boolean;
+    email_verified_at?: string | null;
+    created_at?: string | null;
+  } | null;
+  permission_overrides?: StaffPermissionOverride[];
+};
+
+export type StaffPermissionsCatalog = {
+  permissions: Array<{ key: string; name: string; group?: string | null; description?: string | null; sort_order?: number }>;
+  role_defaults: Record<string, string[]>;
+  staff_roles: string[];
+};
+
+export const getStaffMembers = async (): Promise<StaffMember[]> => {
+  const res = await api.get("/admin/staff");
+  return unwrapApiData<StaffMember[]>(res.data);
+};
+
+export const getStaffPermissionsCatalog = async (): Promise<StaffPermissionsCatalog> => {
+  const res = await api.get("/admin/staff/permissions");
+  return unwrapApiData<StaffPermissionsCatalog>(res.data);
+};
+
+export const createStaffMember = async (payload: { name: string; email: string; password: string; role: string; status?: string }): Promise<{ member: StaffMember }> => {
+  const res = await api.post("/admin/staff", payload);
+  return unwrapApiData(res.data);
+};
+
+export const updateStaffMember = async (memberId: number, payload: { name?: string; role?: string; status?: string; is_active?: boolean }): Promise<{ member: StaffMember }> => {
+  const res = await api.put(`/admin/staff/${memberId}`, payload);
+  return unwrapApiData(res.data);
+};
+
+export const updateStaffMemberPermissions = async (memberId: number, overrides: StaffPermissionOverride[]): Promise<{ member_id: number; user_id: number; permission_overrides: StaffPermissionOverride[] }> => {
+  const res = await api.put(`/admin/staff/${memberId}/permissions`, { overrides });
+  return unwrapApiData(res.data);
+};
+
+export const removeStaffMember = async (memberId: number): Promise<void> => {
+  await api.delete(`/admin/staff/${memberId}`);
 };

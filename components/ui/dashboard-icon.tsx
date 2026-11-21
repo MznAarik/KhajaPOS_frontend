@@ -46,7 +46,7 @@ const DashboardIcon = forwardRef<DashboardIconHandle, DashboardIconProps>(
    (e?: React.MouseEvent<HTMLDivElement>) => {
     if (!isAnimated || reduced) return;
     if (!isControlled.current) controls.start("animate");
-    else onMouseEnter?.(e as any);
+    else onMouseEnter?.(e as React.MouseEvent<HTMLDivElement>);
    },
    [controls, reduced, isAnimated, onMouseEnter],
   );
@@ -54,12 +54,10 @@ const DashboardIcon = forwardRef<DashboardIconHandle, DashboardIconProps>(
   const handleLeave = useCallback(
    (e?: React.MouseEvent<HTMLDivElement>) => {
     if (!isControlled.current) controls.start("normal");
-    else onMouseLeave?.(e as any);
+    else onMouseLeave?.(e as React.MouseEvent<HTMLDivElement>);
    },
    [controls, onMouseLeave],
   );
-
-  const smoothEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
   const iconVariants: Variants = {
    normal: { scale: 1, rotate: 0 },

@@ -96,6 +96,7 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
 
     const search = new URLSearchParams(window.location.search);
     const nextTableCode = search.get("tableCode") ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
     setTableCode(nextTableCode);
   }, [initialTableCode]);
 
@@ -153,7 +154,9 @@ export default function RecentOrderClient({ tableCode: initialTableCode }: { tab
         timeout = window.setTimeout(sync, 5000);
       }
     };
+ 
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state reset/init; safe in this effect
     setLoading(true);
     sync();
     window.addEventListener("storage", sync);

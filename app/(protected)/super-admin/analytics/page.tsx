@@ -24,14 +24,13 @@ import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import useMeasure from "react-use-measure";
 import {
   getPlatformAnalytics,
   type AnalyticsGrowth,
-  type AnalyticsTrafficPoint,
+
   type AnalyticsTrendValue,
   type PlatformAnalytics,
 } from "@/lib/api";
@@ -71,17 +70,6 @@ const formatClock = (iso: string) => {
   if (Number.isNaN(date.getTime())) return "just now";
 
   return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-};
-
-const formatTrafficTime = (point: AnalyticsTrafficPoint) => {
-  if (point.at) {
-    const date = new Date(point.at);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
-    }
-  }
-
-  return point.label;
 };
 
 const titleCase = (value: string) =>
@@ -497,71 +485,6 @@ function TrendChart({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Requests-per-minute bars                                                    */
-/* -------------------------------------------------------------------------- */
-
-function RequestBars({ points, height = 150 }: { points: AnalyticsTrafficPoint[]; height?: number }) {
-  const max = Math.max(...points.map((point) => point.requests), 1);
-
-  if (points.length === 0) {
-    return <EmptyState title="No request telemetry captured yet" hint="Traffic is recorded automatically once the API is used." />;
-  }
-
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: "2px",
-          height,
-          width: "100%",
-          px: 0.25,
-          pt: 1,
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        {points.map((point) => {
-          const ratio = point.requests / max;
-          const isPeak = point.requests === max && point.requests > 0;
-          const hasErrors = point.errors > 0;
-
-          return (
-            <Box
-              key={point.key}
-              title={`${formatTrafficTime(point)} · ${formatNumber(point.requests)} requests${hasErrors ? ` · ${formatNumber(point.errors)} errors` : ""}`}
-              sx={{
-                flex: "1 1 0",
-                minWidth: "1px",
-                height: `${Math.max(ratio * 100, point.requests > 0 ? 4 : 1.5)}%`,
-                borderRadius: "3px 3px 1px 1px",
-                backgroundColor: hasErrors
-                  ? "var(--destructive)"
-                  : isPeak
-                    ? "var(--chart-2)"
-                    : "color-mix(in srgb, var(--chart-2) 52%, transparent)",
-                opacity: point.requests === 0 ? 0.28 : 1,
-                transition: "height 320ms ease, background-color 220ms ease",
-              }}
-            />
-          );
-        })}
-      </Box>
-      <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.6 }}>
-        {[points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((point, index) => (
-          <Typography
-            key={`${point.key}-${index}`}
-            sx={{ fontSize: "0.68rem", fontWeight: 750, color: "var(--muted-foreground)" }}
-          >
-            {formatTrafficTime(point)}
-          </Typography>
-        ))}
-      </Stack>
-    </Box>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
 /* Page                                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -575,21 +498,6 @@ const metricMeta: Record<
   revenue: { label: "Revenue", color: "var(--chart-1)", format: (value) => formatCurrency(value) },
 };
 
-const methodColor = (method: string) => {
-  switch (method.toUpperCase()) {
-    case "GET":
-      return "var(--chart-2)";
-    case "POST":
-      return "var(--chart-3)";
-    case "PUT":
-    case "PATCH":
-      return "var(--chart-1)";
-    case "DELETE":
-      return "var(--destructive)";
-    default:
-      return "var(--chart-4)";
-  }
-};
 
 const headCellSx = {
   fontSize: "0.66rem",
@@ -643,8 +551,7 @@ export default function AdminAnalyticsPage() {
   const [failed, setFailed] = React.useState(false);
   const [metric, setMetric] = React.useState<AnalyticsTrendValue>("businesses");
   const [trendMode, setTrendMode] = React.useState<"monthly" | "cumulative">("monthly");
-  const [trafficRange, setTrafficRange] = React.useState<"hour" | "day">("hour");
-  const [businesses, setBusinesses] = React.useState<any[]>([]);
+  const [businesses, setBusinesses] = React.useState<Record<string, unknown>[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<string>("all");
   const { showSnackbar } = useAppSnackbar();
 
@@ -680,9 +587,9 @@ export default function AdminAnalyticsPage() {
 
   React.useEffect(() => {
     api.get("/superadmin/businesses")
-      .then((res: any) => {
-        const data = res.data?.data ?? res.data ?? [];
-        const items = Array.isArray(data) ? data : data?.items;
+      .then((res: { data?: unknown }) => {
+        const data = (res.data as { data?: unknown })?.data ?? res.data ?? [];
+        const items = Array.isArray(data) ? data : (data as { items?: unknown[] })?.items;
         setBusinesses(Array.isArray(items) ? items : []);
       })
       .catch(() => setBusinesses([]));
@@ -719,12 +626,10 @@ export default function AdminAnalyticsPage() {
     return monthly.map((point) => ({ label: point.label, value: point[metric] }));
   }, [data, metric, trendMode]);
 
-  const trafficPoints = React.useMemo<AnalyticsTrafficPoint[]>(() => {
-    if (!data) return [];
-    return trafficRange === "hour" ? data.usage.requestsPerMinute : data.usage.requestsPerHour;
-  }, [data, trafficRange]);
-
-  const businessesForSelection = data?.overview.topBusinesses ?? [];
+  const businessesForSelection = React.useMemo(
+    () => data?.overview.topBusinesses ?? [],
+    [data],
+  );
   const filteredBusiness = React.useMemo(() => {
     if (selectedBusinessId === "all") return null;
     const analyticsBusiness = businessesForSelection.find((business) => String(business.id) === selectedBusinessId);
@@ -793,7 +698,6 @@ export default function AdminAnalyticsPage() {
   const visibleBusinesses = selectedBusinessId === "all"
     ? topBusinesses
     : filteredBusiness ? [filteredBusiness] : [];
-  const usage = data.usage;
   const footprint = data.data;
 
   const dailyRevenue = daily.reduce((sum, point) => sum + point.revenue, 0);
@@ -803,13 +707,10 @@ export default function AdminAnalyticsPage() {
     null,
   );
 
-  const businessMax = Math.max(...businessTypes.map((type) => type.count), 1);
   const tableSizeMax = Math.max(...footprint.tables.map((table) => footprint.businessScoped ? table.rows : table.sizeBytes), 1);
   const totalRows = footprint.tables.reduce((sum, table) => sum + table.rows, 0);
 
   const activeMeta = metricMeta[metric];
-  const trafficPeak = Math.max(...trafficPoints.map((point) => point.requests), 0);
-  const trafficCurrent = trafficPoints[trafficPoints.length - 1]?.requests ?? 0;
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>
@@ -908,8 +809,8 @@ export default function AdminAnalyticsPage() {
               >
                 <MenuItem value="all">All businesses</MenuItem>
                 {businesses.map((b) => (
-                  <MenuItem key={b.id} value={String(b.id)}>
-                    {b.name}
+                  <MenuItem key={String(b.id)} value={String(b.id)}>
+                    {String(b.name ?? "")}
                   </MenuItem>
                 ))}
               </Select>
@@ -955,9 +856,9 @@ export default function AdminAnalyticsPage() {
         <SectionCard>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.2rem" }, fontWeight: 900 }}>{filteredBusiness.name} — business analytics</Typography>
+              <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.2rem" }, fontWeight: 900 }}>{String(filteredBusiness.name ?? "")} — business analytics</Typography>
               <Typography sx={{ color: "var(--muted-foreground)", fontWeight: 650, fontSize: "0.88rem" }}>
-                {titleCase(filteredBusiness.businessType)} · {filteredBusiness.isActive ? "Active" : "Inactive"} · Focused view
+                {titleCase(String(filteredBusiness.businessType ?? ""))} • {filteredBusiness.isActive ? "Active" : "Inactive"} • Focused view
               </Typography>
             </Box>
             <Button size="small" onClick={() => void withViewTransition(() => setSelectedBusinessId("all"))} sx={{ borderRadius: "10px", fontWeight: 800 }}>
@@ -1316,7 +1217,7 @@ export default function AdminAnalyticsPage() {
                                 overflowWrap: "anywhere",
                               }}
                             >
-                              {business.name}
+                              {String(business.name ?? "")}
                             </Typography>
                             <Chip
                               size="small"
@@ -1332,7 +1233,7 @@ export default function AdminAnalyticsPage() {
                             />
                             <Chip
                               size="small"
-                              label={titleCase(business.businessType)}
+                              label={titleCase(String(business.businessType ?? ""))}
                               variant="outlined"
                               sx={{ maxWidth: { xs: "100%", sm: 240 }, height: 22, fontSize: "0.66rem", fontWeight: 800, borderRadius: "999px", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
                             />
@@ -1695,12 +1596,12 @@ export default function AdminAnalyticsPage() {
                           {index + 1}
                         </Box>
                         <Box component="span" sx={{ fontWeight: 850, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {business.name}
+                          {String(business.name ?? "")}
                         </Box>
                       </Stack>
                     </TableCell>
                     <TableCell sx={{ ...bodyCellSx, color: "var(--muted-foreground)" }}>
-                      {business.businessType === "—" ? "—" : titleCase(business.businessType)}
+                      {business.businessType === "—" ? "—" : titleCase(String(business.businessType ?? ""))}
                     </TableCell>
                     <TableCell sx={bodyCellSx}>
                       <Box

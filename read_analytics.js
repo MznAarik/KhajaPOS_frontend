@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs');
 const path = 'app/(protected)/admin/analytics/page.tsx';
 const s = fs.readFileSync(path, 'utf8');

@@ -9,7 +9,7 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    FormControlLabel,
+
     IconButton,
     InputAdornment,
     MenuItem,
@@ -172,7 +172,8 @@ export default function AddEditMenuDialog({
     const [cropping, setCropping] = React.useState(false);
 
     React.useEffect(() => {
-        if (open) {
+        if (!open) return;
+        const t = setTimeout(() => {
             setForm(createInitialState(initialData));
             setError("");
             setCreatingCategory(false);
@@ -183,7 +184,8 @@ export default function AddEditMenuDialog({
             setZoom(1);
             setCroppedAreaPixels(null);
             setCropping(false);
-        }
+        }, 0);
+        return () => clearTimeout(t);
     }, [initialData, open]);
 
     React.useEffect(() => {

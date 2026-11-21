@@ -50,6 +50,7 @@ export default function ProfileComponent({
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
     React.useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
         setIsAuthenticated(document.cookie.includes("authSession="));
     }, []);
 

@@ -26,13 +26,20 @@ import {
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {
+  Alert,
+  CircularProgress,
+} from "@mui/material";
+import RedeemRoundedIcon from "@mui/icons-material/RedeemRounded";
+import {
   FOOD_FILTER_LABELS,
   FOOD_FILTER_ORDER,
   getAdminOrderDays,
   getAdminOrders,
   getCategories,
   getOrderTypeLabel,
+  lookupLoyaltyReward,
   matchesFoodFilter,
+  redeemLoyaltyReward,
   updateAdminOrder,
   updateAdminOrderStatus,
   type FoodFilterKey,
@@ -41,6 +48,7 @@ import {
   type OrderStatus,
   type OrderType,
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 
@@ -149,6 +157,11 @@ const getNextOrderAction = (
 };
 
 export default function OrdersPage() {
+  const { user, hasPermission } = useAuth();
+  const role = user?.role ?? "";
+  const canRedeemReward = hasPermission("loyalty.redeem") || role === "admin" || role === "manager" || role === "cashier";
+  const canManageOrders = hasPermission("orders.manage");
+
   const [orders, setOrders] = React.useState<KitchenOrder[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [updatingId, setUpdatingId] = React.useState<number | null>(null);
@@ -163,6 +176,14 @@ export default function OrdersPage() {
   const [editOrderType, setEditOrderType] = React.useState<OrderType>("dine_in");
   const [editItems, setEditItems] = React.useState<Array<{ id: number; name: string; quantity: number; price: string }>>([]);
   const [editSaving, setEditSaving] = React.useState(false);
+
+  const [redeemOrder, setRedeemOrder] = React.useState<KitchenOrder | null>(null);
+  const [redeemCode, setRedeemCode] = React.useState("");
+  const [redeemLookup, setRedeemLookup] = React.useState<Record<string, unknown> | null>(null);
+  const [redeemError, setRedeemError] = React.useState("");
+  const [redeemLookupLoading, setRedeemLookupLoading] = React.useState(false);
+  const [redeemSubmitting, setRedeemSubmitting] = React.useState(false);
+
   const { showSnackbar } = useAppSnackbar();
 
   const fetchOrders = React.useCallback(async (options?: { silent?: boolean }) => {
@@ -180,7 +201,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, showSnackbar]);
 
   const fetchDays = React.useCallback(async () => {
     try {
@@ -191,7 +212,7 @@ export default function OrdersPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchDays();
+    const init = setTimeout(() => { fetchDays(); }, 0);
 
     const DAYS_REFRESH_MS = 600000;
     const daysInterval = window.setInterval(fetchDays, DAYS_REFRESH_MS);
@@ -201,6 +222,7 @@ export default function OrdersPage() {
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      clearTimeout(init);
       window.clearInterval(daysInterval);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -219,8 +241,10 @@ export default function OrdersPage() {
   }, []);
 
   React.useEffect(() => {
-    setLoading(true);
-    void fetchOrders();
+    const init = setTimeout(() => {
+      setLoading(true);
+      void fetchOrders();
+    }, 0);
 
     const ORDERS_POLL_MS = 15000;
     const interval = window.setInterval(() => {
@@ -236,6 +260,7 @@ export default function OrdersPage() {
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      clearTimeout(init);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -243,7 +268,7 @@ export default function OrdersPage() {
 
   const handleStatusChange = async (orderId: number, nextStatus: OrderStatus) => {
     const order = orders.find((item) => item.id === orderId);
-    if (!order || isLocked(order.status)) return;
+    if (!order || isLocked(order.status) || !canManageOrders) return;
 
     setUpdatingId(orderId);
     try {
@@ -261,7 +286,7 @@ export default function OrdersPage() {
   };
 
   const openEditDialog = (order: KitchenOrder) => {
-    if (isLocked(order.status)) return;
+    if (isLocked(order.status) || !canManageOrders) return;
 
     setEditingOrder(order);
     setEditRemarks(order.remarks ?? "");
@@ -318,6 +343,77 @@ export default function OrdersPage() {
       showSnackbar(safeError(error, "Failed to update order."), "error");
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const openRedeemDialog = (order: KitchenOrder) => {
+    if (order.status === "cancelled") return;
+    setRedeemOrder(order);
+    setRedeemCode("");
+    setRedeemLookup(null);
+    setRedeemError("");
+  };
+
+  const closeRedeemDialog = () => {
+    if (redeemSubmitting) return;
+    setRedeemOrder(null);
+    setRedeemCode("");
+    setRedeemLookup(null);
+    setRedeemError("");
+  };
+
+  const estimateCashDiscount = React.useCallback((reward: Record<string, unknown> | null | undefined, orderTotal: number) => {
+    const total = Math.max(0, Number(orderTotal) || 0);
+    const value = reward?.reward_value != null ? Math.max(0, Number(reward.reward_value) || 0) : null;
+    const type = String(reward?.reward_type || "").toLowerCase();
+    let discount = 0;
+    if (value != null) {
+      if (type === "percentage") discount = (total * value) / 100;
+      else discount = value;
+    }
+    discount = Math.max(0, Math.min(total, discount));
+    return Math.round(discount * 100) / 100;
+  }, []);
+
+  const handleLookupRedeemCode = async () => {
+    const code = redeemCode.trim();
+    if (!code) {
+      setRedeemError("Enter a reward code.");
+      return;
+    }
+    setRedeemLookupLoading(true);
+    setRedeemError("");
+    setRedeemLookup(null);
+    try {
+      const result = await lookupLoyaltyReward(code);
+      setRedeemLookup(result);
+    } catch (error) {
+      setRedeemError(safeError(error, "Failed to look up reward."));
+    } finally {
+      setRedeemLookupLoading(false);
+    }
+  };
+
+  const handleRedeemForOrder = async () => {
+    if (!redeemOrder || !(redeemLookup?.reward as Record<string, unknown> | undefined)?.reward_code || !redeemLookup?.redeemable) return;
+    setRedeemSubmitting(true);
+    try {
+      const discountAmount = estimateCashDiscount(redeemLookup.reward as Record<string, unknown> | null | undefined, Number(redeemOrder.totalAmount || 0));
+      await redeemLoyaltyReward({
+        reward_code: String((redeemLookup.reward as Record<string, unknown>).reward_code ?? ""),
+        order_id: redeemOrder.id,
+        discount_amount: discountAmount,
+        metadata: { source: "orders_cash_settlement" },
+      });
+      showSnackbar(`Reward applied to Order #${redeemOrder.id} (cash discount Rs. ${discountAmount.toFixed(2)}).`, "success");
+      setRedeemOrder(null);
+      setRedeemCode("");
+      setRedeemLookup(null);
+      setRedeemError("");
+    } catch (error) {
+      showSnackbar(safeError(error, "Failed to apply reward."), "error");
+    } finally {
+      setRedeemSubmitting(false);
     }
   };
 
@@ -974,25 +1070,38 @@ export default function OrdersPage() {
                     Update Status
                   </Typography>
                   {locked ? (
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        px: 2,
-                        py: 1.5,
-                        borderRadius: 3,
-                        border: "1px solid var(--border)",
-                        backgroundColor: "var(--card)",
-                      }}
-                    >
-                      <StatusChip status={order.status} />
-                    </Paper>
+                    <Stack spacing={1}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          px: 2,
+                          py: 1.5,
+                          borderRadius: 3,
+                          border: "1px solid var(--border)",
+                          backgroundColor: "var(--card)",
+                        }}
+                      >
+                        <StatusChip status={order.status} />
+                      </Paper>
+                      {canRedeemReward && order.status !== "cancelled" ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<RedeemRoundedIcon />}
+                          onClick={() => openRedeemDialog(order)}
+                          sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800, alignSelf: "flex-start" }}
+                        >
+                          Apply reward (cash)
+                        </Button>
+                      ) : null}
+                    </Stack>
                   ) : (
                     <Stack
                       direction="row"
                       spacing={1}
                       sx={{ width: "100%" }}
                     >
-                      {nextAction ? (
+                      {canManageOrders && nextAction ? (
                         <Button
                           fullWidth
                           size="small"
@@ -1013,40 +1122,63 @@ export default function OrdersPage() {
                           {isUpdating ? "Updating..." : nextAction.label}
                         </Button>
                       ) : null}
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        disabled={isUpdating}
-                        onClick={() => handleStatusChange(order.id, "cancelled")}
-                        sx={{
-                          minHeight: { xs: 38, sm: 44 },
-                          px: { xs: 1, sm: 2 },
-                          borderRadius: { xs: "12px", sm: "14px" },
-                          fontSize: { xs: "0.76rem", sm: "0.875rem" },
-                          fontWeight: 850,
-                          textTransform: "none",
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <IconButton
-                        aria-label={`edit order ${order.id}`}
-                        disabled={isUpdating}
-                        onClick={() => openEditDialog(order)}
-                        sx={{
-                          width: { xs: 38, sm: 44 },
-                          height: { xs: 38, sm: 44 },
-                          flexShrink: 0,
-                          borderRadius: { xs: "12px", sm: "14px" },
-                          border: "1px solid var(--border)",
-                          color: "var(--primary)",
-                          backgroundColor: "var(--card)",
-                        }}
-                      >
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
+                      {canManageOrders ? (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(order.id, "cancelled")}
+                          sx={{
+                            minHeight: { xs: 38, sm: 44 },
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            fontSize: { xs: "0.76rem", sm: "0.875rem" },
+                            fontWeight: 850,
+                            textTransform: "none",
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      ) : null}
+                      {canRedeemReward && order.status !== "cancelled" ? (
+                        <IconButton
+                          aria-label={`apply reward to order ${order.id}`}
+                          disabled={isUpdating}
+                          onClick={() => openRedeemDialog(order)}
+                          title="Apply reward (cash)"
+                          sx={{
+                            width: { xs: 38, sm: 44 },
+                            height: { xs: 38, sm: 44 },
+                            flexShrink: 0,
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            border: "1px solid var(--border)",
+                            color: "var(--success, #16a34a)",
+                            backgroundColor: "var(--card)",
+                          }}
+                        >
+                          <RedeemRoundedIcon fontSize="small" />
+                        </IconButton>
+                      ) : null}
+                      {canManageOrders ? (
+                        <IconButton
+                          aria-label={`edit order ${order.id}`}
+                          disabled={isUpdating}
+                          onClick={() => openEditDialog(order)}
+                          sx={{
+                            width: { xs: 38, sm: 44 },
+                            height: { xs: 38, sm: 44 },
+                            flexShrink: 0,
+                            borderRadius: { xs: "12px", sm: "14px" },
+                            border: "1px solid var(--border)",
+                            color: "var(--primary)",
+                            backgroundColor: "var(--card)",
+                          }}
+                        >
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      ) : null}
                     </Stack>
                   )}
                   {locked ? (
@@ -1142,6 +1274,105 @@ export default function OrdersPage() {
           </Button>
           <Button variant="contained" onClick={handleOrderSave} disabled={editSaving} sx={{ borderRadius: "12px" }}>
             {editSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(redeemOrder)} onClose={closeRedeemDialog} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          Apply reward {redeemOrder ? `to Order #${redeemOrder.id}` : ""}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Alert severity="info" sx={{ borderRadius: "12px" }}>
+              Cash settlement only. Enter the customer’s reward code to validate and apply its discount to this order. Redemption is server-validated, tenant-safe, and single-use.
+            </Alert>
+
+            {redeemOrder ? (
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}>
+                <Typography sx={{ fontWeight: 800 }}>
+                  Table {redeemOrder.tableNo} · Order #{redeemOrder.id}
+                </Typography>
+                <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+                  Total: Rs. {Number(redeemOrder.totalAmount || 0).toFixed(2)} · Status: {statusLabel(redeemOrder.status)}
+                </Typography>
+              </Paper>
+            ) : null}
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <TextField
+                label="Reward code"
+                value={redeemCode}
+                onChange={(e) => {
+                  setRedeemCode(e.target.value.toUpperCase());
+                  setRedeemLookup(null);
+                  setRedeemError("");
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleLookupRedeemCode(); }}
+                fullWidth
+                size="small"
+                placeholder="e.g. ABCD1234"
+                autoFocus
+              />
+              <Button
+                variant="outlined"
+                onClick={() => void handleLookupRedeemCode()}
+                disabled={redeemLookupLoading || !redeemCode.trim()}
+                sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700, minWidth: 130 }}
+              >
+                {redeemLookupLoading ? "Checking..." : "Lookup"}
+              </Button>
+            </Stack>
+
+            {redeemError ? <Alert severity="error" sx={{ borderRadius: "12px" }}>{redeemError}</Alert> : null}
+
+            {redeemLookup ? (
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px", backgroundColor: "var(--background)" }}>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                    <Typography sx={{ fontWeight: 800 }}>{String((redeemLookup.reward as Record<string, unknown> | undefined)?.reward_code || "Reward")}</Typography>
+                    <Chip
+                      size="small"
+                      label={String(redeemLookup.effective_status || (redeemLookup.reward as Record<string, unknown> | undefined)?.status || "unknown").replace(/_/g, " ")}
+                      color={redeemLookup.redeemable ? "success" : "warning"}
+                      sx={{ textTransform: "capitalize", fontWeight: 700 }}
+                    />
+                  </Stack>
+                  <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-foreground)" }}>
+                    Customer: {String(((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.name || "—")} {((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown> | undefined)?.email ? `(${String(((redeemLookup.reward as Record<string, unknown> | undefined)?.customer as Record<string, unknown>).email)})` : ""}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-foreground)" }}>
+                    Reward: {String((redeemLookup.reward as Record<string, unknown> | undefined)?.reward_type || "—").replace(/_/g, " ")}
+                    {(redeemLookup.reward as Record<string, unknown> | undefined)?.reward_value != null ? ` • Value ${String((redeemLookup.reward as Record<string, unknown>).reward_value)}` : ""}
+                  </Typography>
+                  {redeemOrder ? (
+                    <Typography sx={{ fontWeight: 800, color: "var(--foreground)" }}>
+                      Estimated cash discount: Rs. {estimateCashDiscount(redeemLookup.reward as Record<string, unknown> | null | undefined, Number(redeemOrder.totalAmount || 0)).toFixed(2)}
+                    </Typography>
+                  ) : null}
+                  {!redeemLookup.redeemable ? (
+                    <Alert severity="warning" sx={{ borderRadius: "10px" }}>
+                      This reward cannot be redeemed ({String(redeemLookup.effective_status || "unavailable").replace(/_/g, " ")}).
+                    </Alert>
+                  ) : null}
+                </Stack>
+              </Paper>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeRedeemDialog} disabled={redeemSubmitting} sx={{ borderRadius: "12px", textTransform: "none" }}>
+            Close
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={() => void handleRedeemForOrder()}
+            disabled={redeemSubmitting || !redeemLookup?.redeemable || !redeemOrder}
+            startIcon={redeemSubmitting ? <CircularProgress size={16} color="inherit" /> : <RedeemRoundedIcon />}
+            sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 800 }}
+          >
+            {redeemSubmitting ? "Applying..." : "Apply reward (cash)"}
           </Button>
         </DialogActions>
       </Dialog>

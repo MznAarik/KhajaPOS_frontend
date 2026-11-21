@@ -29,6 +29,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { createCategory, deleteCategory, getCategories, type CategoryOption, updateCategory, updateCategoryAvailability } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
+import { useAuth } from "@/lib/auth-context";
 
 type CategoryDialogState = {
   id?: number;
@@ -83,6 +84,8 @@ export default function CategoryManagementPage() {
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
   const { showSnackbar } = useAppSnackbar();
+  const { hasPermission } = useAuth();
+  const canManageMenu = hasPermission("menu.manage");
 
   const fetchCategories = React.useCallback(async () => {
     setLoading(true);
@@ -95,10 +98,11 @@ export default function CategoryManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showSnackbar]);
 
   React.useEffect(() => {
-    fetchCategories();
+    const t = setTimeout(() => { fetchCategories(); }, 0);
+    return () => clearTimeout(t);
   }, [fetchCategories]);
 
   const paginatedCategories = React.useMemo(() => {
@@ -107,12 +111,14 @@ export default function CategoryManagementPage() {
   }, [categories, page, rowsPerPage]);
 
   const openCreateDialog = () => {
+    if (!canManageMenu) return;
     setDialogState(createInitialDialogState());
     setError("");
     setDialogOpen(true);
   };
 
   const openEditDialog = (category: CategoryOption) => {
+    if (!canManageMenu) return;
     setDialogState({
       id: category.id,
       name: category.name,
@@ -122,6 +128,7 @@ export default function CategoryManagementPage() {
   };
 
   const openDeleteDialog = (category: CategoryOption) => {
+    if (!canManageMenu) return;
     setSelectedCategory(category);
     setDeleteDialogOpen(true);
     setError("");
@@ -249,21 +256,23 @@ export default function CategoryManagementPage() {
               Create, update, or disable categories used across your menu.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={openCreateDialog}
-            sx={{
-              borderRadius: "14px",
-              backgroundColor: "var(--primary)",
-              color: "var(--primary-foreground)",
-              boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
-              width: { xs: "100%", sm: "auto" },
-              flexShrink: 0,
-            }}
-          >
-            Add Category
-          </Button>
+          {canManageMenu ? (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={openCreateDialog}
+              sx={{
+                borderRadius: "14px",
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+                boxShadow: "0 12px 24px color-mix(in srgb, var(--primary) 24%, transparent)",
+                width: { xs: "100%", sm: "auto" },
+                flexShrink: 0,
+              }}
+            >
+              Add Category
+            </Button>
+          ) : null}
         </Stack>
       </Paper>
 
@@ -344,10 +353,10 @@ export default function CategoryManagementPage() {
                       </Typography>
                     </Box>
                     <Chip
-                      clickable={availabilityUpdatingId !== category.id}
-                      disabled={availabilityUpdatingId === category.id}
+                      clickable={canManageMenu && availabilityUpdatingId !== category.id}
+                      disabled={!canManageMenu || availabilityUpdatingId === category.id}
                       label={availabilityUpdatingId === category.id ? "Updating" : category.isActive ? "Active" : "Off"}
-                      onClick={() => availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
+                      onClick={() => canManageMenu && availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
                       sx={{
                         flexShrink: 0,
                         backgroundColor: category.isActive
@@ -359,7 +368,7 @@ export default function CategoryManagementPage() {
                           ? "var(--status-active-border)"
                           : "var(--status-inactive-border)",
                         fontWeight: 800,
-                        cursor: availabilityUpdatingId === category.id ? "wait" : "pointer",
+                        cursor: !canManageMenu ? "default" : availabilityUpdatingId === category.id ? "wait" : "pointer",
                         opacity: 1,
                       }}
                     />
@@ -382,23 +391,22 @@ export default function CategoryManagementPage() {
                     </Typography>
                   </Paper>
 
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={() => openDeleteDialog(category)}
-                      startIcon={<DeleteOutlineOutlinedIcon fontSize="small" />}
-                      sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}
-                    >
-                      Delete
-                    </Button>
-                    <IconButton color="error" onClick={() => openDeleteDialog(category)} sx={{ display: "none" }}>
-                      <DeleteOutlineOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
+                  {canManageMenu ? (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Button variant="outlined" onClick={() => openEditDialog(category)} sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => openDeleteDialog(category)}
+                        startIcon={<DeleteOutlineOutlinedIcon fontSize="small" />}
+                        sx={{ borderRadius: "12px", flex: 1, minWidth: 0, minHeight: 38 }}
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
+                  ) : null}
                 </Stack>
               </Paper>
             ))
@@ -439,10 +447,10 @@ export default function CategoryManagementPage() {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      clickable={availabilityUpdatingId !== category.id}
-                      disabled={availabilityUpdatingId === category.id}
+                      clickable={canManageMenu && availabilityUpdatingId !== category.id}
+                      disabled={!canManageMenu || availabilityUpdatingId === category.id}
                       label={availabilityUpdatingId === category.id ? "Updating..." : category.isActive ? "Available" : "Unavailable"}
-                      onClick={() => availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
+                      onClick={() => canManageMenu && availabilityUpdatingId !== category.id && handleAvailabilityToggle(category)}
                       sx={{
                         backgroundColor: category.isActive
                           ? "var(--status-active-bg)"
@@ -453,7 +461,7 @@ export default function CategoryManagementPage() {
                           ? "var(--status-active-border)"
                           : "var(--status-inactive-border)",
                         fontWeight: 700,
-                        cursor: availabilityUpdatingId === category.id ? "wait" : "pointer",
+                        cursor: !canManageMenu ? "default" : availabilityUpdatingId === category.id ? "wait" : "pointer",
                         opacity: 1,
                       }}
                     />
@@ -464,12 +472,18 @@ export default function CategoryManagementPage() {
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" sx={{ color: "var(--primary)" }} onClick={() => openEditDialog(category)}>
-                      <EditOutlinedIcon />
-                    </IconButton>
-                    <IconButton size="small" sx={{ color: "var(--status-inactive-fg)" }} onClick={() => openDeleteDialog(category)}>
-                      <DeleteOutlineOutlinedIcon />
-                    </IconButton>
+                    {canManageMenu ? (
+                      <>
+                        <IconButton size="small" sx={{ color: "var(--primary)" }} onClick={() => openEditDialog(category)}>
+                          <EditOutlinedIcon />
+                        </IconButton>
+                        <IconButton size="small" sx={{ color: "var(--status-inactive-fg)" }} onClick={() => openDeleteDialog(category)}>
+                          <DeleteOutlineOutlinedIcon />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>View only</Typography>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

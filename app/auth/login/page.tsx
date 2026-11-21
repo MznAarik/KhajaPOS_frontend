@@ -59,7 +59,7 @@ export default function AuthPage() {
         setVerificationRequired(false);
 
         try {
-            const data = await apiRequest<any>("/api/auth/login", {
+            const data = await apiRequest<Record<string, unknown>>("/api/auth/login", {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
@@ -76,7 +76,8 @@ export default function AuthPage() {
 
             const params = new URLSearchParams(window.location.search);
             const redirectTo = params.get("redirect");
-            const role = data?.data?.user?.role as string | undefined;
+            const payload = data as { data?: { user?: { role?: string } } };
+            const role = payload?.data?.user?.role;
             router.replace(landingForRole(role, redirectTo));
         } catch (err) {
             const message = safeError(err, "Login failed");
@@ -298,7 +299,7 @@ export default function AuthPage() {
                     </Button>
 
                     <Typography sx={{ textAlign: "center", color: "var(--muted-foreground)" }}>
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <Link href="/auth/register" underline="hover" sx={{ color: "var(--primary)", fontWeight: 900 }}>
                             Sign up
                         </Link>

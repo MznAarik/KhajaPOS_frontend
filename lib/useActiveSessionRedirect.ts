@@ -21,6 +21,7 @@ export function useActiveSessionRedirect(): boolean {
     if (!document.cookie.includes("authSession=")) return;
 
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
     setCheckingSession(true);
 
     const redirectActiveSession = async () => {

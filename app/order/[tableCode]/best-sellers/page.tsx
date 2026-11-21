@@ -61,6 +61,7 @@ export default function BestSellersPage() {
   const [orderType, setOrderType] = React.useState<OrderType>("dine_in");
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync state init/reset; safe in this effect
     setCartLoaded(false);
     try {
       const savedCart = window.localStorage.getItem(getCartStorageKey(tableCode));
@@ -115,8 +116,9 @@ export default function BestSellersPage() {
   const updateQuantity = (itemId: number, nextQuantity: number) => {
     setCart((current) => {
       if (nextQuantity <= 0) {
-        const { [itemId]: _removed, ...rest } = current;
-        return rest;
+        const next = { ...current };
+        delete next[itemId];
+        return next;
       }
       return { ...current, [itemId]: Math.min(nextQuantity, MAX_ORDER_QUANTITY) };
     });

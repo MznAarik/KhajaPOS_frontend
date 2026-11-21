@@ -160,8 +160,8 @@ export default function RegisterPage() {
                     )
             );
 
-        } catch (error: any) {
-            console.error(error?.response?.data || error);
+        } catch (error: unknown) {
+            console.error((error as { response?: { data?: unknown } })?.response?.data || error);
             const message = safeError(error, "Registration failed");
             showSnackbar(message, "error");
         } finally {
@@ -548,7 +548,6 @@ export default function RegisterPage() {
                                                         }}
                                                     >
                                                         {logoPreviewUrl ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
                                                             <Box
                                                                 component="img"
                                                                 src={logoPreviewUrl}

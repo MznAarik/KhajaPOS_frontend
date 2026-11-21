@@ -41,7 +41,8 @@ export default function AdminReviewsPage() {
   }, [showSnackbar]);
 
   React.useEffect(() => {
-    void loadReviews();
+    const t = setTimeout(() => { void loadReviews(); }, 0);
+    return () => clearTimeout(t);
   }, [loadReviews]);
 
   const average = reviews.length

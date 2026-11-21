@@ -7,8 +7,18 @@ import type { UserRole } from "@/lib/api";
 export const ROLE_HOME: Record<UserRole, string> = {
   super_admin: "/super-admin/dashboard",
   admin: "/business-admin/dashboard",
+  manager: "/business-admin/dashboard",
+  cashier: "/business-admin/dashboard",
+  kitchen_staff: "/business-admin/dashboard",
   user: "/user",
 };
+
+export const BUSINESS_WORKSPACE_ROLES: UserRole[] = [
+  "admin",
+  "manager",
+  "cashier",
+  "kitchen_staff",
+];
 
 export const SUPERADMIN_PATHS = ["/super-admin"];
 
@@ -35,7 +45,33 @@ export const canRoleAccessPath = (
   }
 
   if (pathname === "/super-admin" || pathname.startsWith("/super-admin/")) return role === "super_admin";
-  if (pathname === "/business-admin" || pathname.startsWith("/business-admin/")) return role === "admin";
+
+  // Loyalty: no kitchen exposure; config for admin/manager; rewards lookup/redeem for admin/manager/cashier
+  if (pathname === "/business-admin/loyalty/rewards" || pathname.startsWith("/business-admin/loyalty/rewards/")) {
+    return role === "admin" || role === "manager" || role === "cashier";
+  }
+  if (pathname === "/business-admin/loyalty" || pathname.startsWith("/business-admin/loyalty/")) {
+    return role === "admin" || role === "manager";
+  }
+
+  // Staff management & delegation
+  if (pathname === "/business-admin/staff" || pathname.startsWith("/business-admin/staff/")) {
+    return role === "admin" || role === "manager";
+  }
+
+  // Reviews and settings: owner/admin and manager by default (server enforces permissions)
+  if (pathname === "/business-admin/reviews" || pathname.startsWith("/business-admin/reviews/")) {
+    return role === "admin" || role === "manager";
+  }
+  if (pathname === "/business-admin/settings" || pathname.startsWith("/business-admin/settings/")) {
+    return role === "admin" || role === "manager";
+  }
+
+  // Operational workspace pages (dashboard/orders/menu/category/tables). Coarse gate; server enforces granular permissions.
+  if (pathname === "/business-admin" || pathname.startsWith("/business-admin/")) {
+    return role === "admin" || role === "manager" || role === "cashier" || role === "kitchen_staff";
+  }
+
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return false;
   if (isAdminPath(pathname)) return false;
 

@@ -18,6 +18,7 @@ import {
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { useAppSnackbar } from "@/components/common/SnackBar";
+import { useAuth } from "@/lib/auth-context";
 import {
     api,
     getBusinessSettings,
@@ -48,13 +49,15 @@ type ProfileResponse = {
 
 export default function BusinessSettingsPage() {
     const { showSnackbar } = useAppSnackbar();
+    const { hasPermission } = useAuth();
+    const canManageSettings = hasPermission("business.settings.manage");
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
     const [loading, setLoading] = React.useState(true);
     const [savingBranding, setSavingBranding] = React.useState(false);
     const [savingAccount, setSavingAccount] = React.useState(false);
 
-    const [settings, setSettings] = React.useState<BusinessSettings | null>(null);
+    const [, setSettings] = React.useState<BusinessSettings | null>(null);
     const [name, setName] = React.useState("");
     const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
     const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -115,6 +118,7 @@ export default function BusinessSettingsPage() {
     }, [previewUrl]);
 
     const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!canManageSettings) return;
         const file = event.target.files?.[0] ?? null;
         event.target.value = "";
 
@@ -139,6 +143,7 @@ export default function BusinessSettingsPage() {
 
     const handleSaveBranding = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (!canManageSettings) return;
 
         if (!name.trim()) {
             showSnackbar("Business name is required.", "warning");
@@ -166,6 +171,7 @@ export default function BusinessSettingsPage() {
 
     const handleSaveAccount = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (!canManageSettings) return;
 
         try {
             setSavingAccount(true);
@@ -252,7 +258,6 @@ export default function BusinessSettingsPage() {
                                     }}
                                 >
                                     {displayLogo ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <Box
                                             component="img"
                                             src={displayLogo}
@@ -273,6 +278,7 @@ export default function BusinessSettingsPage() {
                                             variant="outlined"
                                             startIcon={<CloudUploadOutlinedIcon />}
                                             onClick={() => fileInputRef.current?.click()}
+                                            disabled={!canManageSettings}
                                             sx={{ borderRadius: "12px", fontWeight: 800, textTransform: "none" }}
                                         >
                                             {displayLogo ? "Replace logo" : "Upload logo"}
@@ -313,7 +319,7 @@ export default function BusinessSettingsPage() {
                         <Button
                             type="submit"
                             variant="contained"
-                            disabled={savingBranding}
+                            disabled={savingBranding || !canManageSettings}
                             sx={{ alignSelf: "flex-start", borderRadius: "14px", fontWeight: 900, textTransform: "none", px: 4, minHeight: 46 }}
                         >
                             {savingBranding ? "Saving..." : "Save branding"}
@@ -400,7 +406,7 @@ export default function BusinessSettingsPage() {
                         <Button
                             type="submit"
                             variant="contained"
-                            disabled={savingAccount}
+                            disabled={savingAccount || !canManageSettings}
                             sx={{ alignSelf: "flex-start", borderRadius: "14px", fontWeight: 900, textTransform: "none", px: 4, minHeight: 46 }}
                         >
                             {savingAccount ? "Saving..." : "Save account details"}

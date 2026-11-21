@@ -167,7 +167,7 @@ export const SnackbarProviderCustom = ({
                     ? "0 18px 42px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.08)"
                     : "0 18px 42px rgba(120,90,0,0.18), inset 0 1px 0 rgba(255,255,255,0.55)",
         },
-    } as any;
+    };
 
     const severityIcon = {
         success: <CheckCircleRoundedIcon fontSize="small" />,
