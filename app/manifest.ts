@@ -2,11 +2,11 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "KhajaPOS — Restaurant POS & Table Ordering",
+    name: "KhajaPOS — Restaurant POS & Billing Software",
     short_name: "KhajaPOS",
     description:
-      "Modern restaurant POS with QR table ordering, menu management, real-time order tracking, and sales analytics.",
-    start_url: "/landing",
+      "KhajaPOS is POS and billing software for restaurants in Nepal with QR table ordering, menus, live orders, and analytics.",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
@@ -25,6 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "maskable",
       },
+      // TODO: add /apple-touch-icon.png and 1200x630 /og-image.png in /public
     ],
   };
 }

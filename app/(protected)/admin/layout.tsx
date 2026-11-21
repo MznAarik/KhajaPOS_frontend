@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import SideNavLayout from "./sideNavLayout";
 import { getTokenFromCookies } from "@/lib/api-server";
 import { redirect } from "next/navigation";
 import type { SessionUser } from "@/lib/auth-context";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 

@@ -204,7 +204,7 @@ export default async function BusinessProfilePage({
           </Stack>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 3 }}>
-            <Button component={Link} href="/landing" variant="outlined" sx={{ minHeight: 44, borderRadius: "12px", fontWeight: 850, textTransform: "none" }}>
+            <Button component={Link} href="/" variant="outlined" sx={{ minHeight: 44, borderRadius: "12px", fontWeight: 850, textTransform: "none" }}>
               About KhajaPOS
             </Button>
             <Button component={Link} href="/auth/login" variant="contained" sx={{ minHeight: 44, borderRadius: "12px", fontWeight: 900, textTransform: "none" }}>
