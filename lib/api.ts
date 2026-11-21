@@ -2129,6 +2129,44 @@ export const getLoyaltySummary = async (): Promise<LoyaltyBusinessSummary> => {
   return unwrapApiData<LoyaltyBusinessSummary>(res.data);
 };
 
+export type LoyaltyAuditLogItem = {
+  id: number;
+  actor_id?: number | null;
+  actor_role?: string | null;
+  action: string;
+  target_type?: string | null;
+  target_id?: number | null;
+  business_id?: number | null;
+  customer_id?: number | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  reason?: string | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string | null;
+};
+
+export type LoyaltyAuditLogsResponse = {
+  items: LoyaltyAuditLogItem[];
+  pagination: { current_page: number; per_page: number; total: number; last_page: number };
+};
+
+export const getLoyaltyAuditLogs = async (params?: {
+  action?: string;
+  search?: string;
+  customer_id?: number;
+  target_type?: string;
+  target_id?: number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<LoyaltyAuditLogsResponse> => {
+  const res = await api.get("/admin/loyalty/audit-logs", { params });
+  return unwrapApiData<LoyaltyAuditLogsResponse>(res.data);
+};
+
 /* -------------------------------------------------------------------------- */
 /* Staff management (business admin)                                           */
 /* -------------------------------------------------------------------------- */

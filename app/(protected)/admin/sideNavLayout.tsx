@@ -90,7 +90,7 @@ export default function SideNavLayout({
 }
 
 function SideNavShell({ children }: { children: React.ReactNode }) {
-    const { isSuperAdmin, role } = useAuth();
+    const { isSuperAdmin, role, hasPermission, effectivePermissions } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const reducedMotion = useReducedMotion();
@@ -199,9 +199,15 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         const isCashier = role === "cashier";
         const isKitchen = role === "kitchen_staff";
 
-        const items: NavItem[] = [
-            { text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef },
-        ];
+        const canViewDashboard =
+            hasPermission("dashboard.view") ||
+            (effectivePermissions.length === 0 &&
+                ["admin", "manager", "cashier", "kitchen_staff"].includes(role));
+
+        const items: NavItem[] = [];
+        if (canViewDashboard) {
+            items.push({ text: "Home", href: "/business-admin/dashboard", icon: HouseIcon, ref: dashboardIconRef });
+        }
 
         if (isOwnerOrManager) {
             items.push(
@@ -238,7 +244,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
         }
 
         return items;
-    }, [isSuperAdmin, role]);
+    }, [isSuperAdmin, role, hasPermission, effectivePermissions]);
 
     const segmentLabels: Record<string, string> = {
         dashboard: "Home",
@@ -1071,7 +1077,7 @@ function SideNavShell({ children }: { children: React.ReactNode }) {
                     })()}
                     <BottomNavigation
                         showLabels
-                        value={navItems.find((item) => isActive(item.href))?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
+                        value={navItems.find((item) => isActive(item.href))?.href ?? navItems[0]?.href ?? (isSuperAdmin ? "/super-admin/dashboard" : "/business-admin/dashboard")}
                         onChange={(_, value) => void withViewTransition(() => router.push(String(value)))}
                         sx={{
                             position: "relative",

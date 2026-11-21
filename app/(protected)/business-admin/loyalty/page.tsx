@@ -19,6 +19,7 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Stack,
@@ -38,9 +39,11 @@ import { useAppSnackbar } from "@/components/common/SnackBar";
 import {
   createLoyaltyTier,
   deleteLoyaltyTier,
+  getLoyaltyAuditLogs,
   getLoyaltyProgram,
   saveLoyaltyProgram,
   updateLoyaltyTier,
+  type LoyaltyAuditLogItem,
   type LoyaltyProgram,
   type LoyaltyTier,
 } from "@/lib/api";
@@ -107,6 +110,12 @@ export default function BusinessAdminLoyaltyPage() {
   const [program, setProgram] = React.useState<LoyaltyProgram | null>(null);
   const [tierDialogOpen, setTierDialogOpen] = React.useState(false);
   const [tierForm, setTierForm] = React.useState<TierFormState>(emptyTierForm());
+  const [auditLogs, setAuditLogs] = React.useState<LoyaltyAuditLogItem[]>([]);
+  const [auditLoading, setAuditLoading] = React.useState(false);
+  const [auditPage, setAuditPage] = React.useState(1);
+  const [auditLastPage, setAuditLastPage] = React.useState(1);
+  const [auditSearch, setAuditSearch] = React.useState("");
+  const [auditAction, setAuditAction] = React.useState("");
 
   const loadProgram = React.useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -130,6 +139,28 @@ export default function BusinessAdminLoyaltyPage() {
   React.useEffect(() => {
     void loadProgram();
   }, [loadProgram]);
+
+  const loadAuditLogs = React.useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const data = await getLoyaltyAuditLogs({
+        page: auditPage,
+        per_page: 10,
+        search: auditSearch.trim() || undefined,
+        action: auditAction.trim() || undefined,
+      });
+      setAuditLogs(Array.isArray(data.items) ? data.items : []);
+      setAuditLastPage(Math.max(1, Number(data.pagination?.last_page || 1)));
+    } catch (error) {
+      showSnackbar(safeError(error, "Failed to load loyalty audit logs"), "error");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [auditPage, auditSearch, auditAction, showSnackbar]);
+
+  React.useEffect(() => {
+    void loadAuditLogs();
+  }, [loadAuditLogs]);
 
   const setProgramField = <K extends keyof LoyaltyProgram>(key: K, value: LoyaltyProgram[K]) => {
     setProgram((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -434,6 +465,82 @@ export default function BusinessAdminLoyaltyPage() {
               </Table>
             </Box>
           )}
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 }, borderRadius: "18px", borderColor: "var(--border)", bgcolor: "var(--surface)" }}>
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Audit logs</Typography>
+            <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.88rem" }}>
+              Tenant-scoped loyalty activity for this business (redemptions, revocations, config changes).
+            </Typography>
+          </Box>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <TextField
+              size="small"
+              label="Search"
+              value={auditSearch}
+              onChange={(e) => { setAuditPage(1); setAuditSearch(e.target.value); }}
+              placeholder="Action, reason, customer..."
+              sx={{ minWidth: 220 }}
+            />
+            <TextField
+              size="small"
+              label="Action filter"
+              value={auditAction}
+              onChange={(e) => { setAuditPage(1); setAuditAction(e.target.value); }}
+              placeholder="e.g. redeem, revoke"
+              sx={{ minWidth: 180 }}
+            />
+          </Stack>
+
+          {auditLoading ? (
+            <Box sx={{ py: 3, display: "grid", placeItems: "center" }}><CircularProgress size={24} /></Box>
+          ) : auditLogs.length === 0 ? (
+            <Alert severity="info" variant="outlined">No audit logs found.</Alert>
+          ) : (
+            <Box sx={{ overflowX: "auto" }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Time</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Actor</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Customer</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Target</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Reason</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {auditLogs.map((log) => (
+                    <TableRow key={log.id} hover>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>{log.created_at ? new Date(log.created_at).toLocaleString() : "—"}</TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{log.action}</Typography>
+                      </TableCell>
+                      <TableCell>{log.actor_role || "—"}{log.actor_id ? ` (#${log.actor_id})` : ""}</TableCell>
+                      <TableCell>{log.customer_name || log.customer_email || (log.customer_id ? `#${log.customer_id}` : "—")}</TableCell>
+                      <TableCell>{log.target_type || "—"}{log.target_id ? ` #${log.target_id}` : ""}</TableCell>
+                      <TableCell sx={{ maxWidth: 260 }}>{log.reason || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
+
+          {auditLastPage > 1 ? (
+            <Stack direction="row" justifyContent="flex-end">
+              <Pagination
+                size="small"
+                page={auditPage}
+                count={auditLastPage}
+                onChange={(_, p) => setAuditPage(p)}
+              />
+            </Stack>
+          ) : null}
         </Stack>
       </Paper>
 
