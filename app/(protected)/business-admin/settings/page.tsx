@@ -57,7 +57,7 @@ export default function BusinessSettingsPage() {
     const [savingBranding, setSavingBranding] = React.useState(false);
     const [savingAccount, setSavingAccount] = React.useState(false);
 
-    const [settings, setSettings] = React.useState<BusinessSettings | null>(null);
+    const [, setSettings] = React.useState<BusinessSettings | null>(null);
     const [name, setName] = React.useState("");
     const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
     const [logoFile, setLogoFile] = React.useState<File | null>(null);

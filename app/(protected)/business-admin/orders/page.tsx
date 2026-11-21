@@ -201,7 +201,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, showSnackbar]);
 
   const fetchDays = React.useCallback(async () => {
     try {

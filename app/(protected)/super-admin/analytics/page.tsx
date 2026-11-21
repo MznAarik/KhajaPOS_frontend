@@ -24,14 +24,13 @@ import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import useMeasure from "react-use-measure";
 import {
   getPlatformAnalytics,
   type AnalyticsGrowth,
-  type AnalyticsTrafficPoint,
+
   type AnalyticsTrendValue,
   type PlatformAnalytics,
 } from "@/lib/api";
@@ -71,17 +70,6 @@ const formatClock = (iso: string) => {
   if (Number.isNaN(date.getTime())) return "just now";
 
   return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-};
-
-const formatTrafficTime = (point: AnalyticsTrafficPoint) => {
-  if (point.at) {
-    const date = new Date(point.at);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
-    }
-  }
-
-  return point.label;
 };
 
 const titleCase = (value: string) =>
@@ -497,71 +485,6 @@ function TrendChart({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Requests-per-minute bars                                                    */
-/* -------------------------------------------------------------------------- */
-
-function RequestBars({ points, height = 150 }: { points: AnalyticsTrafficPoint[]; height?: number }) {
-  const max = Math.max(...points.map((point) => point.requests), 1);
-
-  if (points.length === 0) {
-    return <EmptyState title="No request telemetry captured yet" hint="Traffic is recorded automatically once the API is used." />;
-  }
-
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: "2px",
-          height,
-          width: "100%",
-          px: 0.25,
-          pt: 1,
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        {points.map((point) => {
-          const ratio = point.requests / max;
-          const isPeak = point.requests === max && point.requests > 0;
-          const hasErrors = point.errors > 0;
-
-          return (
-            <Box
-              key={point.key}
-              title={`${formatTrafficTime(point)} · ${formatNumber(point.requests)} requests${hasErrors ? ` · ${formatNumber(point.errors)} errors` : ""}`}
-              sx={{
-                flex: "1 1 0",
-                minWidth: "1px",
-                height: `${Math.max(ratio * 100, point.requests > 0 ? 4 : 1.5)}%`,
-                borderRadius: "3px 3px 1px 1px",
-                backgroundColor: hasErrors
-                  ? "var(--destructive)"
-                  : isPeak
-                    ? "var(--chart-2)"
-                    : "color-mix(in srgb, var(--chart-2) 52%, transparent)",
-                opacity: point.requests === 0 ? 0.28 : 1,
-                transition: "height 320ms ease, background-color 220ms ease",
-              }}
-            />
-          );
-        })}
-      </Box>
-      <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.6 }}>
-        {[points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((point, index) => (
-          <Typography
-            key={`${point.key}-${index}`}
-            sx={{ fontSize: "0.68rem", fontWeight: 750, color: "var(--muted-foreground)" }}
-          >
-            {formatTrafficTime(point)}
-          </Typography>
-        ))}
-      </Stack>
-    </Box>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
 /* Page                                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -575,21 +498,6 @@ const metricMeta: Record<
   revenue: { label: "Revenue", color: "var(--chart-1)", format: (value) => formatCurrency(value) },
 };
 
-const methodColor = (method: string) => {
-  switch (method.toUpperCase()) {
-    case "GET":
-      return "var(--chart-2)";
-    case "POST":
-      return "var(--chart-3)";
-    case "PUT":
-    case "PATCH":
-      return "var(--chart-1)";
-    case "DELETE":
-      return "var(--destructive)";
-    default:
-      return "var(--chart-4)";
-  }
-};
 
 const headCellSx = {
   fontSize: "0.66rem",
@@ -643,7 +551,6 @@ export default function AdminAnalyticsPage() {
   const [failed, setFailed] = React.useState(false);
   const [metric, setMetric] = React.useState<AnalyticsTrendValue>("businesses");
   const [trendMode, setTrendMode] = React.useState<"monthly" | "cumulative">("monthly");
-  const [trafficRange, setTrafficRange] = React.useState<"hour" | "day">("hour");
   const [businesses, setBusinesses] = React.useState<any[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<string>("all");
   const { showSnackbar } = useAppSnackbar();
@@ -719,12 +626,10 @@ export default function AdminAnalyticsPage() {
     return monthly.map((point) => ({ label: point.label, value: point[metric] }));
   }, [data, metric, trendMode]);
 
-  const trafficPoints = React.useMemo<AnalyticsTrafficPoint[]>(() => {
-    if (!data) return [];
-    return trafficRange === "hour" ? data.usage.requestsPerMinute : data.usage.requestsPerHour;
-  }, [data, trafficRange]);
-
-  const businessesForSelection = data?.overview.topBusinesses ?? [];
+  const businessesForSelection = React.useMemo(
+    () => data?.overview.topBusinesses ?? [],
+    [data],
+  );
   const filteredBusiness = React.useMemo(() => {
     if (selectedBusinessId === "all") return null;
     const analyticsBusiness = businessesForSelection.find((business) => String(business.id) === selectedBusinessId);
@@ -793,7 +698,6 @@ export default function AdminAnalyticsPage() {
   const visibleBusinesses = selectedBusinessId === "all"
     ? topBusinesses
     : filteredBusiness ? [filteredBusiness] : [];
-  const usage = data.usage;
   const footprint = data.data;
 
   const dailyRevenue = daily.reduce((sum, point) => sum + point.revenue, 0);
@@ -803,13 +707,10 @@ export default function AdminAnalyticsPage() {
     null,
   );
 
-  const businessMax = Math.max(...businessTypes.map((type) => type.count), 1);
   const tableSizeMax = Math.max(...footprint.tables.map((table) => footprint.businessScoped ? table.rows : table.sizeBytes), 1);
   const totalRows = footprint.tables.reduce((sum, table) => sum + table.rows, 0);
 
   const activeMeta = metricMeta[metric];
-  const trafficPeak = Math.max(...trafficPoints.map((point) => point.requests), 0);
-  const trafficCurrent = trafficPoints[trafficPoints.length - 1]?.requests ?? 0;
 
   return (
     <Box sx={{ display: "grid", gap: 2, minWidth: 0 }}>

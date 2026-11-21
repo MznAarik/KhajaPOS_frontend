@@ -121,7 +121,7 @@ export default function TablesPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [showSnackbar]);
 
   React.useEffect(() => {
     fetchTables();
@@ -902,7 +902,7 @@ export default function TablesPage() {
                         <Box sx={{ minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800 }}>Allow ordering</Typography>
                           <Typography sx={{ mt: 0.25, color: "var(--muted-foreground)", fontSize: "0.86rem" }}>
-                            When disabled, this table won't be available for new orders.
+                            When disabled, this table won&apos;t be available for new orders.
                           </Typography>
                         </Box>
                         <FormControlLabel

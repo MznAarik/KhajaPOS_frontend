@@ -262,7 +262,7 @@ export default function BusinessAdminLoyaltyPage() {
       return;
     }
 
-    const payload: any = {
+    const payload: Parameters<typeof createLoyaltyTier>[0] = {
       name: tierForm.name.trim() || null,
       threshold_orders: threshold,
       reward_type: tierForm.reward_type,

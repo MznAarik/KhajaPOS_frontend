@@ -32,7 +32,6 @@ import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlin
 import WhatshotOutlinedIcon from "@mui/icons-material/WhatshotOutlined";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
-import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
@@ -58,7 +57,7 @@ import SalesLineChart from "@/components/admin/SalesLineChart";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
 import { useAuth } from "@/lib/auth-context";
-import { cardTopRightAccent, cardTopRightAccentSoft, cardTopRightAccentFor } from "@/lib/ui";
+import { cardTopRightAccentSoft, cardTopRightAccentFor } from "@/lib/ui";
 
 const formatNumber = (v: number) => Math.round(Number(v ?? 0)).toLocaleString("en-IN");
 const formatCurrency = (value: number, fractionDigits = 0) =>

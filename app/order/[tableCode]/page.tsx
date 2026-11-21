@@ -51,7 +51,7 @@ import {
   matchesFoodFilter,
   placePublicOrder,
   resolveMenuImageUrl,
-  type CustomerAuthResponse,
+
   type CustomerProfile,
   type FoodFilterKey,
   type KitchenOrder,
@@ -913,8 +913,9 @@ export default function TableOrderPage() {
   const updateQuantity = (itemId: number, nextQuantity: number) => {
     setCart((current) => {
       if (nextQuantity <= 0) {
-        const { [itemId]: _removed, ...rest } = current;
-        return rest;
+        const next = { ...current };
+        delete next[itemId];
+        return next;
       }
 
       if (nextQuantity > MAX_ORDER_QUANTITY) {

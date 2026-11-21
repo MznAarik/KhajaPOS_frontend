@@ -345,7 +345,7 @@ export default function MenuManagementPage() {
         setLoading(false);
       }
     },
-    []
+    [showSnackbar]
   );
 
   const loadCategories = React.useCallback(async () => {

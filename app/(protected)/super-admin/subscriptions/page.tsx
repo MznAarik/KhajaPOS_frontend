@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import {
-  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, Grow, Fade, InputLabel, MenuItem, Paper, Select, Skeleton, Stack, Tab, Tabs,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery,
 } from "@mui/material";
@@ -24,7 +24,7 @@ import {
 } from "@/lib/api";
 import { useAppSnackbar } from "@/components/common/SnackBar";
 import { safeError } from "@/lib/safeError";
-import { cardTopRightAccentFor, cardTopRightAccentSoft } from "@/lib/ui";
+import { cardTopRightAccentFor } from "@/lib/ui";
 
 const fmtMoney = (v: number | string, currency = "NPR") =>
   `${currency} ${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;

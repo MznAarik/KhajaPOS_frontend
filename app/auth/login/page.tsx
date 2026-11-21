@@ -298,7 +298,7 @@ export default function AuthPage() {
                     </Button>
 
                     <Typography sx={{ textAlign: "center", color: "var(--muted-foreground)" }}>
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <Link href="/auth/register" underline="hover" sx={{ color: "var(--primary)", fontWeight: 900 }}>
                             Sign up
                         </Link>

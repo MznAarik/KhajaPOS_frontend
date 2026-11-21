@@ -115,8 +115,9 @@ export default function BestSellersPage() {
   const updateQuantity = (itemId: number, nextQuantity: number) => {
     setCart((current) => {
       if (nextQuantity <= 0) {
-        const { [itemId]: _removed, ...rest } = current;
-        return rest;
+        const next = { ...current };
+        delete next[itemId];
+        return next;
       }
       return { ...current, [itemId]: Math.min(nextQuantity, MAX_ORDER_QUANTITY) };
     });

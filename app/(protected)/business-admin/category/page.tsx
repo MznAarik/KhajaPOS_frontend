@@ -98,7 +98,7 @@ export default function CategoryManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showSnackbar]);
 
   React.useEffect(() => {
     fetchCategories();

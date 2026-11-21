@@ -25,7 +25,8 @@ export default function ReviewForm({
   const [name, setName] = React.useState(customerName ?? "");
   const [email, setEmail] = React.useState(customerEmail ?? "");
   const [submitting, setSubmitting] = React.useState(false);
-  const showSnackbar = (message: string, options?: any) => {
+  const showSnackbar = (message: string, options?: unknown) => {
+    void options;
     if (typeof window !== "undefined") {
       console.log(message);
     }
